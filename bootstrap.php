@@ -210,6 +210,14 @@ function guard_protect(): void {
 		redirect('/login.php');
 	}
 
+    // Sessions end when the password is reset (session_version changes)
+    $stmt = db()->prepare('SELECT session_version FROM users WHERE id = :id');
+    $stmt->execute([':id' => (int)$u['id']]);
+    $currentVersion = $stmt->fetchColumn();
+    if ($currentVersion === false || (int)$currentVersion !== (int)($u['sv'] ?? -1)) {
+        end_session_and_redirect('revoked');
+    }
+
     // metadata namespace for session lifecycle
     $_SESSION['meta'] = $_SESSION['meta'] ?? [
         'login_time'    => $u['t'] ?? time(),  // login timestamp from login.php
