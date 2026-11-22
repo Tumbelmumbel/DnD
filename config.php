@@ -30,10 +30,11 @@ $APP_CONFIG = [
     ],
 
     'db' => [
-        'host'    => $_ENV['DB_HOST'] ?? 'db5020006586.hosting-data.io',
-        'name'    => $_ENV['DB_NAME'] ?? 'dbs15432866',
-        'user'    => $_ENV['DB_USER'] ?? 'dbu980466',
-        'pass'    => $_ENV['DB_PASS'] ?? '100%GreatWhite',
+        // Credentials come ONLY from .env. No real values as fallbacks.
+        'host'    => $_ENV['DB_HOST'] ?? '',
+        'name'    => $_ENV['DB_NAME'] ?? '',
+        'user'    => $_ENV['DB_USER'] ?? '',
+        'pass'    => $_ENV['DB_PASS'] ?? '',
         'charset' => $_ENV['DB_CHARSET'] ?? 'utf8mb4',
         'options' => [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
