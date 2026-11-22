@@ -98,5 +98,6 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
   <button type="submit">Reset</button>
 </form>
 
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

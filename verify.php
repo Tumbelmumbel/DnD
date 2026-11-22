@@ -55,5 +55,6 @@ if ($email && $token) {
     <button type="submit">Resend verification link</button>
   </form>
 <?php endif; ?>
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

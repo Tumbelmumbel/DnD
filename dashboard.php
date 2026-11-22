@@ -23,5 +23,6 @@ $user = $_SESSION['user'];
 <p>Your role: <strong><?= e($user['role']) ?></strong></p>
 
 <p><a href="/logout.php">Log out</a></p>
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

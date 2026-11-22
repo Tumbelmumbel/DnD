@@ -107,5 +107,6 @@ form {
 		<button class= button type="submit">Register</button>
 	</form>	
 </div>
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

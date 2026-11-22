@@ -145,9 +145,6 @@ $errors = [];
 .cs-bar-hp button { width: 48px; height: 48px; border-radius: 24px; border: 0; color: #FFFFFF; font-size: 24px; font-weight: 700; cursor: pointer; }
 .cs-bar-hp .cs-hp-minus { background: #C62828; }
 .cs-bar-hp .cs-hp-plus { background: #2E7D32; }
-.cs-lang { min-height: 48px; padding: 0 10px; border-radius: 8px; border: 1px solid rgba(255, 253, 246, 0.5);
-	background: transparent; color: #FFFDF6; font: inherit; cursor: pointer; }
-.cs-lang option { color: #4A4431; }
 .cs-bar-stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
 .cs-bar-stat span:first-child { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .cs-bar-stat span:last-child { font-size: 22px; font-weight: 700; }
@@ -191,11 +188,6 @@ $errors = [];
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative">–</span></div>
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></div>
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></div>
-		<select class = "cs-lang" id = "langSelect" aria-label = "<?= e(t('language')) ?>" data-i18n-aria = "language">
-			<?php foreach (i18n_languages() as $code => $langName): ?>
-				<option value = "<?= e($code) ?>"<?= $code === current_lang() ? ' selected' : '' ?>><?= e($langName) ?></option>
-			<?php endforeach; ?>
-		</select>
 	</div>
 </header>
 <div class = "cs-page" id = "character_basics">
@@ -417,6 +409,7 @@ $errors = [];
 
 </div>
 
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
  <script src="/calculation.js"></script>
 </body>
 
@@ -770,24 +763,11 @@ document.getElementById("Level").addEventListener("change", function () {
 	updateBar();
 
 
-//LANGUAGE MENU: change the language without a reload (entered values stay)
-	document.getElementById("langSelect").addEventListener("change", function () {
-		const select = this;
-		const previous = document.documentElement.lang;
-		const body = new URLSearchParams({ csrf: CSRF_TOKEN, lang: select.value });
-		select.disabled = true;
-		fetch("/ajax/i18n.php", { method: "POST", body, credentials: "same-origin" })
-			.then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
-			.then(data => {
-				I18N = data.texts;
-				document.documentElement.lang = data.lang;
-				applyI18n();
-			})
-			.catch(err => {
-				console.error("Error:", err);
-				select.value = previous; // keep the old language
-			})
-			.finally(() => { select.disabled = false; });
-	});
+//LANGUAGE MENU (footer): change the texts without a reload; entered values stay
+	window.onLanguageChanged = function (data) {
+		I18N = data.texts;
+		document.documentElement.lang = data.lang;
+		applyI18n();
+	};
 
 </script>
