@@ -68,218 +68,308 @@ $errors = [];
 <link rel="stylesheet" href="/Assets/style.css">
     <title>Sandbox</title>
 <style>
+/* ===== Character sheet: tablet-first layout (page-only rules, prefix cs-) ===== */
+.cs-page { --cs-card: #F3EDDA; --cs-field: #FFFDF6; --cs-line: #D8CDA8; --cs-border: #A99E78; --cs-accent: #3B4BC4;
+	max-width: 1240px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;
+	color: var(--text); font-family: var(--fonts); font-size: 16px; text-align: left; }
+.cs-card { background: var(--cs-card); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+	box-shadow: 0 1px 2px rgba(74, 68, 49, 0.15); min-width: 0; }
+.cs-card h2 { margin: 0; font-size: 18px; }
+.cs-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cs-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cs-field > label, .cs-mini { font-size: 13px; font-weight: 700; }
+.cs-page input:not([type=checkbox]), .cs-page select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 48px;
+	padding: 0 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-field);
+	color: var(--text); font: inherit; font-size: 16px; }
+.cs-page input[type=checkbox] { width: 24px; height: 24px; margin: 0; flex: 0 0 24px; accent-color: var(--cs-accent); }
+.cs-name input { font-size: 20px !important; font-weight: 700; }
+
+/* Grids */
+.cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cs-identity .cs-name { grid-column: 1 / -1; }
+.cs-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.cs-stat { align-items: center; text-align: center; }
+.cs-stat .cs-mini { text-transform: uppercase; letter-spacing: 0.04em; }
+.cs-stat input, .cs-stat select { text-align: center; font-size: 20px !important; font-weight: 700; }
+.cs-value { min-height: 48px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; }
+.cs-value:empty::before { content: "–"; opacity: 0.5; }
+.cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cs-hp input { text-align: center; font-size: 20px !important; }
+.cs-row { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--cs-line); padding-top: 10px; }
+.cs-row input { width: 72px !important; text-align: center; }
+.cs-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+.cs-check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.cs-check span { flex: 1; }
+.cs-abilities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cs-ability { gap: 2px; }
+.cs-ability-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.cs-ability-head label { font-size: 17px; font-weight: 700; }
+.cs-ability-head input { text-align: center; font-size: 18px !important; }
+.cs-mod { width: 56px; height: 56px; flex: 0 0 56px; border-radius: 28px; background: var(--cs-accent); color: #FFFFFF;
+	display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; }
+.cs-save { font-weight: 700; border-bottom: 1px solid var(--cs-line); min-height: 48px; }
+.cs-line { display: flex; align-items: center; gap: 8px; }
+.cs-line select { flex: 1; }
+
+/* Buttons from the existing logic, restyled for touch */
+.cs-page .button.add, .cs-page .button.delete { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 24px;
+	padding: 0; font-size: 22px; font-weight: 700; background: transparent; cursor: pointer; }
+.cs-page .button.add { border: 2px solid #2E7D32; color: #2E7D32; }
+.cs-page .button.delete { border: 2px solid #C62828; color: #C62828; }
+.cs-page #addTalent { flex: 0 0 auto; min-height: 48px; padding: 0 24px; border: 0; border-radius: 8px;
+	background: var(--cs-accent); color: #FFFFFF; font-weight: 700; cursor: pointer; }
+.cs-talent-add { display: flex; align-items: center; gap: 10px; }
+.cs-talent-add select { flex: 1; }
+
 /* Talent cards */
-.talent_list { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 8px; }
-.talent_card { border: 1px solid rgba(0, 0, 0, 0.25); border-radius: 6px; background: rgba(255, 255, 255, 0.35); }
-.talent_card_header { display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; user-select: none; }
+.talent_list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; width: 100%; }
+.talent_card { border: 1px solid var(--cs-line); border-radius: 10px; background: var(--cs-field); }
+.talent_card_header { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 8px 0 14px; cursor: pointer; user-select: none; }
 .talent_card_arrow { display: inline-block; width: 1em; transition: transform 0.15s; }
 .talent_card.open .talent_card_arrow { transform: rotate(90deg); }
-.talent_card_title { font-weight: 600; }
-.talent_card_facts { flex: 1; opacity: 0.8; }
-.talent_card_body { margin: 0; padding: 0 12px 8px 30px; }
-.talent_card_body dd { margin: 0 0 8px 0; white-space: pre-wrap; }
+.talent_card_title { font-weight: 700; }
+.talent_card_facts { flex: 1; color: #6B6346; }
+.talent_card_body { margin: 0; padding: 0 14px 14px 36px; }
+.talent_card_body dd { margin: 0 0 8px 0; white-space: pre-wrap; line-height: 1.5; }
 #talent_dropdown option:disabled { color: #999; }
+
+/* Tablet landscape and desktop: two columns */
+.cs-main { display: flex; flex-direction: column; gap: 16px; }
+.cs-side { display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 1000px) {
+	.cs-identity { grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.2fr); }
+	.cs-identity .cs-name { grid-column: auto; }
+	.cs-main { display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; }
+	.cs-side .cs-two { grid-template-columns: minmax(0, 1fr); }
+	.cs-abilities { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* Phone: one column */
+@media (max-width: 640px) {
+	.cs-page { padding: 10px; gap: 12px; }
+	.cs-identity, .cs-two, .talent_list { grid-template-columns: minmax(0, 1fr); }
+	.cs-identity .cs-name { grid-column: auto; }
+	.cs-abilities { grid-template-columns: minmax(0, 1fr); }
+}
 </style>
 </head>
 <body>
-<div class = "container_vertical" id = "character_basics">
-	<div class = "container_horizontal" style = "align-items: flex-start; gap: 10px; flex-wrap: wrap">
-		<div class = "container_vertical">
-			<label class= "label section_header" for="class_dropdown">Basics</label>
-			<div class = "container_horizontal">
-				<label class= "label" for="class_dropdown">Character Name</label>
-				<input class= "input" name="name" id = "name"></input>
+<div class = "cs-page" id = "character_basics">
+
+	<!-- Identity -->
+	<section class = "cs-card" aria-labelledby = "cs-basics-title">
+		<h2 id = "cs-basics-title">Basics</h2>
+		<div class = "cs-identity">
+			<div class = "cs-field cs-name">
+				<label for = "name">Character name</label>
+				<input name = "name" id = "name" autocomplete = "off">
 			</div>
-			<div class = "container_horizontal">
-				<label class= "label" for="species">Species</label>
+			<div class = "cs-field">
+				<label for = "species">Species</label>
 				<select class = "class_dropdown" id = "species" name = "species">
 					<?php foreach ($species as $char_species): ?>
-						<option id="<?= $char_species ?>" class = "Dropdown_Entry" value = "<?= $char_species ?>"> <?= $char_species ?> </option>
+						<option id = "<?= e($char_species) ?>" class = "Dropdown_Entry" value = "<?= e($char_species) ?>"><?= e($char_species) ?></option>
 					<?php endforeach; ?>
 				</select>
-			</div>			
-			<div class = "container_horizontal">
-				<label class= "label" for="Level">Level</label>
-				<input class= "input" name="Level" id = "Level"></input>			
 			</div>
-			<div class = "container_horizontal">
-				<label class= "label" for="class_dropdown">Class</label>
+			<div class = "cs-field">
+				<label for = "Level">Level</label>
+				<input name = "Level" id = "Level" inputmode = "numeric">
+			</div>
+			<div class = "cs-field">
+				<label for = "class_dropdown">Class</label>
 				<select class = "class_dropdown" id = "class_dropdown" name = "class_dropdown">
 					<?php foreach ($classes as $class): ?>
-						<option id="<?= $class ?>" class = "Dropdown_Entry" value = "<?= $class ?>"> <?= $class ?> </option>
+						<option id = "<?= e($class) ?>" class = "Dropdown_Entry" value = "<?= e($class) ?>"><?= e($class) ?></option>
 					<?php endforeach; ?>
 				</select>
 			</div>
-			<div class = "container_horizontal">
-				<label class= "label" for="subclass_dropdown">Subclass</label>
-				<select class = "class_dropdown" id = "subclass_dropdown" name = "subclass_dropdown"> </select>
+			<div class = "cs-field">
+				<label for = "subclass_dropdown">Subclass</label>
+				<select class = "class_dropdown" id = "subclass_dropdown" name = "subclass_dropdown"></select>
 			</div>
-
-			<div class = "container_horizontal">
-				<label class= "label" for="backgrounds">Backgrounds</label>
+			<div class = "cs-field">
+				<label for = "backgrounds">Background</label>
 				<select class = "class_dropdown" id = "backgrounds" name = "backgrounds">
 					<?php foreach ($backgrounds as $background): ?>
-						<option id="<?= $background ?>" class = "Dropdown_Entry" value = "<?= $background ?>"> <?= $background ?> </option>
+						<option id = "<?= e($background) ?>" class = "Dropdown_Entry" value = "<?= e($background) ?>"><?= e($background) ?></option>
 					<?php endforeach; ?>
-				</select>	
-			</div>
-		</div>
-
-		<div class = "container_vertical" id = "Defense">
-			<label class= "label section_header">Defense</label>
-			<button class = "button add" style = "align-items: flex-start;" id = "addDamageImmunity"> + </button>
-			<div class = "container_horizontal" id = "defense_line0">
-					<select class = "class_dropdown" name="damageInfluence">
-						<option class = "Dropdown_Entry"></option>
-						<?php foreach ($damageInfluences as $damageInfluence): ?>
-							<option class = "Dropdown_Entry" value = "<?= $damageInfluence ?>"> <?= $damageInfluence ?> </option>
-						<?php endforeach; ?>
-					</select>
-					<select class = "class_dropdown" name="damageType">
-						<option class = "Dropdown_Entry"></option>
-						<?php foreach ($damageTypes as $damageType): ?>
-							<option class = "Dropdown_Entry" value = "<?= $damageType ?>"> <?= $damageType ?> </option>
-						<?php endforeach; ?>
-					</select>
-				<button class = "button delete defense"> - </button>
-			</div>	
-		</div>
-		<div class = "container_vertical" id = "Condition">
-			<label class= "label section_header">Conditions</label>
-			<button class = "button add" style = "align-items: flex-start;" id = "addCondition"> + </button>
-			<div class = "container_horizontal" Style = "align-items: flex-start;" id = "condition_line0">
-				<select class = "class_dropdown" name="conditions">
-					<option class = "Dropdown_Entry"></option>
-					<?php foreach ($conditions as $condition): ?>
-						<option class = "Dropdown_Entry" name="<?= $condition ?>" style = "align-self: flex-end"><?= $condition ?></option>
-					<?php endforeach; ?>	
 				</select>
-				<button class = "button delete condition"> - </button>
+			</div>
+		</div>
+	</section>
+
+	<!-- Combat values -->
+	<section class = "cs-stats" aria-label = "Combat values">
+		<div class = "cs-card cs-stat">
+			<label class = "cs-mini" for = "armorClass">Armor class</label>
+			<input name = "armorClass" id = "armorClass" inputmode = "numeric">
+		</div>
+		<div class = "cs-card cs-stat">
+			<span class = "cs-mini" id = "cs-initiative-label">Initiative</span>
+			<label class = "cs-value" name = "initiative" id = "initiative" aria-labelledby = "cs-initiative-label"></label>
+		</div>
+		<div class = "cs-card cs-stat">
+			<label class = "cs-mini" for = "Walking_Speed">Walking speed</label>
+			<input type = "number" name = "Walking_Speed" id = "Walking_Speed" inputmode = "numeric">
+		</div>
+		<div class = "cs-card cs-stat">
+			<label class = "cs-mini" for = "Proficiency_Bonus">Proficiency bonus</label>
+			<input type = "number" name = "Proficiency_Bonus" id = "Proficiency_Bonus" inputmode = "numeric">
+		</div>
+		<div class = "cs-card cs-stat">
+			<label class = "cs-mini" for = "inspiration">Inspiration</label>
+			<select id = "inspiration" name = "inspiration">
+				<option id = "empty" class = "Dropdown_Entry" value = "">–</option>
+				<option id = "D4" class = "Dropdown_Entry" value = "D4">D4</option>
+				<option id = "D6" class = "Dropdown_Entry" value = "D6">D6</option>
+				<option id = "D8" class = "Dropdown_Entry" value = "D8">D8</option>
+				<option id = "D12" class = "Dropdown_Entry" value = "D12">D12</option>
+			</select>
+		</div>
+	</section>
+
+	<div class = "cs-main">
+		<!-- Left column (landscape) -->
+		<div class = "cs-side">
+			<div class = "cs-two">
+				<section class = "cs-card" aria-labelledby = "cs-hp-title">
+					<h2 id = "cs-hp-title">Hit points</h2>
+					<div class = "cs-hp">
+						<div class = "cs-field">
+							<label for = "currentHitpoints">Current</label>
+							<input name = "currentHitpoints" id = "currentHitpoints" inputmode = "numeric">
+						</div>
+						<div class = "cs-field">
+							<label for = "maxHitpoints">Maximum</label>
+							<input name = "maxHitpoints" id = "maxHitpoints" inputmode = "numeric">
+						</div>
+						<div class = "cs-field">
+							<label for = "tempHitpoints">Temporary</label>
+							<input name = "tempHitpoints" id = "tempHitpoints" inputmode = "numeric">
+						</div>
+					</div>
+					<div class = "cs-row">
+						<span class = "cs-mini">Hit dice</span>
+						<label name = "hitDice" id = "hitDice" style = "flex: 1; font-weight: 700;"></label>
+						<label class = "cs-mini" for = "HitDiceUsed">Used</label>
+						<input name = "HitDiceUsed" id = "HitDiceUsed" inputmode = "numeric">
+					</div>
+				</section>
+
+				<section class = "cs-card" aria-labelledby = "cs-armor-title">
+					<h2 id = "cs-armor-title">Armor</h2>
+					<div class = "cs-field">
+						<label for = "armor">Armor</label>
+						<select class = "class_dropdown" name = "armor" id = "armor"></select>
+					</div>
+					<div class = "cs-field">
+						<label for = "shield">Shield</label>
+						<select class = "class_dropdown" name = "shield" id = "shield"></select>
+					</div>
+					<div class = "cs-checks">
+						<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span>Light armor</span></label>
+						<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span>Medium armor</span></label>
+						<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span>Heavy armor</span></label>
+						<label class = "cs-check"><input type = "checkbox" name = "shieldProficiency" id = "shieldProficiency"><span>Shield</span></label>
+					</div>
+				</section>
+			</div>
+
+			<div class = "cs-two">
+				<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
+					<div class = "cs-card-head">
+						<h2 id = "cs-defense-title">Defense</h2>
+						<button type = "button" class = "button add" id = "addDamageImmunity" aria-label = "Add a defense line">+</button>
+					</div>
+					<div class = "cs-line" id = "defense_line0">
+						<select class = "class_dropdown" name = "damageInfluence" aria-label = "Influence">
+							<option class = "Dropdown_Entry"></option>
+							<?php foreach ($damageInfluences as $damageInfluence): ?>
+								<option class = "Dropdown_Entry" value = "<?= e($damageInfluence) ?>"><?= e($damageInfluence) ?></option>
+							<?php endforeach; ?>
+						</select>
+						<select class = "class_dropdown" name = "damageType" aria-label = "Damage type">
+							<option class = "Dropdown_Entry"></option>
+							<?php foreach ($damageTypes as $damageType): ?>
+								<option class = "Dropdown_Entry" value = "<?= e($damageType) ?>"><?= e($damageType) ?></option>
+							<?php endforeach; ?>
+						</select>
+						<button type = "button" class = "button delete defense" aria-label = "Remove this line">-</button>
+					</div>
+				</section>
+
+				<section class = "cs-card" id = "Condition" aria-labelledby = "cs-condition-title">
+					<div class = "cs-card-head">
+						<h2 id = "cs-condition-title">Conditions</h2>
+						<button type = "button" class = "button add" id = "addCondition" aria-label = "Add a condition">+</button>
+					</div>
+					<div class = "cs-line" id = "condition_line0">
+						<select class = "class_dropdown" name = "conditions" aria-label = "Condition">
+							<option class = "Dropdown_Entry"></option>
+							<?php foreach ($conditions as $condition): ?>
+								<option class = "Dropdown_Entry"><?= e($condition) ?></option>
+							<?php endforeach; ?>
+						</select>
+						<button type = "button" class = "button delete condition" aria-label = "Remove this condition">-</button>
+					</div>
+				</section>
 			</div>
 		</div>
 
-	</div>
-	<div class = "container_horizontal" style = "align-items: flex-start; gap: 10px; flex-wrap: wrap">
-		<div class = "container_vertical">
-			<div class = "container_horizontal" >
-				<label class= "label section_header" for="currentHitpoints">Hitpoints</label>
-				<input class= "input" name="currentHitpoints" id = "currentHitpoints"></input>
-			</div>
-			<div class = "container_horizontal" >
-				<label class= "label" for="maxHitpoints">Maximum Hitpoints</label>
-				<input class= "input" name="maxHitpoints" id = "maxHitpoints"></input>	
-			</div>
-			<div class = "container_horizontal" >
-				<label class= "label" for="tempHitpoints">Temporary Hitpoints</label>
-				<input class= "input" name="tempHitpoints" id = "tempHitpoints"></input>
-			</div>
-			<div class = "container_horizontal" >
-				<label class= "label" for="hitDice">Hit dice</label>
-				<label class= "skill_modifier" name="hitDice" id = "hitDice"></label>		
-			</div>
-			<div class = "container_horizontal" >
-				<label class= "label" for="HitDiceUsed">Used</label>
-				<input class= "input" name="HitDiceUsed" id = "HitDiceUsed"></input>	
-			</div>
-		</div>
-		<div class = "container_vertical" style = "align-items: flex-start; gap: 10px; flex-wrap: wrap">
-			<div class = "container_horizontal" >
-				<label class= "label section_header" for="initiative">Initiative</label>
-				<label class= "ability_modifier" name="initiative" id = "initiative"></label>		
-			</div>
-			<div class = "container_horizontal" >
-				<label class= "label section_header" for= "Walking_Speed"  >Walking Speed</label>
-				<input class="ability_modifier" type = "number" name="Walking_Speed" id = "Walking_Speed"></input>
-			</div>
-			<div class = "container_horizontal" >
-				<label class= "label section_header" for= "Proficiency_Bonus"  >Proficiency Bonus</label>
-				<input class="ability_modifier" type = "number" name="Proficiency_Bonus" id = "Proficiency_Bonus"></input>
-			</div>
-			<div class = "container_horizontal" >
-				<label class= "label section_header" for="inspiration"  >Inspiration</label>
-				<select class = "ability_modifier" id = "inspiration" name = "inspiration">
-					<option id="empty" class = "Dropdown_Entry" value = ""> </option>
-					<option id="D4" class = "Dropdown_Entry" value = "D4"> D4 </option>
-					<option id="D6" class = "Dropdown_Entry" value = "D6"> D6 </option>
-					<option id="D8" class = "Dropdown_Entry" value = "D8"> D8 </option>
-					<option id="D12" class = "Dropdown_Entry" value = "D12"> D12 </option>					
-				</select>			
-			</div>
-		</div>
-		<div class = "container_vertical" >
-				<div class = "container_horizontal" >
-					<label class= "label section_header" for="armorClass">Armor Class</label>
-					<input class= "input ability" name="armorClass" id = "armorClass"></input>	
+		<!-- Abilities (standard order; the logic does not depend on the order) -->
+		<section class = "cs-abilities" aria-label = "Abilities">
+			<?php
+			$abilityOrder = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma'];
+			$abilitiesDisplay = [];
+			foreach ($abilityOrder as $name) {
+				if (isset($abilities[$name])) {
+					$abilitiesDisplay[$name] = $abilities[$name];
+				}
+			}
+			$abilitiesDisplay += $abilities; // any other ability from the database
+			?>
+			<?php foreach ($abilitiesDisplay as $ability => $skills): ?>
+			<div class = "cs-card cs-ability">
+				<div class = "cs-ability-head">
+					<output class = "cs-mod" name = "<?= e($ability) ?>_Modifier" id = "<?= e($ability) ?>_Modifier">0</output>
+					<div class = "cs-field" style = "flex: 1;">
+						<label for = "<?= e($ability) ?>"><?= e($ability) ?></label>
+						<input name = "<?= e($ability) ?>" id = "<?= e($ability) ?>" inputmode = "numeric" placeholder = "Score">
+					</div>
 				</div>
-				<div class = "container_horizontal" >
-					<label class= "label" for="armor">Armor</label>
-					<select class = "class_dropdown" name="armor" id = "armor"></select>	
-				</div>
-				<div class = "container_horizontal" >
-					<label class= "label" for="lightArmorProficiency">Light Armor Proficiency</label>
-					<input type = "checkbox" name="lightArmorProficiency" id = "lightArmorProficiency"></input>	
-				</div>
-				<div class = "container_horizontal" >
-					<label class= "label" for="mediumArmorProficiency">Medium Armor Proficiency</label>
-					<input type = "checkbox" name="mediumArmorProficiency" id = "mediumArmorProficiency"></input>	
-				</div>
-				<div class = "container_horizontal" >
-					<label class= "label" for="heavyArmorProficiency">Heavy Armor Proficiency</label>
-					<input type = "checkbox" name="heavyArmorProficiency" id = "heavyArmorProficiency"></input>	
-				</div>
-				<div class = "container_horizontal" >
-					<label class= "label" for="shield">Shield</label>
-					<select class = "class_dropdown" name="shield" id = "shield"></select>	
-				</div>
-				<div class = "container_horizontal" >
-					<label class= "label" for="shieldProficiency">Shield Proficiency</label>
-					<input type = "checkbox" name="shieldProficiency" id = "shieldProficiency"></input>	
-				</div>
-		</div>
-	</div>
-		
-
-
-
-
-					
-	<div class = "container_horizontal" style = "align-items: flex-start; gap: 10px; flex-wrap: wrap">
-
-			<?php foreach ($abilities as $ability => $skills): ?>
-			<div class = "container_vertical" style = "max-width: 230px;">
-				<label class= "label section_header" for="<?= $ability ?>"><?= $ability ?></label>
-				<output class= "ability_modifier" type = "number" name="<?= $ability ?>_Modifier" id = "<?= $ability ?>_Modifier">0</output>
-				<input class= "input ability" name="<?= $ability ?>" id = "<?= $ability ?>"></input>
-				<div class = "container_horizontal skill">
-						<label class="label" style = "min-width: 115px;">Savingthrow</label>
-						<output class="skill_modifier" name="<?= $ability ?>_Savingthrow" id = "<?= $ability ?>_Savingthrow">0</output>
-						<input type = "checkbox" name="<?= $ability ?>_Savingthrow_Proficiency" id = "<?= $ability ?>_Savingthrow_Proficiency" style = "align-self: flex-end"> </input>
-				</div>
-				<?php
-				foreach ($skills as $skill): ?>
-					<div class = "container_horizontal skill">
-						<label class="label" style = "min-width: 115px;"><?= $skill ?></label>
-						<output class="skill_modifier" type = "number" name="<?= $skill ?>" id = "<?= $skill ?>">0</output>
-						<input type = "checkbox" name="<?= $skill ?>_Proficiency" id = "<?= $skill ?>_Proficiency" style = "align-self: flex-end"> </input>
-					</div>			
+				<label class = "cs-check cs-save">
+					<input type = "checkbox" name = "<?= e($ability) ?>_Savingthrow_Proficiency" id = "<?= e($ability) ?>_Savingthrow_Proficiency">
+					<span>Saving throw</span>
+					<output name = "<?= e($ability) ?>_Savingthrow" id = "<?= e($ability) ?>_Savingthrow">0</output>
+				</label>
+				<?php foreach ($skills as $skill): ?>
+				<label class = "cs-check">
+					<input type = "checkbox" name = "<?= e($skill) ?>_Proficiency" id = "<?= e($skill) ?>_Proficiency">
+					<span><?= e($skill) ?></span>
+					<output name = "<?= e($skill) ?>" id = "<?= e($skill) ?>">0</output>
+				</label>
 				<?php endforeach; ?>
 			</div>
 			<?php endforeach; ?>
+		</section>
 	</div>
 
-	<div class = "container_vertical" id = "Talents">
-		<label class= "label section_header" for="talent_dropdown">Talents</label>
-		<div class = "container_horizontal" style = "gap: 10px; justify-content: flex-start;">
+	<!-- Talents -->
+	<section class = "cs-card" id = "Talents" aria-labelledby = "cs-talents-title">
+		<h2 id = "cs-talents-title">Talents</h2>
+		<div class = "cs-talent-add">
+			<label for = "talent_dropdown" class = "cs-mini" style = "position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Talent</label>
 			<select class = "class_dropdown" id = "talent_dropdown" name = "talent_dropdown">
 				<option value = "">– select a talent –</option>
 				<?php foreach ($talents as $talent): ?>
 					<option class = "Dropdown_Entry" value = "<?= (int)$talent['id'] ?>"><?= e($talent['name']) ?></option>
 				<?php endforeach; ?>
 			</select>
-			<button type = "button" class = "button" id = "addTalent" style = "flex: 0 0 auto;">Add</button>
+			<button type = "button" id = "addTalent">Add</button>
 		</div>
 		<div id = "talent_list" class = "talent_list"></div>
-	</div>
+	</section>
 
 </div>
 
