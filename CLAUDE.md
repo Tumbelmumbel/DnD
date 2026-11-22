@@ -139,4 +139,3 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 - `register.php` sets `display_errors = 1` and has a German debug message.
 - `dashboard.php`, `logout.php`, `verify.php` have broken `<a href>` links.
 - `users.PWreset_expires_at` is NOT NULL, but `reset.php` sets it to NULL.
-- `Game_component_library` has no primary key and 2 identical rows.

@@ -4,7 +4,7 @@ This file describes the database of the DnD character manager.
 It shows all tables and all fields, the data type of each field, and the data that each field stores.
 
 - **Database:** `dbs15432866` (MySQL on IONOS)
-- **Last update:** 2026-11-22
+- **Last update:** 2026-11-22 (`Game_component_library.id` added)
 - **Foreign keys:** None. The tables do not have links in the database.
 - **SQL mode:** Empty (lenient). MySQL does not stop an incorrect value. It changes the value and gives a warning.
 
@@ -154,10 +154,11 @@ This table stores how a damage type can have an effect on a character. Each row 
 ### `Game_component_library`
 
 This table stores game components: weapons, spells, class abilities, talents, items, armor and shields. Each row is one component.
-The table does not have a primary key. **Known problem:** the table has 2 identical rows (`Stangenwaffenmeister`).
+The field `id` identifies each row.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `id` | int unsigned, auto_increment | PK | No | | Unique number of the component. MySQL sets this number automatically. |
 | `type` | set('weapon','spell','class_ability','talent','item','armor','shield') | | No | | Type of the component. |
 | `name` | char(255) | | No | | Name of the component. |
 | `description` | text | | No | | Full rules text of the component. |
