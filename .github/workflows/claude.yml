@@ -1,0 +1,49 @@
+# Claude review agent on GitHub.
+#
+# Write "@claude" in a comment on an issue or a pull request.
+# Claude reads the repository (including CLAUDE.md) and answers in a comment.
+#
+# REVIEW ONLY: Claude can read files and write comments.
+# It cannot change files, commit or push.
+#
+# Authentication: Claude subscription token.
+# Required repository secret: CLAUDE_CODE_OAUTH_TOKEN (create it with "claude setup-token").
+# Runs use the quota of your Claude subscription.
+
+name: Claude review agent
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude:
+    # Start only for comments that mention @claude
+    if: contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --max-turns 30
+            --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,Bash(git commit:*),Bash(git push:*)"
+            --append-system-prompt "You are a REVIEWER for this repository. Read CLAUDE.md and follow it. Do not change, create or delete files. Do not commit or push. Answer only with a comment. When you review a plan or a change, start your answer with APPROVE or DISAPPROVE, then give your reasons. Write in English ASD-STE100."
