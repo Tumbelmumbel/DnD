@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		
 		$pdo = db();
 
-		$stmt = $pdo->prepare('SELECT id, email, username, password_hash, role, email_verified_at FROM users WHERE email = :email');
+		$stmt = $pdo->prepare('SELECT id, email, username, password_hash, role, email_verified_at, session_version FROM users WHERE email = :email');
 		$stmt->execute([':email' => $email]);
 		$user = $stmt->fetch();
 
@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					'username'		 => $user['username'],
                     'role'           => $user['role'],
                     'email_verified' => true,
+                    'sv'             => (int)$user['session_version'],
                     't'              => time(),
                 ];
                 redirect('/characteroverview.php');

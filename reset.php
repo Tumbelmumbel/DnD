@@ -35,10 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				
 				if ($expectedHash && $expiresAt && new DateTimeImmutable($expiresAt) >= new DateTimeImmutable('now')) {
 					if (hash_equals($expectedHash, hash('sha256', $token))) {
-						// Change PW and clear token
+						// Change PW, clear token, end all existing sessions of this user
 						$stmt = $pdo->prepare('
 							UPDATE users
-							SET password_hash = :pwh, PWreset_token_hash = NULL, PWreset_expires_at = NULL
+							SET password_hash = :pwh, PWreset_token_hash = NULL, PWreset_expires_at = NULL,
+							    session_version = session_version + 1  -- logs out all existing sessions
 							WHERE id = :id
 						');
 						$stmt->execute([

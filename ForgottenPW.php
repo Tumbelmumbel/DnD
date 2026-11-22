@@ -17,43 +17,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_validate($csrf)) {
         $errors[] = 'Invalid session. Please try again.';
     } else {
-       $stmt = $pdo->prepare('SELECT email FROM users WHERE email = :email');
+        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email');
         $stmt->execute([':email' => $email]);
         $user = $stmt->fetch();
-		
-		if (empty($user)) {
-			$errors[] = 'No mail registered';
-		}
-			else {
-				$token   = new_token(); // from functions.php
-				$tokenHash = hash('sha256', $token);
-				$expires = (new DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
-				$pass = generateRandomPassword(12);
-				$pwhash  = password_hash($pass, PASSWORD_DEFAULT);
-				$stmt = $pdo->prepare('UPDATE users SET PWreset_token_hash = :th, PWreset_expires_at = :exp, password_hash = :pwh WHERE email = :email');
-				$stmt->execute([
-				':th' => $tokenHash, 
-				':exp' => $expires, 
-				':pwh' => $pwhash,
-				':email' => $email
-				]);
-				
-				// Send verification email
-				$verifyUrl = BASE_URL . '/reset.php?email=' . urlencode($email) . '&token=' . urlencode($token);
-				$subject = 'Change your PW';
-				$html = '<p>Hello,</p>
-						 <p>Please reset your password following the link below:</p>
-						 <p><a href="'.e($verifyUrl).'">'.e($verifyUrl).'</a></p>';
-				$text = "Hello,\n\nPlease reset your password following the link below:\n$verifyUrl\n\nThis link expires in 24 hours.";
 
-				// Send without exposing SMTP errors to the user
-				if (!send_mail($email, $subject, $html, $text)) {
-					// Optional: log already done in send_mail(); provide neutral info
-				}
+        if ($user) {
+            // Store ONLY the token hash. The current password stays valid
+            // until the user sets a new one with the link (reset.php).
+            $token     = new_token();
+            $tokenHash = hash('sha256', $token);
+            $expires   = (new DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
 
-				// Always generic message (avoid user enumeration)
-				$info = 'If your email is valid, we have sent a verification link. Please check your inbox.';
-			}
+            $stmt = $pdo->prepare('UPDATE users SET PWreset_token_hash = :th, PWreset_expires_at = :exp WHERE id = :id');
+            $stmt->execute([
+                ':th'  => $tokenHash,
+                ':exp' => $expires,
+                ':id'  => (int)$user['id'],
+            ]);
+
+            $resetUrl = BASE_URL . '/reset.php?email=' . urlencode($email) . '&token=' . urlencode($token);
+            $subject  = 'Reset your password';
+            $html = '<p>Hello,</p>
+                     <p>Please reset your password with the link below:</p>
+                     <p><a href="'.e($resetUrl).'">'.e($resetUrl).'</a></p>
+                     <p>This link expires in 24 hours. If you did not ask for this, ignore this email. Your password does not change.</p>';
+            $text = "Hello,\n\nPlease reset your password with the link below:\n$resetUrl\n\nThis link expires in 24 hours. If you did not ask for this, ignore this email. Your password does not change.";
+
+            // send_mail() logs SMTP errors itself; the user sees no difference
+            send_mail($email, $subject, $html, $text);
+        }
+
+        // Always the same message, known email or not (avoid user enumeration)
+        $info = 'If this email is registered, we have sent a reset link. Please check your inbox.';
 	}
 }
 ?>
