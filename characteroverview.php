@@ -1,0 +1,142 @@
+<?php
+declare(strict_types=1);
+
+require __DIR__ . '/bootstrap.php';
+guard_protect();
+
+// Database connection via bootstrap
+$pdo  = db();
+
+$user = current_user();
+$info = '';
+
+// Decide what identifies the character owner
+$username = $user['username'];
+
+
+
+
+// Fetch characters for this user
+$sql = "SELECT Name, image_url FROM Characters WHERE username = :u ORDER BY Name ASC";
+$stmt = $pdo->prepare($sql);
+$stmt->execute([":u" => $username]);
+$characters = $stmt->fetchAll();
+
+if (!$characters) {
+	$info = 'No chars selected' . $username;
+}
+
+
+?>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://www.rudolph.cologne/Assets/style.css">
+    <title>Your Characters</title>
+
+    <style>
+		
+		/* Modal background */
+		.modal {
+			display: none; /* hidden by default */
+			position: fixed;
+			inset: 0;
+			background: rgba(0,0,0,0.7);
+			z-index: 9999;
+			justify-content: center;
+			align-items: center;
+		}
+
+		/* Modal box */
+		.modal-content {
+			background: var(--bg-card);
+			padding: 25px;
+			border-radius: 10px;
+			width: 90%;
+			max-width: 360px;
+			text-align: center;
+			color: white;
+			box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+		}
+
+		/* Buttons container */
+		.modal-buttons {
+			margin-top: 20px;
+			display: flex;
+			justify-content: space-between;
+		}
+
+    </style>
+</head>
+<body>
+
+<!-- Sticky header -->
+ <div class="container_vertical">
+	<div class="container_horizontal">
+		<form class = "button-form" method="get">
+			<button class="Button" type = "Button" onclick="openCreateModal()">Create</button>
+		</form>	
+			<div class="page-header">
+				<h1>Your Characters</h1>
+			</div>
+	    	<form class = "button-form" method="get" action="https://rudolph.cologne/Logout.php">
+				<button class="Button" type="submit">Logout</button>
+			</form>			
+
+	</div>
+		<?php if ($info): ?>
+		  <div class="info"><?= e($info) ?></div>
+		<?php endif; ?>
+
+		<!-- Tiles -->
+		<div class="grid">
+		<?php foreach ($characters as $char): ?>
+			<?php
+				$name = e($char['Name']);
+				$img  = !empty($char['image_url']) ? e($char['image_url']) : null;
+			?>
+			<div class="tile">
+				<?php if ($img): ?>
+					<div class="bg" style="background-image:url('<?= $img ?>');"></div>
+				<?php endif; ?>
+				<div class="overlay"></div>
+				<div class="name"><?= $name ?></div>
+			</div>
+		<?php endforeach; ?>
+		</div>
+
+		<div id="create-modal" class="modal">
+			<div class="modal-content">
+				<h2>How do you want to create your character</h2>
+				<p>Sandbox mode: Enter each stat yourself</p>
+				<p>Railroad mode: Enter stats guided by the 5e ruleset</p>
+				<div class="container_horizontal_relative">
+					<form class = "button-form" method="get" action="https://rudolph.cologne/CharacterSandbox.php">
+						<button class="Button" type="submit">Sandbox</button>
+					</form>	
+					<div class="button-form">
+						<button class="button" type="submit" onclick="closeCreateModal()">Railroad</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+</div>
+
+
+
+<script>
+function openCreateModal() {
+    document.getElementById("create-modal").style.display = "flex";
+}
+
+function closeCreateModal() {
+    document.getElementById("create-modal").style.display = "none";
+}
+</script>
+
+
+
+</body>
+</html>

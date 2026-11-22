@@ -1,0 +1,106 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/bootstrap.php';
+
+$errors = [];
+$info = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $csrf  = $_POST['csrf'] ?? '';
+    $email = trim(strtolower($_POST['email'] ?? ''));
+    $pass  = $_POST['password'] ?? '';
+	
+    if (!csrf_validate($csrf)) {
+        $errors[] = 'Invalid session. Please try again.';
+    } else {
+		
+		$pdo = db();
+
+		$stmt = $pdo->prepare('SELECT id, email, username, password_hash, role, email_verified_at FROM users WHERE email = :email');
+		$stmt->execute([':email' => $email]);
+		$user = $stmt->fetch();
+
+        $hashToCheck = $user['password_hash'] ?? password_hash('dummy', PASSWORD_DEFAULT);
+
+        if ($user && password_verify($pass, $hashToCheck)) {
+            if (empty($user['email_verified_at'])) {
+                $info = 'Please verify your email first. You can resend the link below.';
+            } else {
+                session_regenerate_id(true);
+                $_SESSION['user'] = [
+                    'id'             => (int)$user['id'],
+                    'email'          => $user['email'],
+					'username'		 => $user['username'],
+                    'role'           => $user['role'],
+                    'email_verified' => true,
+                    't'              => time(),
+                ];
+                redirect('/characteroverview.php');
+            }
+        } else {
+            $errors[] = 'Invalid email or password.';
+        }
+    }
+}
+
+
+
+?>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="utf-8">
+<title class= label>Sign in</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://www.rudolph.cologne/Assets/style.css">
+<style>
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch; /* change to stretch if you prefer full-width inputs */
+    gap: 0.2rem;
+}
+</style>
+</head>
+
+<body>
+ <div class="container_vertical">
+	<h1>Sign in</h1>
+	<?php if (isset($_GET['m']) && $_GET['m']==='auth'): ?>
+	  <div class="alert">Please sign in to continue.</div>
+	<?php endif; ?>
+
+	<?php foreach ($errors as $err): ?>
+	  <div class="err"><?= e($err) ?></div>
+	<?php endforeach; ?>
+
+	<?php if ($info): ?>
+	  <div class="alert"><?= e($info) ?></div>
+	  /resend.php
+		<input class= label type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+		<input class= label type="hidden" name="email" value="<?= e($_POST['email'] ?? '') ?>">
+		<button class= button type="submit">Resend verification link</button>
+	  </form>
+	<?php endif; ?>
+
+	<form method="post" action="">
+	  <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+	  <label class= label for="email">Email</label>
+	  <input class= input id="email" name="email" type="email" required autocomplete="username">
+	  <label class= label for="password">Password</label>
+	  <input class= input id="password" name="password" type="password" required autocomplete="current-password">
+	  <button class= button type="submit">Sign in</button>
+	</form>
+
+	<form method="get" action="https://www.rudolph.cologne/ForgottenPW.php">
+		<button class= button type="submit">Forgot password?</button>
+	</form>	
+
+	<p>No account yet?</p>
+	<form method="get" action="https://www.rudolph.cologne/register.php">
+		<button class= button type="submit">Register</button>
+	</form>	
+</div>
+</body>
+</html>
