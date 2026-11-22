@@ -31,6 +31,7 @@ PHPMailer) only after the owner agrees.
 | `characteroverview.php` | List of the user's characters (start page after login) |
 | `CharacterSandbox.php` | Character sheet |
 | `calculation.js`, `calculation.php` | D&D calculations (modifiers) |
+| `i18n.php`, `lang/*.php`, `ajax/i18n.php` | Languages of the interface (see "Languages") |
 | `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`, `getComponent`) |
 | `Assets/style.css` | Shared stylesheet for all pages |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
@@ -227,6 +228,18 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
   unless a test step needs it and the owner agrees.
 - Emails (verification, password reset) go to the mailbox of the owner.
   For these steps, the owner opens the link or gives it to Claude.
+
+## Languages
+
+- **English (`en`) is the base language.** Every text key must exist in `lang/en.php`.
+  Other languages (now `de`) can leave out keys: then the English text is shown.
+- **No fixed interface text in the HTML.** Use `t('key')` in PHP and `tr('key')` in JavaScript.
+  Mark the element with `data-i18n="key"` (text), `data-i18n-aria` (aria-label),
+  `data-i18n-placeholder` or `data-i18n-title`, so that the language menu can change it without a reload.
+- Add every new key to `lang/en.php` and `lang/de.php` in the same branch.
+- To add a language: add `lang/<code>.php` and one entry in `i18n_languages()` in `i18n.php`.
+- The selected language is in the session, in the cookie `lang` and in `users.language`.
+- Content from the database (classes, species, talents) is not translated yet (later steps).
 
 ## Communication
 

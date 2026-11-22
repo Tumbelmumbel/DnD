@@ -1,0 +1,105 @@
+<?php
+// English – base language. Every key must exist here.
+// Keys "ability.<name>" and "skill.<name>" use the name from the table abilities_skills.
+return [
+    // General
+    'language'            => 'Language',
+    'add'                 => 'Add',
+
+    // Character sheet: page and bar
+    'sandbox.title'       => 'Character sheet',
+    'character_summary'   => 'Character summary',
+    'level'               => 'Level',
+    'hit_points'          => 'Hit points',
+    'lose_hp'             => 'Lose 1 hit point',
+    'gain_hp'             => 'Gain 1 hit point',
+    'armor_class'         => 'Armor class',
+    'initiative'          => 'Initiative',
+    'speed'               => 'Speed',
+    'inspiration'         => 'Inspiration',
+
+    // Basics
+    'basics'              => 'Basics',
+    'character_name'      => 'Character name',
+    'species'             => 'Species',
+    'class'               => 'Class',
+    'subclass'            => 'Subclass',
+    'background'          => 'Background',
+
+    // Combat values
+    'combat_values'       => 'Combat values',
+    'walking_speed'       => 'Walking speed',
+    'proficiency_bonus'   => 'Proficiency bonus',
+
+    // Hit points and armor
+    'hp_current'          => 'Current',
+    'hp_maximum'          => 'Maximum',
+    'hp_temporary'        => 'Temporary',
+    'hit_dice'            => 'Hit dice',
+    'used'                => 'Used',
+    'armor'               => 'Armor',
+    'shield'              => 'Shield',
+    'light_armor'         => 'Light armor',
+    'medium_armor'        => 'Medium armor',
+    'heavy_armor'         => 'Heavy armor',
+
+    // Defense and conditions
+    'defense'             => 'Defense',
+    'add_defense_line'    => 'Add a defense line',
+    'influence'           => 'Influence',
+    'damage_type'         => 'Damage type',
+    'remove_line'         => 'Remove this line',
+    'conditions'          => 'Conditions',
+    'condition'           => 'Condition',
+    'add_condition'       => 'Add a condition',
+    'remove_condition'    => 'Remove this condition',
+
+    // Abilities
+    'abilities'           => 'Abilities',
+    'saving_throw'        => 'Saving throw',
+    'score'               => 'Score',
+    'ability.Strength'     => 'Strength',
+    'ability.Dexterity'    => 'Dexterity',
+    'ability.Constitution' => 'Constitution',
+    'ability.Intelligence' => 'Intelligence',
+    'ability.Wisdom'       => 'Wisdom',
+    'ability.Charisma'     => 'Charisma',
+    'skill.Athletics'       => 'Athletics',
+    'skill.Acrobatics'      => 'Acrobatics',
+    'skill.Slight Of Hand'  => 'Sleight of Hand',
+    'skill.Stealth'         => 'Stealth',
+    'skill.Arcana'          => 'Arcana',
+    'skill.History'         => 'History',
+    'skill.Investigation'   => 'Investigation',
+    'skill.Nature'          => 'Nature',
+    'skill.Religion'        => 'Religion',
+    'skill.Animal Handling' => 'Animal Handling',
+    'skill.Insight'         => 'Insight',
+    'skill.Medicine'        => 'Medicine',
+    'skill.Perception'      => 'Perception',
+    'skill.Survival'        => 'Survival',
+    'skill.Deception'       => 'Deception',
+    'skill.Intimidation'    => 'Intimidation',
+    'skill.Performance'     => 'Performance',
+    'skill.Persuasion'      => 'Persuasion',
+
+    // Talents
+    'talents'             => 'Talents',
+    'talent'              => 'Talent',
+    'select_talent'       => '– select a talent –',
+    'remove_talent'       => 'Remove talent',
+    'field.description'   => 'Description',
+    'field.action_type'   => 'Action type',
+    'field.range'         => 'Range',
+    'field.attribute'     => 'Attribute',
+    'field.attack_type'   => 'Attack type',
+    'field.damage_type'   => 'Damage type',
+    'field.magic_effect'  => 'Magic effect',
+    'field.projectile'    => 'Projectile',
+    'field.uses'          => 'Uses',
+    'field.uses_spent'    => 'Uses spent',
+    'field.duration'      => 'Duration',
+    'field.precondition'  => 'Precondition',
+    'field.components'    => 'Components',
+    'field.material'      => 'Material',
+];

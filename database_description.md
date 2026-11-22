@@ -48,6 +48,7 @@ The application uses this table for registration, login, email verification and 
 | `PWreset_expires_at` | datetime | | Yes | NULL | Date and time when the password reset link expires (24 hours after it is sent). NULL when no reset is open. |
 | `created_at` | timestamp | | Yes | CURRENT_TIMESTAMP | Date and time when the account was made. |
 | `session_version` | int | | No | `0` | Counter for the sessions of the user. A password reset increases the value by 1. Then all sessions with the old value end. |
+| `language` | char(2) | | No | `en` | Language of the interface for this user, for example `en` or `de`. The application sets it when the user selects a language. `login.php` uses it at sign-in. |
 
 ### `Characters`
 

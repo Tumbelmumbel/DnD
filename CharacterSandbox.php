@@ -61,12 +61,12 @@ $errors = [];
 		$talents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<html lang="en">
+<html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/Assets/style.css">
-    <title>Sandbox</title>
+    <title data-i18n = "sandbox.title"><?= e(t('sandbox.title')) ?></title>
 <style>
 /* ===== Character sheet: tablet-first layout (page-only rules, prefix cs-) ===== */
 .cs-page { --cs-card: #F3EDDA; --cs-field: #FFFDF6; --cs-line: #D8CDA8; --cs-border: #A99E78; --cs-accent: #3B4BC4;
@@ -145,6 +145,9 @@ $errors = [];
 .cs-bar-hp button { width: 48px; height: 48px; border-radius: 24px; border: 0; color: #FFFFFF; font-size: 24px; font-weight: 700; cursor: pointer; }
 .cs-bar-hp .cs-hp-minus { background: #C62828; }
 .cs-bar-hp .cs-hp-plus { background: #2E7D32; }
+.cs-lang { min-height: 48px; padding: 0 10px; border-radius: 8px; border: 1px solid rgba(255, 253, 246, 0.5);
+	background: transparent; color: #FFFDF6; font: inherit; cursor: pointer; }
+.cs-lang option { color: #4A4431; }
 .cs-bar-stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
 .cs-bar-stat span:first-child { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .cs-bar-stat span:last-child { font-size: 22px; font-weight: 700; }
@@ -173,35 +176,40 @@ $errors = [];
 </style>
 </head>
 <body>
-<header class = "cs-bar" aria-label = "Character summary">
+<header class = "cs-bar" aria-label = "<?= e(t('character_summary')) ?>" data-i18n-aria = "character_summary">
 	<div class = "cs-bar-inner">
 		<div class = "cs-bar-who">
 			<span class = "cs-bar-name" id = "bar_name">–</span>
 			<span class = "cs-bar-sub" id = "bar_sub"></span>
 		</div>
 		<div class = "cs-bar-hp">
-			<button type = "button" class = "cs-hp-minus" id = "hpMinus" aria-label = "Lose 1 hit point">−</button>
-			<div class = "cs-bar-stat" aria-live = "polite"><span>Hit points</span><span id = "bar_hp">– / –</span></div>
-			<button type = "button" class = "cs-hp-plus" id = "hpPlus" aria-label = "Gain 1 hit point">+</button>
+			<button type = "button" class = "cs-hp-minus" id = "hpMinus" aria-label = "<?= e(t('lose_hp')) ?>" data-i18n-aria = "lose_hp">−</button>
+			<div class = "cs-bar-stat" aria-live = "polite"><span data-i18n = "hit_points"><?= e(t('hit_points')) ?></span><span id = "bar_hp">– / –</span></div>
+			<button type = "button" class = "cs-hp-plus" id = "hpPlus" aria-label = "<?= e(t('gain_hp')) ?>" data-i18n-aria = "gain_hp">+</button>
 		</div>
-		<div class = "cs-bar-stat"><span>Armor class</span><span id = "bar_ac">–</span></div>
-		<div class = "cs-bar-stat cs-bar-optional"><span>Initiative</span><span id = "bar_initiative">–</span></div>
-		<div class = "cs-bar-stat cs-bar-optional"><span>Speed</span><span id = "bar_speed">–</span></div>
-		<div class = "cs-bar-stat cs-bar-optional"><span>Inspiration</span><span id = "bar_inspiration">–</span></div>
+		<div class = "cs-bar-stat"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac">–</span></div>
+		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative">–</span></div>
+		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></div>
+		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></div>
+		<select class = "cs-lang" id = "langSelect" aria-label = "<?= e(t('language')) ?>" data-i18n-aria = "language">
+			<?php foreach (i18n_languages() as $code => $langName): ?>
+				<option value = "<?= e($code) ?>"<?= $code === current_lang() ? ' selected' : '' ?>><?= e($langName) ?></option>
+			<?php endforeach; ?>
+		</select>
 	</div>
 </header>
 <div class = "cs-page" id = "character_basics">
 
 	<!-- Identity -->
 	<section class = "cs-card" aria-labelledby = "cs-basics-title">
-		<h2 id = "cs-basics-title">Basics</h2>
+		<h2 id = "cs-basics-title" data-i18n = "basics"><?= e(t('basics')) ?></h2>
 		<div class = "cs-identity">
 			<div class = "cs-field cs-name">
-				<label for = "name">Character name</label>
+				<label for = "name" data-i18n = "character_name"><?= e(t('character_name')) ?></label>
 				<input name = "name" id = "name" autocomplete = "off">
 			</div>
 			<div class = "cs-field">
-				<label for = "species">Species</label>
+				<label for = "species" data-i18n = "species"><?= e(t('species')) ?></label>
 				<select class = "class_dropdown" id = "species" name = "species">
 					<?php foreach ($species as $char_species): ?>
 						<option id = "<?= e($char_species) ?>" class = "Dropdown_Entry" value = "<?= e($char_species) ?>"><?= e($char_species) ?></option>
@@ -209,11 +217,11 @@ $errors = [];
 				</select>
 			</div>
 			<div class = "cs-field">
-				<label for = "Level">Level</label>
+				<label for = "Level" data-i18n = "level"><?= e(t('level')) ?></label>
 				<input name = "Level" id = "Level" inputmode = "numeric">
 			</div>
 			<div class = "cs-field">
-				<label for = "class_dropdown">Class</label>
+				<label for = "class_dropdown" data-i18n = "class"><?= e(t('class')) ?></label>
 				<select class = "class_dropdown" id = "class_dropdown" name = "class_dropdown">
 					<?php foreach ($classes as $class): ?>
 						<option id = "<?= e($class) ?>" class = "Dropdown_Entry" value = "<?= e($class) ?>"><?= e($class) ?></option>
@@ -221,11 +229,11 @@ $errors = [];
 				</select>
 			</div>
 			<div class = "cs-field">
-				<label for = "subclass_dropdown">Subclass</label>
+				<label for = "subclass_dropdown" data-i18n = "subclass"><?= e(t('subclass')) ?></label>
 				<select class = "class_dropdown" id = "subclass_dropdown" name = "subclass_dropdown"></select>
 			</div>
 			<div class = "cs-field">
-				<label for = "backgrounds">Background</label>
+				<label for = "backgrounds" data-i18n = "background"><?= e(t('background')) ?></label>
 				<select class = "class_dropdown" id = "backgrounds" name = "backgrounds">
 					<?php foreach ($backgrounds as $background): ?>
 						<option id = "<?= e($background) ?>" class = "Dropdown_Entry" value = "<?= e($background) ?>"><?= e($background) ?></option>
@@ -236,25 +244,25 @@ $errors = [];
 	</section>
 
 	<!-- Combat values -->
-	<section class = "cs-stats" aria-label = "Combat values">
+	<section class = "cs-stats" aria-label = "<?= e(t('combat_values')) ?>" data-i18n-aria = "combat_values">
 		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "armorClass">Armor class</label>
+			<label class = "cs-mini" for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
 			<input name = "armorClass" id = "armorClass" inputmode = "numeric">
 		</div>
 		<div class = "cs-card cs-stat">
-			<span class = "cs-mini" id = "cs-initiative-label">Initiative</span>
+			<span class = "cs-mini" id = "cs-initiative-label" data-i18n = "initiative"><?= e(t('initiative')) ?></span>
 			<label class = "cs-value" name = "initiative" id = "initiative" aria-labelledby = "cs-initiative-label"></label>
 		</div>
 		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "Walking_Speed">Walking speed</label>
+			<label class = "cs-mini" for = "Walking_Speed" data-i18n = "walking_speed"><?= e(t('walking_speed')) ?></label>
 			<input type = "number" name = "Walking_Speed" id = "Walking_Speed" inputmode = "numeric">
 		</div>
 		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "Proficiency_Bonus">Proficiency bonus</label>
+			<label class = "cs-mini" for = "Proficiency_Bonus" data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></label>
 			<input type = "number" name = "Proficiency_Bonus" id = "Proficiency_Bonus" inputmode = "numeric">
 		</div>
 		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "inspiration">Inspiration</label>
+			<label class = "cs-mini" for = "inspiration" data-i18n = "inspiration"><?= e(t('inspiration')) ?></label>
 			<select id = "inspiration" name = "inspiration">
 				<option id = "empty" class = "Dropdown_Entry" value = "">–</option>
 				<option id = "D4" class = "Dropdown_Entry" value = "D4">D4</option>
@@ -270,44 +278,44 @@ $errors = [];
 		<div class = "cs-side">
 			<div class = "cs-two">
 				<section class = "cs-card" aria-labelledby = "cs-hp-title">
-					<h2 id = "cs-hp-title">Hit points</h2>
+					<h2 id = "cs-hp-title" data-i18n = "hit_points"><?= e(t('hit_points')) ?></h2>
 					<div class = "cs-hp">
 						<div class = "cs-field">
-							<label for = "currentHitpoints">Current</label>
+							<label for = "currentHitpoints" data-i18n = "hp_current"><?= e(t('hp_current')) ?></label>
 							<input name = "currentHitpoints" id = "currentHitpoints" inputmode = "numeric">
 						</div>
 						<div class = "cs-field">
-							<label for = "maxHitpoints">Maximum</label>
+							<label for = "maxHitpoints" data-i18n = "hp_maximum"><?= e(t('hp_maximum')) ?></label>
 							<input name = "maxHitpoints" id = "maxHitpoints" inputmode = "numeric">
 						</div>
 						<div class = "cs-field">
-							<label for = "tempHitpoints">Temporary</label>
+							<label for = "tempHitpoints" data-i18n = "hp_temporary"><?= e(t('hp_temporary')) ?></label>
 							<input name = "tempHitpoints" id = "tempHitpoints" inputmode = "numeric">
 						</div>
 					</div>
 					<div class = "cs-row">
-						<span class = "cs-mini">Hit dice</span>
+						<span class = "cs-mini" data-i18n = "hit_dice"><?= e(t('hit_dice')) ?></span>
 						<label name = "hitDice" id = "hitDice" style = "flex: 1; font-weight: 700;"></label>
-						<label class = "cs-mini" for = "HitDiceUsed">Used</label>
+						<label class = "cs-mini" for = "HitDiceUsed" data-i18n = "used"><?= e(t('used')) ?></label>
 						<input name = "HitDiceUsed" id = "HitDiceUsed" inputmode = "numeric">
 					</div>
 				</section>
 
 				<section class = "cs-card" aria-labelledby = "cs-armor-title">
-					<h2 id = "cs-armor-title">Armor</h2>
+					<h2 id = "cs-armor-title" data-i18n = "armor"><?= e(t('armor')) ?></h2>
 					<div class = "cs-field">
-						<label for = "armor">Armor</label>
+						<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
 						<select class = "class_dropdown" name = "armor" id = "armor"></select>
 					</div>
 					<div class = "cs-field">
-						<label for = "shield">Shield</label>
+						<label for = "shield" data-i18n = "shield"><?= e(t('shield')) ?></label>
 						<select class = "class_dropdown" name = "shield" id = "shield"></select>
 					</div>
 					<div class = "cs-checks">
-						<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span>Light armor</span></label>
-						<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span>Medium armor</span></label>
-						<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span>Heavy armor</span></label>
-						<label class = "cs-check"><input type = "checkbox" name = "shieldProficiency" id = "shieldProficiency"><span>Shield</span></label>
+						<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span data-i18n = "light_armor"><?= e(t('light_armor')) ?></span></label>
+						<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span data-i18n = "medium_armor"><?= e(t('medium_armor')) ?></span></label>
+						<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span data-i18n = "heavy_armor"><?= e(t('heavy_armor')) ?></span></label>
+						<label class = "cs-check"><input type = "checkbox" name = "shieldProficiency" id = "shieldProficiency"><span data-i18n = "shield"><?= e(t('shield')) ?></span></label>
 					</div>
 				</section>
 			</div>
@@ -315,46 +323,46 @@ $errors = [];
 			<div class = "cs-two">
 				<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
 					<div class = "cs-card-head">
-						<h2 id = "cs-defense-title">Defense</h2>
-						<button type = "button" class = "button add" id = "addDamageImmunity" aria-label = "Add a defense line">+</button>
+						<h2 id = "cs-defense-title" data-i18n = "defense"><?= e(t('defense')) ?></h2>
+						<button type = "button" class = "button add" id = "addDamageImmunity" aria-label = "<?= e(t('add_defense_line')) ?>" data-i18n-aria = "add_defense_line">+</button>
 					</div>
 					<div class = "cs-line" id = "defense_line0">
-						<select class = "class_dropdown" name = "damageInfluence" aria-label = "Influence">
+						<select class = "class_dropdown" name = "damageInfluence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($damageInfluences as $damageInfluence): ?>
 								<option class = "Dropdown_Entry" value = "<?= e($damageInfluence) ?>"><?= e($damageInfluence) ?></option>
 							<?php endforeach; ?>
 						</select>
-						<select class = "class_dropdown" name = "damageType" aria-label = "Damage type">
+						<select class = "class_dropdown" name = "damageType" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($damageTypes as $damageType): ?>
 								<option class = "Dropdown_Entry" value = "<?= e($damageType) ?>"><?= e($damageType) ?></option>
 							<?php endforeach; ?>
 						</select>
-						<button type = "button" class = "button delete defense" aria-label = "Remove this line">-</button>
+						<button type = "button" class = "button delete defense" aria-label = "<?= e(t('remove_line')) ?>" data-i18n-aria = "remove_line">-</button>
 					</div>
 				</section>
 
 				<section class = "cs-card" id = "Condition" aria-labelledby = "cs-condition-title">
 					<div class = "cs-card-head">
-						<h2 id = "cs-condition-title">Conditions</h2>
-						<button type = "button" class = "button add" id = "addCondition" aria-label = "Add a condition">+</button>
+						<h2 id = "cs-condition-title" data-i18n = "conditions"><?= e(t('conditions')) ?></h2>
+						<button type = "button" class = "button add" id = "addCondition" aria-label = "<?= e(t('add_condition')) ?>" data-i18n-aria = "add_condition">+</button>
 					</div>
 					<div class = "cs-line" id = "condition_line0">
-						<select class = "class_dropdown" name = "conditions" aria-label = "Condition">
+						<select class = "class_dropdown" name = "conditions" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($conditions as $condition): ?>
 								<option class = "Dropdown_Entry"><?= e($condition) ?></option>
 							<?php endforeach; ?>
 						</select>
-						<button type = "button" class = "button delete condition" aria-label = "Remove this condition">-</button>
+						<button type = "button" class = "button delete condition" aria-label = "<?= e(t('remove_condition')) ?>" data-i18n-aria = "remove_condition">-</button>
 					</div>
 				</section>
 			</div>
 		</div>
 
 		<!-- Abilities (standard order; the logic does not depend on the order) -->
-		<section class = "cs-abilities" aria-label = "Abilities">
+		<section class = "cs-abilities" aria-label = "<?= e(t('abilities')) ?>" data-i18n-aria = "abilities">
 			<?php
 			$abilityOrder = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma'];
 			$abilitiesDisplay = [];
@@ -370,19 +378,19 @@ $errors = [];
 				<div class = "cs-ability-head">
 					<output class = "cs-mod" name = "<?= e($ability) ?>_Modifier" id = "<?= e($ability) ?>_Modifier">0</output>
 					<div class = "cs-field" style = "flex: 1;">
-						<label for = "<?= e($ability) ?>"><?= e($ability) ?></label>
-						<input name = "<?= e($ability) ?>" id = "<?= e($ability) ?>" inputmode = "numeric" placeholder = "Score">
+						<label for = "<?= e($ability) ?>" data-i18n = "ability.<?= e($ability) ?>"><?= e(t('ability.' . $ability, $ability)) ?></label>
+						<input name = "<?= e($ability) ?>" id = "<?= e($ability) ?>" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
 					</div>
 				</div>
 				<label class = "cs-check cs-save">
 					<input type = "checkbox" name = "<?= e($ability) ?>_Savingthrow_Proficiency" id = "<?= e($ability) ?>_Savingthrow_Proficiency">
-					<span>Saving throw</span>
+					<span data-i18n = "saving_throw"><?= e(t('saving_throw')) ?></span>
 					<output name = "<?= e($ability) ?>_Savingthrow" id = "<?= e($ability) ?>_Savingthrow">0</output>
 				</label>
 				<?php foreach ($skills as $skill): ?>
 				<label class = "cs-check">
 					<input type = "checkbox" name = "<?= e($skill) ?>_Proficiency" id = "<?= e($skill) ?>_Proficiency">
-					<span><?= e($skill) ?></span>
+					<span data-i18n = "skill.<?= e(trim($skill)) ?>"><?= e(t('skill.' . trim($skill), trim($skill))) ?></span>
 					<output name = "<?= e($skill) ?>" id = "<?= e($skill) ?>">0</output>
 				</label>
 				<?php endforeach; ?>
@@ -393,16 +401,16 @@ $errors = [];
 
 	<!-- Talents -->
 	<section class = "cs-card" id = "Talents" aria-labelledby = "cs-talents-title">
-		<h2 id = "cs-talents-title">Talents</h2>
+		<h2 id = "cs-talents-title" data-i18n = "talents"><?= e(t('talents')) ?></h2>
 		<div class = "cs-talent-add">
-			<label for = "talent_dropdown" class = "cs-mini" style = "position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Talent</label>
+			<label for = "talent_dropdown" class = "cs-mini" style = "position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);" data-i18n = "talent"><?= e(t('talent')) ?></label>
 			<select class = "class_dropdown" id = "talent_dropdown" name = "talent_dropdown">
-				<option value = "">– select a talent –</option>
+				<option value = "" data-i18n = "select_talent"><?= e(t('select_talent')) ?></option>
 				<?php foreach ($talents as $talent): ?>
 					<option class = "Dropdown_Entry" value = "<?= (int)$talent['id'] ?>"><?= e($talent['name']) ?></option>
 				<?php endforeach; ?>
 			</select>
-			<button type = "button" id = "addTalent">Add</button>
+			<button type = "button" id = "addTalent" data-i18n = "add"><?= e(t('add')) ?></button>
 		</div>
 		<div id = "talent_list" class = "talent_list"></div>
 	</section>
@@ -413,6 +421,25 @@ $errors = [];
 </body>
 
 <script>
+// --- Languages ---
+let I18N = <?= json_encode(i18n_merged(current_lang()), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+const CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
+
+/** Text for a key in the current language; fallback if the key is unknown */
+function tr(key, fallback) {
+	return (I18N && Object.prototype.hasOwnProperty.call(I18N, key)) ? I18N[key] : (fallback ?? key);
+}
+
+/** Write the texts of the current language into all marked elements */
+function applyI18n() {
+	document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = tr(el.dataset.i18n, el.textContent); });
+	document.querySelectorAll("[data-i18n-aria]").forEach(el => el.setAttribute("aria-label", tr(el.dataset.i18nAria)));
+	document.querySelectorAll("[data-i18n-placeholder]").forEach(el => el.setAttribute("placeholder", tr(el.dataset.i18nPlaceholder)));
+	document.querySelectorAll("[data-i18n-title]").forEach(el => el.setAttribute("title", tr(el.dataset.i18nTitle)));
+	document.querySelectorAll(".talent_card").forEach(card => refreshTalentCard(card));
+	if (typeof updateBar === "function") updateBar();
+}
+
 // --- Configuration ---
 const abilities = <?= json_encode($abilities) ?>;
 const classes = <?= json_encode($classes) ?>;
@@ -559,22 +586,9 @@ document.getElementById("Level").addEventListener("change", function () {
 
 //TALENTS
 	// Readable labels for the fields of Game_component_library (in the order they are shown)
-	const componentLabels = {
-		description:  "Description",
-		action_type:  "Action type",
-		range:        "Range",
-		attribute:    "Attribute",
-		attack_type:  "Attack type",
-		damage_type:  "Damage type",
-		magic_effect: "Magic effect",
-		projectile:   "Projectile",
-		uses:         "Uses",
-		uses_spent:   "Uses spent",
-		duration:     "Duration",
-		precondition: "Precondition",
-		components:   "Components",
-		material:     "Material"
-	};
+	// Fields of Game_component_library in the order they are shown; labels come from "field.<name>"
+	const componentFields = ["description", "action_type", "range", "attribute", "attack_type", "damage_type",
+		"magic_effect", "projectile", "uses", "uses_spent", "duration", "precondition", "components", "material"];
 
 	const talentDropdown = document.getElementById("talent_dropdown");
 	const talentList = document.getElementById("talent_list");
@@ -599,10 +613,43 @@ document.getElementById("Level").addEventListener("change", function () {
 		card.querySelector(".talent_card_header").setAttribute("aria-expanded", open ? "true" : "false");
 	}
 
+	// Fill the facts in the header and the fields in the body (also after a change of the language)
+	function refreshTalentCard(card) {
+		const component = card._component;
+		if (!component) return;
+		const facts = [];
+		if (isFilled(component.action_type)) {
+			facts.push(String(component.action_type));
+		}
+		if (isFilled(component.uses)) {
+			facts.push(`${tr("field.uses")} ${isFilled(component.uses_spent) ? component.uses_spent : 0}/${component.uses}`);
+		}
+		card.querySelector(".talent_card_facts").textContent = facts.length ? "\u00B7 " + facts.join(" \u00B7 ") : "";
+		const remove = card.querySelector(".button.delete");
+		remove.title = tr("remove_talent");
+		remove.setAttribute("aria-label", tr("remove_talent"));
+
+		const body = card.querySelector(".talent_card_body");
+		body.replaceChildren();
+		for (const field of componentFields) {
+			const value = component[field];
+			if (!isFilled(value)) {
+				continue;
+			}
+			const dt = document.createElement("dt");
+			dt.className = "label";
+			dt.textContent = tr("field." + field, field);
+			const dd = document.createElement("dd");
+			dd.textContent = String(value);
+			body.append(dt, dd);
+		}
+	}
+
 	function buildTalentCard(component) {
 		const card = document.createElement("div");
 		card.className = "talent_card";
 		card.dataset.id = String(component.id);
+		card._component = component;
 
 		// Header: arrow, name, short facts, remove button
 		const header = document.createElement("div");
@@ -613,27 +660,18 @@ document.getElementById("Level").addEventListener("change", function () {
 
 		const arrow = document.createElement("span");
 		arrow.className = "talent_card_arrow";
-		arrow.textContent = "▸";
+		arrow.textContent = "\u25B8";
 
 		const title = document.createElement("span");
 		title.className = "talent_card_title";
 		title.textContent = component.name;
 
-		const facts = [];
-		if (isFilled(component.action_type)) {
-			facts.push(String(component.action_type));
-		}
-		if (isFilled(component.uses)) {
-			facts.push(`Uses ${isFilled(component.uses_spent) ? component.uses_spent : 0}/${component.uses}`);
-		}
 		const factsSpan = document.createElement("span");
 		factsSpan.className = "talent_card_facts";
-		factsSpan.textContent = facts.length ? "· " + facts.join(" · ") : "";
 
 		const remove = document.createElement("button");
 		remove.type = "button";
 		remove.className = "button delete";
-		remove.title = "Remove talent";
 		remove.textContent = "-";
 
 		header.append(arrow, title, factsSpan, remove);
@@ -642,20 +680,9 @@ document.getElementById("Level").addEventListener("change", function () {
 		const body = document.createElement("dl");
 		body.className = "talent_card_body";
 		body.hidden = true;
-		for (const [field, label] of Object.entries(componentLabels)) {
-			const value = component[field];
-			if (!isFilled(value)) {
-				continue;
-			}
-			const dt = document.createElement("dt");
-			dt.className = "label";
-			dt.textContent = label;
-			const dd = document.createElement("dd");
-			dd.textContent = String(value);
-			body.append(dt, dd);
-		}
 
 		card.append(header, body);
+		refreshTalentCard(card);
 
 		header.addEventListener("click", () => toggleTalentCard(card));
 		header.addEventListener("keydown", e => {
@@ -707,7 +734,7 @@ document.getElementById("Level").addEventListener("change", function () {
 
 	function updateBar() {
 		document.getElementById("bar_name").textContent = barText("name") || "–";
-		const sub = [barText("class_dropdown"), barText("subclass_dropdown"), barText("Level") ? "Level " + barText("Level") : ""]
+		const sub = [barText("class_dropdown"), barText("subclass_dropdown"), barText("Level") ? tr("level") + " " + barText("Level") : ""]
 			.filter(t => t !== "").join(" · ");
 		document.getElementById("bar_sub").textContent = sub;
 		document.getElementById("bar_hp").textContent = (barText("currentHitpoints") || "–") + " / " + (barText("maxHitpoints") || "–");
@@ -741,5 +768,26 @@ document.getElementById("Level").addEventListener("change", function () {
 	new MutationObserver(updateBar).observe(document.getElementById("subclass_dropdown"), { childList: true });
 	new MutationObserver(updateBar).observe(document.getElementById("initiative"), { childList: true, characterData: true, subtree: true });
 	updateBar();
+
+
+//LANGUAGE MENU: change the language without a reload (entered values stay)
+	document.getElementById("langSelect").addEventListener("change", function () {
+		const select = this;
+		const previous = document.documentElement.lang;
+		const body = new URLSearchParams({ csrf: CSRF_TOKEN, lang: select.value });
+		select.disabled = true;
+		fetch("/ajax/i18n.php", { method: "POST", body, credentials: "same-origin" })
+			.then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+			.then(data => {
+				I18N = data.texts;
+				document.documentElement.lang = data.lang;
+				applyI18n();
+			})
+			.catch(err => {
+				console.error("Error:", err);
+				select.value = previous; // keep the old language
+			})
+			.finally(() => { select.disabled = false; });
+	});
 
 </script>
