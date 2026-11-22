@@ -98,7 +98,7 @@ This applies to the **pull request description** and the **commit message**.
 
 - Merging into `main` starts the upload automatically (GitHub Actions → "Deploy to IONOS").
 - The upload never deletes files on the server.
-- Not uploaded: `.git/`, `.github/`, `.env*`, `*.log`, `*.sql`.
+- Not uploaded: `.git/`, `.github/`, `.env*`, `*.log`, `*.sql`, `*.md`.
 - Manual upload: Actions → Deploy to IONOS → Run workflow.
 
 ## Working method

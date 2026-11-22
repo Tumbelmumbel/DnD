@@ -63,6 +63,7 @@ jobs:
             --exclude-glob .env.* \
             --exclude-glob *.log \
             --exclude-glob *.sql \
+            --exclude-glob *.md \
             ./ "$SFTP_REMOTE_DIR"
           bye
           EOF
