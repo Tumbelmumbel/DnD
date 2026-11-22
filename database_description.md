@@ -45,7 +45,7 @@ The application uses this table for registration, login, email verification and 
 | `verification_token_hash` | char(64) | IDX | Yes | NULL | SHA-256 hash of the token in the verification link. NULL after verification. |
 | `verification_expires_at` | datetime | | Yes | NULL | Date and time when the verification link expires (24 hours after it is sent). |
 | `PWreset_token_hash` | char(64) | | Yes | NULL | SHA-256 hash of the token in the password reset link. NULL when no reset is open. |
-| `PWreset_expires_at` | datetime | | **No** | | Date and time when the password reset link expires (24 hours after it is sent). **Known problem:** the field does not accept NULL, but `reset.php` sets it to NULL. MySQL then stores `0000-00-00 00:00:00`. |
+| `PWreset_expires_at` | datetime | | Yes | NULL | Date and time when the password reset link expires (24 hours after it is sent). NULL when no reset is open. |
 | `created_at` | timestamp | | Yes | CURRENT_TIMESTAMP | Date and time when the account was made. |
 | `session_version` | int | | No | `0` | Counter for the sessions of the user. A password reset increases the value by 1. Then all sessions with the old value end. |
 
