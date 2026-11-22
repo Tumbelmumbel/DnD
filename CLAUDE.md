@@ -90,6 +90,18 @@ This applies to the **pull request description** and the **commit message**.
 - Do not show PHP errors to users in production.
 - Messages must not reveal whether an email address is registered.
 
+### Security-relevant issues: direct contact only
+
+The repository is public. Everything in GitHub (issues, pull requests, commits, comments) is visible to everyone.
+
+- **Discuss security-relevant issues only via direct contact with the owner** (for example in a private chat).
+- **Do not enter security-relevant issues as GitHub issues.** Do not post them as comments either.
+- Do not add security-relevant issues to the list "Known open issues" in this file.
+- For a security fix, write the pull request description and the commit message in neutral words.
+  Describe what the change does. Do not describe how to attack the old code.
+- Security-relevant means, for example: login, passwords, sessions, access to data of other users,
+  secrets, SQL injection, XSS, CSRF, or a bug that lets a user do something that is not permitted.
+
 ## Code style
 
 - Keep the existing style: `declare(strict_types=1);`, PDO with `db()`.
