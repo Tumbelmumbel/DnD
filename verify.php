@@ -45,10 +45,10 @@ if ($email && $token) {
 <body>
 <h1>Email verification</h1>
 <?php if ($ok): ?>
-  <p class="ok">Your email has been verified. You can now /login.phpsign in</a>.</p>
+  <p class="ok">Your email has been verified. You can now <a href="/login.php">sign in</a>.</p>
 <?php else: ?>
   <p class="bad">Verification failed or link expired. You can request a new link below.</p>
-  /resend.php
+  <form method="post" action="/resend.php">
     <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
     <label for="email">Email</label>
     <input id="email" name="email" type="email" required>
