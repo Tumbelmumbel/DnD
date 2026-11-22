@@ -31,7 +31,7 @@ PHPMailer) only after the owner agrees.
 | `characteroverview.php` | List of the user's characters (start page after login) |
 | `CharacterSandbox.php` | Character sheet |
 | `calculation.js`, `calculation.php` | D&D calculations (modifiers) |
-| `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`) |
+| `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`, `getComponent`) |
 | `Assets/style.css` | Shared stylesheet for all pages |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
