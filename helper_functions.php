@@ -5,8 +5,9 @@ function e(?string $s): string {
     return htmlspecialchars($s ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/** Same check as csrf_validate() in bootstrap.php (same session key) */
 function csrf_check(string $token): bool {
-    return hash_equals($_SESSION['csrf'] ?? '', $token);
+    return csrf_validate($token);
 }
 
 function require_login(): void {
