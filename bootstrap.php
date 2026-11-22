@@ -169,6 +169,15 @@ function db(): PDO {
         return $pdo;
     }
 
+    // Stop with an error if .env is missing or incomplete
+    foreach (['host', 'name', 'user', 'pass'] as $key) {
+        if (($APP_CONFIG['db'][$key] ?? '') === '') {
+            error_log("db(): DB setting '{$key}' is missing. Check the .env file.");
+            http_response_code(500);
+            exit('Database configuration missing.');
+        }
+    }
+
     $dsn = sprintf(
         'mysql:host=%s;dbname=%s;charset=%s',
         $APP_CONFIG['db']['host'],
