@@ -44,6 +44,27 @@ switch ($action) {
         break;
 
 
+    case 'getComponent':
+
+        // One talent from Game_component_library, by its id
+        $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($id === false || $id === null) {
+            echo json_encode(['error' => 'Missing or invalid id parameter']);
+            break;
+        }
+
+        $stmt = $pdo->prepare('
+            SELECT id, name, description, action_type, `range`, attribute, attack_type, damage_type,
+                   magic_effect, projectile, uses, uses_spent, duration, precondition, components, material
+            FROM Game_component_library
+            WHERE id = :id AND FIND_IN_SET(\'talent\', type) > 0
+        ');
+        $stmt->execute([':id' => $id]);
+        $component = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        echo json_encode($component ?: ['error' => 'Talent not found']);
+        break;
+
     default:
         echo json_encode(['error' => 'Unknown action']);
 }

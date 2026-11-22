@@ -54,6 +54,11 @@ $errors = [];
 		$stmt = $pdo->prepare('SELECT char_condition FROM Conditions');
 		$stmt->execute();
 		$conditions = $stmt->fetchall(PDO::FETCH_COLUMN);
+
+		// Talents for the talent menu (only id and name; details come from the endpoint)
+		$stmt = $pdo->prepare("SELECT id, name FROM Game_component_library WHERE FIND_IN_SET('talent', type) > 0 ORDER BY name");
+		$stmt->execute();
+		$talents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <html lang="en">
@@ -249,6 +254,17 @@ $errors = [];
 			<?php endforeach; ?>
 	</div>
 
+	<div class = "container_vertical" id = "Talents">
+		<label class= "label section_header" for="talent_dropdown">Talents</label>
+		<select class = "class_dropdown" id = "talent_dropdown" name = "talent_dropdown">
+			<option value = "">– select a talent –</option>
+			<?php foreach ($talents as $talent): ?>
+				<option class = "Dropdown_Entry" value = "<?= (int)$talent['id'] ?>"><?= e($talent['name']) ?></option>
+			<?php endforeach; ?>
+		</select>
+		<dl id = "talent_details" class = "talent_details"></dl>
+	</div>
+
 </div>
 
  <script src="/calculation.js"></script>
@@ -397,6 +413,67 @@ document.getElementById("Level").addEventListener("change", function () {
 			updateAbilityUI(ability);
 		}
 	});		
+	
+
+//TALENTS
+	// Readable labels for the fields of Game_component_library (in the order they are shown)
+	const componentLabels = {
+		description:  "Description",
+		action_type:  "Action type",
+		range:        "Range",
+		attribute:    "Attribute",
+		attack_type:  "Attack type",
+		damage_type:  "Damage type",
+		magic_effect: "Magic effect",
+		projectile:   "Projectile",
+		uses:         "Uses",
+		uses_spent:   "Uses spent",
+		duration:     "Duration",
+		precondition: "Precondition",
+		components:   "Components",
+		material:     "Material"
+	};
+
+	document.getElementById("talent_dropdown").addEventListener("change", function () {
+		const details = document.getElementById("talent_details");
+		const selectedId = this.value;
+		details.replaceChildren();
+		if (!selectedId) {
+			return;
+		}
+
+		fetch(`/ajax/sandbox_endpoint.php?action=getComponent&id=${encodeURIComponent(selectedId)}`)
+			.then(r => r.json())
+			.then(component => {
+				// Ignore an old answer if the user selected a different talent in the meantime
+				if (document.getElementById("talent_dropdown").value !== selectedId) {
+					return;
+				}
+				details.replaceChildren();
+				if (component.error) {
+					const dd = document.createElement("dd");
+					dd.textContent = component.error;
+					details.append(dd);
+					return;
+				}
+				for (const [field, label] of Object.entries(componentLabels)) {
+					const value = component[field];
+					// Show every filled field; 0 counts as filled
+					if (value === null || value === undefined || String(value).trim() === "") {
+						continue;
+					}
+					const dt = document.createElement("dt");
+					dt.className = "label";
+					dt.textContent = label;
+					const dd = document.createElement("dd");
+					dd.textContent = String(value);
+					dd.style.whiteSpace = "pre-wrap";
+					dd.style.margin = "0 0 8px 0";
+					details.append(dt, dd);
+				}
+			})
+			.catch(err => console.error("Error:", err));
+	});
 	
 	
 </script>
