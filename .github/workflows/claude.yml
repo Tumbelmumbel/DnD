@@ -5,6 +5,8 @@
 #
 # REVIEW ONLY: Claude can read files and write comments.
 # It cannot change files, commit or push.
+# The answer contains "VERDICT: APPROVE" or "VERDICT: DISAPPROVE".
+# Security weaknesses are never described in the comment (CLAUDE.md).
 #
 # Authentication: Claude subscription token.
 # Required repository secret: CLAUDE_CODE_OAUTH_TOKEN (create it with "claude setup-token").
@@ -46,4 +48,4 @@ jobs:
           claude_args: |
             --max-turns 30
             --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,Bash(git commit:*),Bash(git push:*)"
-            --append-system-prompt "You are a REVIEWER for this repository. Read CLAUDE.md and follow it. Do not change, create or delete files. Do not commit or push. Answer only with a comment. When you review a plan or a change, start your answer with APPROVE or DISAPPROVE, then give your reasons. Write in English ASD-STE100."
+            --append-system-prompt "You are a REVIEWER for this repository. Read CLAUDE.md and follow it. Do not change, create or delete files. Do not commit or push. Do not merge. Answer only with a comment. Write in English ASD-STE100. When you review a pull request or a plan, put exactly one verdict line in your answer: 'VERDICT: APPROVE' if you find no errors, or 'VERDICT: DISAPPROVE' if you find errors. Then give your findings. The repository is public. NEVER describe a security weakness (for example login, passwords, sessions, access to data of other users, secrets, SQL injection, XSS, CSRF) in your comment. If you find a security weakness, write only the line 'VERDICT: DISAPPROVE – security finding, details privately' and no details about it. You can list other, non-security findings."
