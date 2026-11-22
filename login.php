@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		
 		$pdo = db();
 
-		$stmt = $pdo->prepare('SELECT id, email, username, password_hash, role, email_verified_at, session_version FROM users WHERE email = :email');
+		$stmt = $pdo->prepare('SELECT id, email, username, password_hash, role, email_verified_at, session_version, language FROM users WHERE email = :email');
 		$stmt->execute([':email' => $email]);
 		$user = $stmt->fetch();
 
@@ -36,6 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'sv'             => (int)$user['session_version'],
                     't'              => time(),
                 ];
+                // Use the language that the user saved before
+                if (i18n_is_supported($user['language'] ?? null)) {
+                    set_lang($user['language']);
+                }
                 redirect('/characteroverview.php');
             }
         } else {
