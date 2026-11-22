@@ -42,7 +42,7 @@ PHPMailer) only after the owner agrees.
 
 - **Never commit or push directly to `main`.** `main` is live: every push deploys to the website.
 - **Each change gets its own new branch**, named after the change (for example `fix-resend-page`).
-- Open a pull request into `main`. The owner reviews and merges it.
+- Open a pull request into `main`. The GitHub review agent reviews it (see "Review and merge").
 - Keep each pull request to one topic.
 - Before starting new work, update from the latest `main`.
 
@@ -121,10 +121,40 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 
 1. **Plan:** describe the change and any SQL. Wait for the owner's approval.
 2. **Build:** on a new branch.
-3. **Review:** for risky changes (login, passwords, sessions, database, deploy),
-   a separate review agent checks the change before the pull request.
-4. **Pull request:** list what changed, what to test, and any steps before merging.
-5. **Owner merges** and tests on the live site.
+3. **Pull request:** list what changed, what to test, and any steps before merging.
+4. **Review:** the GitHub review agent reviews every pull request (see below).
+5. **Merge:** if the review agent approves, Claude merges the pull request.
+6. **Owner tests** the change on the live site.
+
+### Review and merge
+
+**Every pull request gets a review by the GitHub review agent** (`.github/workflows/claude.yml`).
+
+1. After Claude opens a pull request, Claude writes this comment on the pull request:
+
+   `@claude Please check this pull request. Approve if you find no errors. Disapprove if you find errors.`
+
+2. Claude waits for the answer of the review agent (normally 1 to 5 minutes).
+   The answer contains the line `VERDICT: APPROVE` or `VERDICT: DISAPPROVE`.
+3. **`VERDICT: APPROVE`:** Claude merges the pull request (merge commit) and deletes the branch.
+   The merge starts the deploy to the live website.
+4. **`VERDICT: DISAPPROVE`:** Claude corrects the errors on the same branch, pushes the change
+   and writes the review comment again.
+   After 3 reviews with `DISAPPROVE`, Claude stops and asks the owner.
+5. After the merge, Claude tells the owner what to test on the live site.
+
+**Claude does not merge automatically when:**
+
+- the section "Before you merge" of the pull request has a manual step that is not done
+  (for example: a migration that the owner must run). Claude merges only after the step is done.
+- the owner wrote "do not merge" on the pull request, or the pull request is a draft.
+- the review agent did not answer, or the answer has no `VERDICT` line.
+  Then Claude tells the owner.
+
+**Security findings:** the review agent does not describe security weaknesses in public comments.
+For a security finding, it writes only `VERDICT: DISAPPROVE – security finding, details privately`.
+Then Claude does a private review in the chat with the owner to find the details,
+and corrects the problem. The details stay out of GitHub.
 
 ## Communication
 
