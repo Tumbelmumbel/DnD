@@ -60,7 +60,7 @@ This applies to the **pull request description** and the **commit message**.
   1. **Changes** – what changed, file by file.
   2. **Reason** – why the change is necessary.
   3. **Before you merge** – manual steps (for example: "Run the migration").
-  4. **Test** – the steps that Claude does in the browser test (see "Browser test").
+  4. **Test** – the list of test steps for the browser test (see "Test steps in the pull request").
 
 ## Database changes
 
@@ -157,19 +157,65 @@ For a security finding, it writes only `VERDICT: DISAPPROVE – security finding
 Then Claude does a private review in the chat with the owner to find the details,
 and corrects the problem. The details stay out of GitHub.
 
+### Test steps in the pull request
+
+**Each pull request has a section "Test" with a numbered list of test steps.**
+Each test step has:
+
+- **Action:** what to do (for example: "Open `/login.php`. Click 'Register'.").
+- **Expected result:** what must happen (for example: "The page `/register.php` opens.").
+- **(owner)** after the step number, if the owner must do the step (sign-in, password, email).
+
+Example:
+
+```
+1. Action: Open https://rudolph.cologne/login.php.
+   Expected result: The page shows the form "Sign in".
+2. (owner) Action: Sign in with your account.
+   Expected result: The page /characteroverview.php opens.
+```
+
+A pull request that changes only documentation (for example `*.md`) has the text
+"No test steps: documentation only." in the section "Test".
+
 ### Browser test
 
-After each merge that changes the website (PHP, HTML, CSS, JavaScript), Claude tests the change
-like a user. Changes to documentation only (for example `*.md`) do not need a browser test.
+**After each merge, Claude runs the test steps of the pull request automatically.**
+Claude does not wait for a request from the owner.
 
 1. Claude waits until the deploy is finished (about 2 minutes after the merge).
 2. Claude opens https://rudolph.cologne in the **browser of the Claude desktop app**.
    The desktop app must be open on the computer of the owner.
-3. Claude does the steps in the section **"Test"** of the pull request, one after the other.
-4. Claude reports the result **in the chat** to the owner: each step with "passed" or "failed",
-   and the reason for a failure. Claude does not post test results on GitHub.
-5. If a step fails, Claude makes a new branch and pull request with the correction
-   (same procedure: review, merge, browser test).
+3. Claude does the test steps of the pull request, one after the other.
+   For each step, Claude compares the actual result with the expected result.
+   For a step with **(owner)**, Claude asks the owner and waits.
+4. Claude reports the result of each step in the chat ("passed" or "failed").
+
+**All test steps passed:** Claude writes this comment on the pull request:
+
+`Tests carried out without errors`
+
+**At least one test step failed:** Claude opens a **GitHub issue** with the title
+`Test failure: #<number> <title of the pull request>` and these parts:
+
+1. **Pull request:** the number and the link of the tested pull request.
+2. **Expected result:** the expected result of each failed step.
+3. **Actual result:** what happened in the browser.
+4. **Steps:** the steps that Claude did to get the result (from the start of the test).
+5. **Possible causes:** the possible causes of the failure (file and code, if known).
+
+Claude also writes a comment with the link to the issue on the pull request.
+Then Claude makes a correction with the normal procedure (plan, branch, pull request, review, merge, test).
+
+**Exceptions:**
+
+- **Security-relevant failure:** Claude does not describe it on GitHub (see "Security-relevant issues").
+  The issue has only the title, the pull request and the text "Security-relevant failure. Details privately."
+  Claude gives the details to the owner in the chat.
+- **A step was not done** (for example, the owner was not available for an **(owner)** step):
+  Claude does not write "Tests carried out without errors". Claude writes a comment with
+  the list of the steps that were not done.
+- **No test steps (documentation only):** no browser test, no comment.
 
 **Passwords and accounts:**
 
