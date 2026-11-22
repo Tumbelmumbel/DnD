@@ -62,10 +62,6 @@ form {
     align-items: stretch; /* change to stretch if you prefer full-width inputs */
     gap: 0.2rem;
 }
-/* Login page only: red background */
-body {
-    background: red;
-}
 </style>
 </head>
 
