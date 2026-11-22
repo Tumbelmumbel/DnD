@@ -36,6 +36,7 @@ PHPMailer) only after the owner agrees.
 | `database_description.md` | Description of all tables and fields (keep up to date) |
 | `migration_*.sql` | Database changes, run by hand in phpMyAdmin |
 | `.github/workflows/deploy.yml` | Uploads `main` to IONOS over SFTP |
+| `.github/workflows/claude.yml` | Claude review agent on GitHub: answers `@claude` comments (review only) |
 
 ## Git workflow
 
