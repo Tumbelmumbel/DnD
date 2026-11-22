@@ -1,0 +1,68 @@
+# Upload the website to the IONOS webspace over SFTP.
+#
+# Runs on every push to main (for example after you merge a pull request),
+# and you can also start it by hand under "Actions" -> "Deploy to IONOS" -> "Run workflow".
+#
+# UPLOAD ONLY: files on the server that are not in Git (.env, libs/PHPMailer,
+# php-errors.log, ...) are never deleted.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   SFTP_HOST        e.g. access-5012345678.webspace-host.com
+#   SFTP_USER        your SFTP user name
+#   SFTP_PASSWORD    your SFTP password
+#   SFTP_REMOTE_DIR  target folder as seen in your SFTP client, e.g. /Rudolph.cologne
+# Optional:
+#   SFTP_PORT        default 22
+
+name: Deploy to IONOS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two uploads at the same time
+concurrency:
+  group: deploy-ionos
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Upload files over SFTP
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+        run: |
+          for v in SFTP_HOST SFTP_USER LFTP_PASSWORD SFTP_REMOTE_DIR; do
+            if [ -z "${!v}" ]; then echo "::error::Secret for $v is missing"; exit 1; fi
+          done
+
+          # --env-password reads the password from LFTP_PASSWORD,
+          # so special characters in the password are no problem.
+          # mirror --reverse WITHOUT --delete = upload only, never delete on the server.
+          lftp --env-password -u "$SFTP_USER" -p "${SFTP_PORT:-22}" "sftp://$SFTP_HOST" <<EOF
+          set sftp:auto-confirm yes
+          set net:max-retries 2
+          set net:timeout 30
+          mirror --reverse --verbose --parallel=4 \
+            --exclude-glob .git/ \
+            --exclude-glob .github/ \
+            --exclude-glob .gitignore \
+            --exclude-glob .env \
+            --exclude-glob .env.* \
+            --exclude-glob *.log \
+            --exclude-glob *.sql \
+            ./ "$SFTP_REMOTE_DIR"
+          bye
+          EOF
