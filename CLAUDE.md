@@ -10,7 +10,7 @@ Live site: https://rudolph.cologne (IONOS shared hosting).
 
 - **Language:** PHP 8 (no framework), plain HTML/CSS/JavaScript
 - **Database:** MySQL on IONOS (`dbs15432866`), accessed with PDO
-- **Mail:** PHPMailer over IONOS SMTP (`libs/PHPMailer` is on the server only, not in Git)
+- **Mail:** PHPMailer 7.0.2 over IONOS SMTP (in `libs/PHPMailer`, third-party code: do not change it)
 - **Owner:** Tumbelmumbel (solo developer)
 
 **No frameworks.** The project uses plain PHP and vanilla JavaScript on purpose.
@@ -30,6 +30,9 @@ PHPMailer) only after the owner agrees.
 | `characteroverview.php` | List of the user's characters (start page after login) |
 | `CharacterSandbox.php` | Character sheet |
 | `calculation.js`, `calculation.php` | D&D calculations (modifiers) |
+| `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`) |
+| `Assets/style.css` | Shared stylesheet for all pages |
+| `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
 | `migration_*.sql` | Database changes, run by hand in phpMyAdmin |
 | `.github/workflows/deploy.yml` | Uploads `main` to IONOS over SFTP |
