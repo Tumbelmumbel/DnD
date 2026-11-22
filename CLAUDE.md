@@ -6,7 +6,8 @@ Read this file completely before you change anything.
 ## Project
 
 A web application to create and manage Dungeons & Dragons characters.
-Live site: https://rudolph.cologne (IONOS shared hosting).
+Test site: https://rudolph.cologne (IONOS shared hosting).
+`rudolph.cologne` is the **test environment of the owner**. It has no real users.
 
 - **Language:** PHP 8 (no framework), plain HTML/CSS/JavaScript
 - **Database:** MySQL on IONOS (`dbs15432866`), accessed with PDO
@@ -40,7 +41,7 @@ PHPMailer) only after the owner agrees.
 
 ## Git workflow
 
-- **Never commit or push directly to `main`.** `main` is live: every push deploys to the website.
+- **Never commit or push directly to `main`.** Every push to `main` deploys to the website.
 - **Each change gets its own new branch**, named after the change (for example `fix-resend-page`).
 - Open a pull request into `main`. The GitHub review agent reviews it (see "Review and merge").
 - Keep each pull request to one topic.
@@ -59,11 +60,11 @@ This applies to the **pull request description** and the **commit message**.
   1. **Changes** – what changed, file by file.
   2. **Reason** – why the change is necessary.
   3. **Before you merge** – manual steps (for example: "Run the migration").
-  4. **Test** – how the owner examines the change on the live site.
+  4. **Test** – the steps that Claude does in the browser test (see "Browser test").
 
 ## Database changes
 
-- Never change the live database without the owner's explicit "yes" for that exact SQL.
+- Never change the database without the owner's explicit "yes" for that exact SQL.
 - Read-only queries (SELECT, SHOW, information_schema) are fine.
 - Every schema change goes into a new file `migration_<short_name>.sql` in the pull request.
 - The pull request description must say: **"Run the migration BEFORE you merge."**
@@ -124,7 +125,7 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 3. **Pull request:** list what changed, what to test, and any steps before merging.
 4. **Review:** the GitHub review agent reviews every pull request (see below).
 5. **Merge:** if the review agent approves, Claude merges the pull request.
-6. **Owner tests** the change on the live site.
+6. **Browser test:** after the deploy, Claude tests the change on the website (see "Browser test").
 
 ### Review and merge
 
@@ -137,11 +138,11 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 2. Claude waits for the answer of the review agent (normally 1 to 5 minutes).
    The answer contains the line `VERDICT: APPROVE` or `VERDICT: DISAPPROVE`.
 3. **`VERDICT: APPROVE`:** Claude merges the pull request (merge commit) and deletes the branch.
-   The merge starts the deploy to the live website.
+   The merge starts the deploy to the website.
 4. **`VERDICT: DISAPPROVE`:** Claude corrects the errors on the same branch, pushes the change
    and writes the review comment again.
    After 3 reviews with `DISAPPROVE`, Claude stops and asks the owner.
-5. After the merge, Claude tells the owner what to test on the live site.
+5. After the merge, Claude does the browser test (see "Browser test").
 
 **Claude does not merge automatically when:**
 
@@ -155,6 +156,31 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 For a security finding, it writes only `VERDICT: DISAPPROVE – security finding, details privately`.
 Then Claude does a private review in the chat with the owner to find the details,
 and corrects the problem. The details stay out of GitHub.
+
+### Browser test
+
+After each merge that changes the website (PHP, HTML, CSS, JavaScript), Claude tests the change
+like a user. Changes to documentation only (for example `*.md`) do not need a browser test.
+
+1. Claude waits until the deploy is finished (about 2 minutes after the merge).
+2. Claude opens https://rudolph.cologne in the **browser of the Claude desktop app**.
+   The desktop app must be open on the computer of the owner.
+3. Claude does the steps in the section **"Test"** of the pull request, one after the other.
+4. Claude reports the result **in the chat** to the owner: each step with "passed" or "failed",
+   and the reason for a failure. Claude does not post test results on GitHub.
+5. If a step fails, Claude makes a new branch and pull request with the correction
+   (same procedure: review, merge, browser test).
+
+**Passwords and accounts:**
+
+- Claude does not type passwords on `rudolph.cologne` and does not make accounts there.
+- If a test step needs a sign-in, a registration or a new password, Claude asks the owner.
+  The owner does this step in the browser pane. Then Claude continues with the next step.
+- The sign-in stays in the browser of the desktop app. Claude can then test pages that need a sign-in.
+- Claude does not sign out of the account of the owner and does not change its data,
+  unless a test step needs it and the owner agrees.
+- Emails (verification, password reset) go to the mailbox of the owner.
+  For these steps, the owner opens the link or gives it to Claude.
 
 ## Communication
 
