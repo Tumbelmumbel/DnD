@@ -154,10 +154,11 @@ This table stores how a damage type can have an effect on a character. Each row 
 ### `Game_component_library`
 
 This table stores game components: weapons, spells, class abilities, talents, items, armor and shields. Each row is one component.
-The table does not have a primary key. **Known problem:** the table has 2 identical rows (`Stangenwaffenmeister`).
+The field `id` identifies each row.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `id` | int unsigned, auto_increment | PK | No | | Unique number of the component. MySQL sets this number automatically. |
 | `type` | set('weapon','spell','class_ability','talent','item','armor','shield') | | No | | Type of the component. |
 | `name` | char(255) | | No | | Name of the component. |
 | `description` | text | | No | | Full rules text of the component. |
