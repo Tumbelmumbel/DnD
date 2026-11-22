@@ -1,16 +1,19 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/tinymailer.php'; // send_mail()
 
 $info = 'If your email exists and is unverified, a new verification link has been sent.';
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!csrf_check($_POST['csrf'] ?? '')) {
+    $csrf = is_string($_POST['csrf'] ?? null) ? $_POST['csrf'] : '';
+    if (!csrf_validate($csrf)) {
         $errors[] = 'Invalid session.';
     } else {
-        $email = trim(strtolower($_POST['email'] ?? ''));
+        $email = is_string($_POST['email'] ?? null) ? trim(strtolower($_POST['email'])) : '';
         if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $pdo = db();
             $stmt = $pdo->prepare('SELECT id, email_verified_at FROM users WHERE email = :email');
             $stmt->execute([':email' => $email]);
             $user = $stmt->fetch();
