@@ -33,14 +33,13 @@
 }
 
 body {
-	position: fixed;
 	background: var(--bg);
 	align-items: center;
 	margin: 0;
 	font-family: var(--fonts);
 	justify-content: center;
 	/*height: 100vh;*/
-	width: 100vw;
+	min-height: 100vh; /* background fills the window; the page scrolls when the content is higher */
 }
 
 .label {
