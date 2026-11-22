@@ -4,7 +4,7 @@ This file describes the database of the DnD character manager.
 It shows all tables and all fields, the data type of each field, and the data that each field stores.
 
 - **Database:** `dbs15432866` (MySQL on IONOS)
-- **Last update:** 2026-11-22 (`Game_component_library.id` added)
+- **Last update:** 2026-11-22
 - **Foreign keys:** None. The tables do not have links in the database.
 - **SQL mode:** Empty (lenient). MySQL does not stop an incorrect value. It changes the value and gives a warning.
 
