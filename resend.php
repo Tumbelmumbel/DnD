@@ -52,6 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php else: ?>
   <div class="info"><?= e($info) ?></div>
 <?php endif; ?>
-<p>/login.phpBack to sign in</a></p>
+<p><a href="/login.php">Back to sign in</a></p>
 </body>
 </html>

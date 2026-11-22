@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="utf-8">
 <title class= label>Sign in</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://www.rudolph.cologne/Assets/style.css">
+<link rel="stylesheet" href="/Assets/style.css">
 <style>
 form {
     display: flex;
@@ -78,7 +78,7 @@ form {
 
 	<?php if ($info): ?>
 	  <div class="alert"><?= e($info) ?></div>
-	  /resend.php
+	  <form method="post" action="/resend.php">
 		<input class= label type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
 		<input class= label type="hidden" name="email" value="<?= e($_POST['email'] ?? '') ?>">
 		<button class= button type="submit">Resend verification link</button>
@@ -94,12 +94,12 @@ form {
 	  <button class= button type="submit">Sign in</button>
 	</form>
 
-	<form method="get" action="https://www.rudolph.cologne/ForgottenPW.php">
+	<form method="get" action="/ForgottenPW.php">
 		<button class= button type="submit">Forgot password?</button>
 	</form>	
 
 	<p>No account yet?</p>
-	<form method="get" action="https://www.rudolph.cologne/register.php">
+	<form method="get" action="/register.php">
 		<button class= button type="submit">Register</button>
 	</form>	
 </div>

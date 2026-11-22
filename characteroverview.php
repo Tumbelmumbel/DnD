@@ -32,7 +32,7 @@ if (!$characters) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://www.rudolph.cologne/Assets/style.css">
+<link rel="stylesheet" href="/Assets/style.css">
     <title>Your Characters</title>
 
     <style>
@@ -80,7 +80,7 @@ if (!$characters) {
 			<div class="page-header">
 				<h1>Your Characters</h1>
 			</div>
-	    	<form class = "button-form" method="get" action="https://rudolph.cologne/Logout.php">
+	    	<form class = "button-form" method="get" action="/logout.php">
 				<button class="Button" type="submit">Logout</button>
 			</form>			
 
@@ -112,7 +112,7 @@ if (!$characters) {
 				<p>Sandbox mode: Enter each stat yourself</p>
 				<p>Railroad mode: Enter stats guided by the 5e ruleset</p>
 				<div class="container_horizontal_relative">
-					<form class = "button-form" method="get" action="https://rudolph.cologne/CharacterSandbox.php">
+					<form class = "button-form" method="get" action="/CharacterSandbox.php">
 						<button class="Button" type="submit">Sandbox</button>
 					</form>	
 					<div class="button-form">

@@ -60,7 +60,7 @@ $errors = [];
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://www.rudolph.cologne/Assets/style.css">
+<link rel="stylesheet" href="/Assets/style.css">
     <title>Sandbox</title>
 </head>
 <body>

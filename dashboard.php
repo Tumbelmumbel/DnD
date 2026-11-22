@@ -22,10 +22,6 @@ $user = $_SESSION['user'];
 <h1>Welcome, <?= e($user['email']) ?> 🎉</h1>
 <p>Your role: <strong><?= e($user['role']) ?></strong></p>
 
-<?php if ($user['role'] === 'admin'): ?>
-  <p>/admin.phpAdmin area</a></p>
-<?php endif; ?>
-
-<p>/logout.phpLog out</a></p>
+<p><a href="/logout.php">Log out</a></p>
 </body>
 </html>
