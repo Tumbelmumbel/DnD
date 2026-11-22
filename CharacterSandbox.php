@@ -134,6 +134,25 @@ $errors = [];
 .talent_card_body dd { margin: 0 0 8px 0; white-space: pre-wrap; line-height: 1.5; }
 #talent_dropdown option:disabled { color: #999; }
 
+/* Sticky bar: always visible while scrolling */
+.cs-bar { position: sticky; top: 0; z-index: 10; background: #4A4431; color: #FFFDF6;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); font-family: var(--fonts); }
+.cs-bar-inner { max-width: 1240px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cs-bar-who { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; }
+.cs-bar-name { font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-bar-sub { font-size: 13px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-bar-hp { display: flex; align-items: center; gap: 8px; background: rgba(255, 253, 246, 0.12); border-radius: 28px; padding: 4px; }
+.cs-bar-hp button { width: 48px; height: 48px; border-radius: 24px; border: 0; color: #FFFFFF; font-size: 24px; font-weight: 700; cursor: pointer; }
+.cs-bar-hp .cs-hp-minus { background: #C62828; }
+.cs-bar-hp .cs-hp-plus { background: #2E7D32; }
+.cs-bar-stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+.cs-bar-stat span:first-child { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.cs-bar-stat span:last-child { font-size: 22px; font-weight: 700; }
+@media (max-width: 640px) {
+	.cs-bar-inner { gap: 8px 12px; padding: 6px 10px; }
+	.cs-bar-optional { display: none; }
+}
+
 /* Tablet landscape and desktop: two columns */
 .cs-main { display: flex; flex-direction: column; gap: 16px; }
 .cs-side { display: flex; flex-direction: column; gap: 16px; }
@@ -154,6 +173,23 @@ $errors = [];
 </style>
 </head>
 <body>
+<header class = "cs-bar" aria-label = "Character summary">
+	<div class = "cs-bar-inner">
+		<div class = "cs-bar-who">
+			<span class = "cs-bar-name" id = "bar_name">–</span>
+			<span class = "cs-bar-sub" id = "bar_sub"></span>
+		</div>
+		<div class = "cs-bar-hp">
+			<button type = "button" class = "cs-hp-minus" id = "hpMinus" aria-label = "Lose 1 hit point">−</button>
+			<div class = "cs-bar-stat" aria-live = "polite"><span>Hit points</span><span id = "bar_hp">– / –</span></div>
+			<button type = "button" class = "cs-hp-plus" id = "hpPlus" aria-label = "Gain 1 hit point">+</button>
+		</div>
+		<div class = "cs-bar-stat"><span>Armor class</span><span id = "bar_ac">–</span></div>
+		<div class = "cs-bar-stat cs-bar-optional"><span>Initiative</span><span id = "bar_initiative">–</span></div>
+		<div class = "cs-bar-stat cs-bar-optional"><span>Speed</span><span id = "bar_speed">–</span></div>
+		<div class = "cs-bar-stat cs-bar-optional"><span>Inspiration</span><span id = "bar_inspiration">–</span></div>
+	</div>
+</header>
 <div class = "cs-page" id = "character_basics">
 
 	<!-- Identity -->
@@ -661,4 +697,49 @@ document.getElementById("Level").addEventListener("change", function () {
 	});
 	
 	
+
+//STICKY BAR (summary at the top)
+	function barText(id) {
+		const el = document.getElementById(id);
+		const v = el ? (("value" in el && el.tagName !== "LABEL") ? el.value : el.textContent) : "";
+		return String(v ?? "").trim();
+	}
+
+	function updateBar() {
+		document.getElementById("bar_name").textContent = barText("name") || "–";
+		const sub = [barText("class_dropdown"), barText("subclass_dropdown"), barText("Level") ? "Level " + barText("Level") : ""]
+			.filter(t => t !== "").join(" · ");
+		document.getElementById("bar_sub").textContent = sub;
+		document.getElementById("bar_hp").textContent = (barText("currentHitpoints") || "–") + " / " + (barText("maxHitpoints") || "–");
+		document.getElementById("bar_ac").textContent = barText("armorClass") || "–";
+		document.getElementById("bar_initiative").textContent = barText("initiative") || "–";
+		document.getElementById("bar_speed").textContent = barText("Walking_Speed") || "–";
+		document.getElementById("bar_inspiration").textContent = barText("inspiration") || "–";
+	}
+
+	// Change the current hit points by +1 or -1 (not below 0, not above the maximum)
+	function changeHitpoints(delta) {
+		const current = document.getElementById("currentHitpoints");
+		const max = parseInt(document.getElementById("maxHitpoints").value, 10);
+		let value = parseInt(current.value, 10);
+		if (Number.isNaN(value)) {
+			value = Number.isNaN(max) ? 0 : max; // start from the maximum
+		}
+		value += delta;
+		if (value < 0) value = 0;
+		if (!Number.isNaN(max) && value > max) value = max;
+		current.value = String(value);
+		current.dispatchEvent(new Event("input", { bubbles: true }));
+	}
+
+	document.getElementById("hpMinus").addEventListener("click", () => changeHitpoints(-1));
+	document.getElementById("hpPlus").addEventListener("click", () => changeHitpoints(1));
+
+	// Update the bar on every change of a field; the subclass list is filled later by the endpoint
+	document.addEventListener("input", updateBar);
+	document.addEventListener("change", updateBar);
+	new MutationObserver(updateBar).observe(document.getElementById("subclass_dropdown"), { childList: true });
+	new MutationObserver(updateBar).observe(document.getElementById("initiative"), { childList: true, characterData: true, subtree: true });
+	updateBar();
+
 </script>
