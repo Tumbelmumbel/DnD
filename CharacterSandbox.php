@@ -67,6 +67,19 @@ $errors = [];
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/Assets/style.css">
     <title>Sandbox</title>
+<style>
+/* Talent cards */
+.talent_list { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 8px; }
+.talent_card { border: 1px solid rgba(0, 0, 0, 0.25); border-radius: 6px; background: rgba(255, 255, 255, 0.35); }
+.talent_card_header { display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; user-select: none; }
+.talent_card_arrow { display: inline-block; width: 1em; transition: transform 0.15s; }
+.talent_card.open .talent_card_arrow { transform: rotate(90deg); }
+.talent_card_title { font-weight: 600; }
+.talent_card_facts { flex: 1; opacity: 0.8; }
+.talent_card_body { margin: 0; padding: 0 12px 8px 30px; }
+.talent_card_body dd { margin: 0 0 8px 0; white-space: pre-wrap; }
+#talent_dropdown option:disabled { color: #999; }
+</style>
 </head>
 <body>
 <div class = "container_vertical" id = "character_basics">
@@ -256,13 +269,16 @@ $errors = [];
 
 	<div class = "container_vertical" id = "Talents">
 		<label class= "label section_header" for="talent_dropdown">Talents</label>
-		<select class = "class_dropdown" id = "talent_dropdown" name = "talent_dropdown">
-			<option value = "">– select a talent –</option>
-			<?php foreach ($talents as $talent): ?>
-				<option class = "Dropdown_Entry" value = "<?= (int)$talent['id'] ?>"><?= e($talent['name']) ?></option>
-			<?php endforeach; ?>
-		</select>
-		<dl id = "talent_details" class = "talent_details"></dl>
+		<div class = "container_horizontal" style = "gap: 10px; justify-content: flex-start;">
+			<select class = "class_dropdown" id = "talent_dropdown" name = "talent_dropdown">
+				<option value = "">– select a talent –</option>
+				<?php foreach ($talents as $talent): ?>
+					<option class = "Dropdown_Entry" value = "<?= (int)$talent['id'] ?>"><?= e($talent['name']) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<button type = "button" class = "button" id = "addTalent" style = "flex: 0 0 auto;">Add</button>
+		</div>
+		<div id = "talent_list" class = "talent_list"></div>
 	</div>
 
 </div>
@@ -434,45 +450,124 @@ document.getElementById("Level").addEventListener("change", function () {
 		material:     "Material"
 	};
 
-	document.getElementById("talent_dropdown").addEventListener("change", function () {
-		const details = document.getElementById("talent_details");
-		const selectedId = this.value;
-		details.replaceChildren();
-		if (!selectedId) {
-			return;
+	const talentDropdown = document.getElementById("talent_dropdown");
+	const talentList = document.getElementById("talent_list");
+	const talentsPending = new Set(); // ids that are loading now (prevents a double add)
+
+	function isFilled(value) {
+		// 0 counts as filled
+		return value !== null && value !== undefined && String(value).trim() !== "";
+	}
+
+	function setTalentOptionDisabled(id, disabled) {
+		const option = talentDropdown.querySelector(`option[value="${CSS.escape(String(id))}"]`);
+		if (option) {
+			option.disabled = disabled;
 		}
+	}
+
+	function toggleTalentCard(card) {
+		const open = !card.classList.contains("open");
+		card.classList.toggle("open", open);
+		card.querySelector(".talent_card_body").hidden = !open;
+		card.querySelector(".talent_card_header").setAttribute("aria-expanded", open ? "true" : "false");
+	}
+
+	function buildTalentCard(component) {
+		const card = document.createElement("div");
+		card.className = "talent_card";
+		card.dataset.id = String(component.id);
+
+		// Header: arrow, name, short facts, remove button
+		const header = document.createElement("div");
+		header.className = "talent_card_header";
+		header.setAttribute("role", "button");
+		header.setAttribute("tabindex", "0");
+		header.setAttribute("aria-expanded", "false");
+
+		const arrow = document.createElement("span");
+		arrow.className = "talent_card_arrow";
+		arrow.textContent = "▸";
+
+		const title = document.createElement("span");
+		title.className = "talent_card_title";
+		title.textContent = component.name;
+
+		const facts = [];
+		if (isFilled(component.action_type)) {
+			facts.push(String(component.action_type));
+		}
+		if (isFilled(component.uses)) {
+			facts.push(`Uses ${isFilled(component.uses_spent) ? component.uses_spent : 0}/${component.uses}`);
+		}
+		const factsSpan = document.createElement("span");
+		factsSpan.className = "talent_card_facts";
+		factsSpan.textContent = facts.length ? "· " + facts.join(" · ") : "";
+
+		const remove = document.createElement("button");
+		remove.type = "button";
+		remove.className = "button delete";
+		remove.title = "Remove talent";
+		remove.textContent = "-";
+
+		header.append(arrow, title, factsSpan, remove);
+
+		// Body: all filled fields (closed at the start)
+		const body = document.createElement("dl");
+		body.className = "talent_card_body";
+		body.hidden = true;
+		for (const [field, label] of Object.entries(componentLabels)) {
+			const value = component[field];
+			if (!isFilled(value)) {
+				continue;
+			}
+			const dt = document.createElement("dt");
+			dt.className = "label";
+			dt.textContent = label;
+			const dd = document.createElement("dd");
+			dd.textContent = String(value);
+			body.append(dt, dd);
+		}
+
+		card.append(header, body);
+
+		header.addEventListener("click", () => toggleTalentCard(card));
+		header.addEventListener("keydown", e => {
+			if (e.target === header && (e.key === "Enter" || e.key === " ")) {
+				e.preventDefault();
+				toggleTalentCard(card);
+			}
+		});
+		remove.addEventListener("click", e => {
+			e.stopPropagation(); // do not open or close the card
+			card.remove();
+			setTalentOptionDisabled(component.id, false);
+		});
+
+		return card;
+	}
+
+	document.getElementById("addTalent").addEventListener("click", function () {
+		const selectedId = talentDropdown.value;
+		if (!selectedId || talentsPending.has(selectedId) ||
+			talentList.querySelector(`.talent_card[data-id="${CSS.escape(selectedId)}"]`)) {
+			return; // nothing selected, or the talent is already in the list
+		}
+		talentsPending.add(selectedId);
 
 		fetch(`/ajax/sandbox_endpoint.php?action=getComponent&id=${encodeURIComponent(selectedId)}`)
 			.then(r => r.json())
 			.then(component => {
-				// Ignore an old answer if the user selected a different talent in the meantime
-				if (document.getElementById("talent_dropdown").value !== selectedId) {
-					return;
-				}
-				details.replaceChildren();
 				if (component.error) {
-					const dd = document.createElement("dd");
-					dd.textContent = component.error;
-					details.append(dd);
+					console.error("Error:", component.error);
 					return;
 				}
-				for (const [field, label] of Object.entries(componentLabels)) {
-					const value = component[field];
-					// Show every filled field; 0 counts as filled
-					if (value === null || value === undefined || String(value).trim() === "") {
-						continue;
-					}
-					const dt = document.createElement("dt");
-					dt.className = "label";
-					dt.textContent = label;
-					const dd = document.createElement("dd");
-					dd.textContent = String(value);
-					dd.style.whiteSpace = "pre-wrap";
-					dd.style.margin = "0 0 8px 0";
-					details.append(dt, dd);
-				}
+				talentList.append(buildTalentCard(component));
+				setTalentOptionDisabled(selectedId, true);
+				talentDropdown.value = "";
 			})
-			.catch(err => console.error("Error:", err));
+			.catch(err => console.error("Error:", err))
+			.finally(() => talentsPending.delete(selectedId));
 	});
 	
 	
