@@ -165,6 +165,3 @@ and corrects the problem. The details stay out of GitHub.
 
 - `CharacterSandbox.php` does not save data yet. The `Characters` table stores only
   name, owner, image and the six ability scores.
-- `resend.php` uses `$pdo` before it connects to the database.
-- `register.php` sets `display_errors = 1` and has a German debug message.
-- `users.PWreset_expires_at` is NOT NULL, but `reset.php` sets it to NULL.
