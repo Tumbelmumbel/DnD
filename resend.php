@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/tinymailer.php'; // send_mail()
+require_once __DIR__ . '/rate_limit.php';
 
 $info = t('resend.info');
 $errors = [];
@@ -12,8 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = t('err.invalid_session');
     } else {
         $email = is_string($_POST['email'] ?? null) ? trim(strtolower($_POST['email'])) : '';
-        if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $pdo = db();
+        // Limit: 5 requests per IP address and 3 per email address in one hour
+        $pdo = db();
+        $limitSubjects = [rate_limit_ip_hash(), rate_limit_email_hash($email)];
+        if (rate_limit_exceeded($pdo, 'resend', [[$limitSubjects[0], 5], [$limitSubjects[1], 3]], 60 * 60)) {
+            $errors[] = t('err.too_many');
+        } elseif ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            rate_limit_record($pdo, 'resend', $limitSubjects);
             delete_expired_unverified_users($pdo); // an expired registration gets no new link
             $stmt = $pdo->prepare('SELECT id, email_verified_at FROM users WHERE email = :email');
             $stmt->execute([':email' => $email]);

@@ -120,6 +120,7 @@ return [
     'err.invalid_email'     => 'Please enter a valid email.',
     'err.password_short'    => 'Password must be at least 8 characters.',
     'err.password_mismatch' => 'Passwords do not match.',
+    'err.too_many'          => 'Too many attempts. Please try again later.',
 
     // login.php
     'login.title'         => 'Sign in',

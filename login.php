@@ -1,17 +1,22 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/rate_limit.php';
 
 $errors = [];
 $info = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrf  = $_POST['csrf'] ?? '';
-    $email = trim(strtolower($_POST['email'] ?? ''));
-    $pass  = $_POST['password'] ?? '';
+    $email = is_string($_POST['email'] ?? null) ? trim(strtolower($_POST['email'])) : '';
+    $pass  = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+    // Limit: 10 failed sign-ins per IP address and 5 per email address in 15 minutes
+    $limitSubjects = [rate_limit_ip_hash(), rate_limit_email_hash($email)];
 	
-    if (!csrf_validate($csrf)) {
+    if (!csrf_validate(is_string($csrf) ? $csrf : '')) {
         $errors[] = t('err.invalid_session');
+    } elseif (rate_limit_exceeded(db(), 'login_failed', [[$limitSubjects[0], 10], [$limitSubjects[1], 5]], 15 * 60)) {
+        $errors[] = t('err.too_many');
     } else {
 		
 		$pdo = db();
@@ -43,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect('/characteroverview.php');
             }
         } else {
+            rate_limit_record($pdo, 'login_failed', $limitSubjects);
             $errors[] = t('login.invalid');
         }
     }
