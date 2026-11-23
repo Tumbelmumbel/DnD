@@ -4,7 +4,7 @@ This file describes the database of the DnD character manager.
 It shows all tables and all fields, the data type of each field, and the data that each field stores.
 
 - **Database:** `dbs15432866` (MySQL on IONOS)
-- **Last update:** 2026-11-23
+- **Last update:** 2026-11-24
 - **Foreign keys:** None. The tables do not have links in the database.
 - **SQL mode:** Empty (lenient). MySQL does not stop an incorrect value. It changes the value and gives a warning.
 
@@ -215,6 +215,53 @@ The field `id` identifies each row.
 | `components` | char(255) | | No | | Spell components (verbal, somatic, material). **(check)** |
 | `material` | char(255) | | No | | Material that a spell needs. **(check)** |
 
+## Items
+
+An item has only a name and tags. The name is unique. The tags come from a fixed list.
+Now there is no page to add items. Items and tags are added with SQL (a migration).
+
+### `items`
+
+This table stores the items. Each row is one item.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `id` | int unsigned | PK | No | AUTO_INCREMENT | Number of the item. Other tables refer to the item with this number, so the name can change. |
+| `name` | varchar(150) | UNI | No | | English name of the item (base language). Two items cannot have the same name. Upper and lower case count as the same name. |
+| `created_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time when the item was added. |
+| `updated_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time of the last change (MySQL sets it). |
+
+### `items_translation`
+
+This table stores the names of the items in other languages. Each row is the name of one item in one language.
+If a language has no row, the application shows the English name from `items`.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `item_id` | int unsigned | PK | No | | Number of the item (`items.id`). |
+| `lang` | varchar(5) | PK, UNI | No | | Language code, for example `de`. |
+| `name` | varchar(150) | UNI | No | | Name of the item in this language. Two items cannot have the same name in the same language. |
+
+### `tags`
+
+This table stores the tags that an item can have. Each row is one tag.
+Only a migration adds or changes tags. The names are in `Lookup_translation` (type `item_tag`).
+A tag is one piece of information without a value. Code can use a tag for logic, always by its `code`.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `code` | varchar(40) | PK | No | | Code of the tag, for example `finesse` or `heavy_armor`. |
+| `sort_order` | smallint | | No | 0 | Position of the tag in lists. |
+
+### `item_tags`
+
+This table stores the tags of each item. Each row is one tag of one item. An item can have any number of tags.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `item_id` | int unsigned | PK | No | | Number of the item (`items.id`). |
+| `tag_code` | varchar(40) | PK, IDX | No | | Code of the tag (`tags.code`). |
+
 ## Translations
 
 The application reads the names and texts of the game content from these tables, in the language of the user.
@@ -228,7 +275,7 @@ This table stores the names of the lookup values. Each row is the name of one va
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `type` | varchar(30) | PK | No | | Type of the value: `class`, `subclass`, `species`, `background`, `condition`, `damagetype` or `damage_influence`. |
+| `type` | varchar(30) | PK | No | | Type of the value: `class`, `subclass`, `species`, `background`, `condition`, `damagetype`, `damage_influence` or `item_tag`. |
 | `code` | varchar(60) | PK | No | | Code of the value, for example `bard` (see the field `code` or `class_code` / `subclass_code` of the game table). |
 | `lang` | varchar(5) | PK | No | | Language code, for example `en` or `de`. |
 | `name` | varchar(150) | | No | | Name of the value in this language, for example `Barde`. |
