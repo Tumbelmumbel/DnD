@@ -34,20 +34,23 @@ Descriptions with **(check)** are assumptions. The owner must examine and correc
 This table stores the user accounts. Each row is one user.
 The application uses this table for registration, login, email verification and password reset.
 
+**Unverified accounts:** `register.php` and `resend.php` delete each account that is not verified when its link has expired
+(function `delete_expired_unverified_users()` in `helper_functions.php`). Then the email and the username are free again.
+
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
 | `id` | int unsigned, auto_increment | PK | No | | Unique number of the user. MySQL sets this number automatically. |
 | `email` | varchar(255) | UNI | No | | Email address of the user. The application stores it in lowercase. The user signs in with this address. |
 | `username` | char(40) | UNI | No | | Name of the user. The `Characters` table uses this name to identify the owner of a character. |
-| `password_hash` | varchar(255) | | No | | Hash of the password (PHP `password_hash()`). The table does not store the password itself. |
+| `password_hash` | varchar(255) | | No | | Hash of the password (PHP `password_hash()`). The table does not store the password itself. A new account gets the hash of a random value. The user sets the real password with the link in the verification email (`verify.php`). |
 | `role` | enum('user','admin') | | No | `user` | Role of the user. `admin` gives access to the admin area. |
 | `email_verified_at` | datetime | | Yes | NULL | Date and time when the user verified the email address. NULL = not verified. A user who is not verified cannot sign in. |
 | `verification_token_hash` | char(64) | IDX | Yes | NULL | SHA-256 hash of the token in the verification link. NULL after verification. |
-| `verification_expires_at` | datetime | | Yes | NULL | Date and time when the verification link expires (24 hours after it is sent). |
+| `verification_expires_at` | datetime | | Yes | NULL | Date and time when the verification link expires (24 hours after it is sent). PHP writes this value with the PHP time. The PHP time and the MySQL time (`NOW()`) can be different, so compare it with the PHP time. |
 | `PWreset_token_hash` | char(64) | | Yes | NULL | SHA-256 hash of the token in the password reset link. NULL when no reset is open. |
 | `PWreset_expires_at` | datetime | | Yes | NULL | Date and time when the password reset link expires (24 hours after it is sent). NULL when no reset is open. |
 | `created_at` | timestamp | | Yes | CURRENT_TIMESTAMP | Date and time when the account was made. |
-| `session_version` | int | | No | `0` | Counter for the sessions of the user. A password reset increases the value by 1. Then all sessions with the old value end. |
+| `session_version` | int | | No | `0` | Counter for the sessions of the user. A password reset and the verification (`verify.php`) increase the value by 1. Then all sessions with the old value end. |
 | `language` | char(2) | | No | `en` | Language of the interface for this user, for example `en` or `de`. The application sets it when the user selects a language. `login.php` uses it at sign-in. |
 
 ### `Characters`

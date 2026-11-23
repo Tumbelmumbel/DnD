@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = is_string($_POST['email'] ?? null) ? trim(strtolower($_POST['email'])) : '';
         if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $pdo = db();
+            delete_expired_unverified_users($pdo); // an expired registration gets no new link
             $stmt = $pdo->prepare('SELECT id, email_verified_at FROM users WHERE email = :email');
             $stmt->execute([':email' => $email]);
             $user = $stmt->fetch();

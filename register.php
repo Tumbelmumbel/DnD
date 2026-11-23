@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 2) Username check: the result does not depend on the email
     if (empty($errors)) {
         $pdo = db();
+        delete_expired_unverified_users($pdo); // frees the email and username of expired registrations
         $stmt = $pdo->prepare('SELECT 1 FROM users WHERE username = :username');
         $stmt->execute([':username' => $username]);
         if ($stmt->fetchColumn()) {
