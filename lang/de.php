@@ -132,7 +132,7 @@ return [
     'register.username_hint' => '3 bis 40 Zeichen: A-Z, a-z, 0-9, . _ -',
     'register.username_rule' => 'Der Benutzername muss 3 bis 40 Zeichen lang sein: A-Z, a-z, 0-9, ".", "_" oder "-".',
     'register.username_taken' => 'Dieser Benutzername ist schon vergeben. Bitte wähle einen anderen.',
-    'register.sent'       => 'Wenn deine E-Mail-Adresse gültig ist, haben wir dir einen Bestätigungslink gesendet. Bitte prüfe dein Postfach.',
+    'register.sent'       => 'Wenn deine E-Mail-Adresse gültig ist, haben wir dir einen Link gesendet. Damit bestätigst du deine E-Mail-Adresse und legst dein Passwort fest.',
 
     // ForgottenPW.php und reset.php
     'forgot.title'        => 'Passwort vergessen',
@@ -143,8 +143,11 @@ return [
 
     // verify.php und resend.php
     'verify.title'        => 'E-Mail-Bestätigung',
-    'verify.ok'           => 'Deine E-Mail-Adresse wurde bestätigt.',
+    'verify.ok'           => 'Deine E-Mail-Adresse wurde bestätigt und dein Passwort ist gespeichert.',
     'verify.failed'       => 'Die Bestätigung ist fehlgeschlagen oder der Link ist abgelaufen. Unten kannst du einen neuen Link anfordern.',
+    'verify.set_password' => 'Lege dein Passwort fest',
+    'verify.account'      => 'Konto:',
+    'verify.submit'       => 'Passwort speichern und E-Mail bestätigen',
     'resend.title'        => 'Bestätigungslink',
     'resend.info'         => 'Wenn deine E-Mail-Adresse existiert und noch nicht bestätigt ist, haben wir dir einen neuen Bestätigungslink gesendet.',
 
@@ -167,7 +170,7 @@ return [
     'mail.hello'          => 'Hallo,',
     'mail.link_expires'   => 'Dieser Link ist 24 Stunden gültig.',
     'mail.verify.subject' => 'Bestätige deine E-Mail-Adresse',
-    'mail.verify.body'    => 'Bitte bestätige deine E-Mail-Adresse mit dem folgenden Link:',
+    'mail.verify.body'    => 'Bitte bestätige deine E-Mail-Adresse und lege dein Passwort mit dem folgenden Link fest:',
     'mail.exists.subject' => 'Du hast bereits ein Konto',
     'mail.exists.body'    => 'Jemand hat versucht, sich mit dieser E-Mail-Adresse zu registrieren. Du hast bereits ein Konto.',
     'mail.exists.sign_in' => 'Hier anmelden:',
