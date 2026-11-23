@@ -84,7 +84,7 @@ The name is only for display. Step 3 of the language plan moves the names into t
 
 This table stores the values of each class and subclass for each level.
 Each row is one combination of class, subclass and level (levels 1 to 20).
-The table has 380 rows: 19 class/subclass combinations × 20 levels.
+The table has 400 rows: 20 class/subclass combinations × 20 levels.
 The primary key is the combination of `class_code`, `subclass_code` and `Level`.
 
 | Field | Data type | Key | Null | Default | Description |
@@ -95,7 +95,7 @@ The primary key is the combination of `class_code`, `subclass_code` and `Level`.
 | `Subclass` | text | | No | | Name of the subclass, for example `Schule des Wissens`. Empty = the base class without a subclass. |
 | `Level` | tinyint | | No | | Character level (1 to 20). |
 | `Proficiency_Bonus` | tinyint | | No | | Proficiency bonus at this level. |
-| `Hit_Dice` | tinyint | | No | | Size of the hit die of the class, for example 8 for a d8. **(check)** |
+| `Hit_Dice` | tinyint | | No | | Size of the hit die of the class, for example 8 for a d8. |
 | `Spell_Prep_Method` | text | | No | | How the class gets its spells: `Preparation` (prepares spells) or `Knowledge` (knows a fixed list). |
 | `Spell_Modifier` | text | | No | | Ability for spellcasting, for example `Charisma`. Empty = the class does not cast spells. |
 | `Known_Cantrips` | tinyint | | No | | Number of cantrips that the character knows at this level. |
