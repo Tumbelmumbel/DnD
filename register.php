@@ -161,5 +161,6 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 </form>
 
 <p>Already have an account? <a href="/login.php">Sign in</a></p>
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

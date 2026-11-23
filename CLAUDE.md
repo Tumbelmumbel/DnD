@@ -32,6 +32,7 @@ PHPMailer) only after the owner agrees.
 | `CharacterSandbox.php` | Character sheet |
 | `calculation.js`, `calculation.php` | D&D calculations (modifiers) |
 | `i18n.php`, `lang/*.php`, `ajax/i18n.php` | Languages of the interface (see "Languages") |
+| `partials/language_footer.php` | Language menu at the end of every page (bottom right) |
 | `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`, `getComponent`) |
 | `Assets/style.css` | Shared stylesheet for all pages |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
@@ -239,6 +240,8 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
 - Add every new key to `lang/en.php` and `lang/de.php` in the same branch.
 - To add a language: add `lang/<code>.php` and one entry in `i18n_languages()` in `i18n.php`.
 - The selected language is in the session, in the cookie `lang` and in `users.language`.
+- **Every page includes `partials/language_footer.php` directly before `</body>`.** A page that can change its texts
+  in place defines `window.onLanguageChanged(data)`; other pages reload after a change of the language.
 - Content from the database (classes, species, talents) is not translated yet (later steps).
 
 ## Communication

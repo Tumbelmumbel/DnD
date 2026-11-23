@@ -138,5 +138,6 @@ function closeCreateModal() {
 
 
 
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

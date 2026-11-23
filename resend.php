@@ -56,5 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="info"><?= e($info) ?></div>
 <?php endif; ?>
 <p><a href="/login.php">Back to sign in</a></p>
+<?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>
