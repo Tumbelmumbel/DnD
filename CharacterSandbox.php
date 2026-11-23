@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/calculation.php';
+require __DIR__ . '/content_translation.php';
 guard_protect();
 
 // Database connection via bootstrap
@@ -18,14 +19,15 @@ $errors = [];
 
 		$subclasses[]=NULL;
 
-		// Lookup values: "code" identifies the value (never changes), "name" is only for display
-		$stmt = $pdo->prepare('SELECT DISTINCT class_code AS code, Class AS name FROM Classes ORDER BY Class');
+		// Lookup values: "code" identifies the value (never changes).
+		// The names come from Lookup_translation in the current language (content_translation.php).
+		$stmt = $pdo->prepare('SELECT DISTINCT class_code FROM Classes');
 		$stmt->execute();
-		$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$classes = lookup_list($pdo, $stmt->fetchAll(PDO::FETCH_COLUMN), 'class');
 
-		$stmt = $pdo->prepare('SELECT code, species AS name FROM Species ORDER BY species');
+		$stmt = $pdo->prepare('SELECT code FROM Species');
 		$stmt->execute();
-		$species = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$species = lookup_list($pdo, $stmt->fetchAll(PDO::FETCH_COLUMN), 'species');
 
 		// Abilities and their skills (codes; the names come from lang/*.php)
 		$stmt = $pdo->prepare('SELECT code FROM Abilities ORDER BY sort_order');
@@ -40,26 +42,24 @@ $errors = [];
 			}
 		}
 
-		$stmt = $pdo->prepare('SELECT code, background AS name FROM Backgrounds ORDER BY background');
+		$stmt = $pdo->prepare('SELECT code FROM Backgrounds');
 		$stmt->execute();
-		$backgrounds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$backgrounds = lookup_list($pdo, $stmt->fetchAll(PDO::FETCH_COLUMN), 'background');
 
-		$stmt = $pdo->prepare('SELECT code, influence AS name FROM Damage_influence ORDER BY influence');
+		$stmt = $pdo->prepare('SELECT code FROM Damage_influence');
 		$stmt->execute();
-		$damageInfluences = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$damageInfluences = lookup_list($pdo, $stmt->fetchAll(PDO::FETCH_COLUMN), 'damage_influence');
 
-		$stmt = $pdo->prepare('SELECT code, damagetype AS name FROM Damagetypes ORDER BY damagetype');
+		$stmt = $pdo->prepare('SELECT code FROM Damagetypes');
 		$stmt->execute();
-		$damageTypes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$damageTypes = lookup_list($pdo, $stmt->fetchAll(PDO::FETCH_COLUMN), 'damagetype');
 
-		$stmt = $pdo->prepare('SELECT code, char_condition AS name FROM Conditions ORDER BY char_condition');
+		$stmt = $pdo->prepare('SELECT code FROM Conditions');
 		$stmt->execute();
-		$conditions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$conditions = lookup_list($pdo, $stmt->fetchAll(PDO::FETCH_COLUMN), 'condition');
 
 		// Talents for the talent menu (only id and name; details come from the endpoint)
-		$stmt = $pdo->prepare("SELECT id, name FROM Game_component_library WHERE FIND_IN_SET('talent', type) > 0 ORDER BY name");
-		$stmt->execute();
-		$talents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$talents = talent_list($pdo);
 ?>
 
 <html lang="<?= e(current_lang()) ?>">
@@ -203,7 +203,7 @@ $errors = [];
 			</div>
 			<div class = "cs-field">
 				<label for = "species" data-i18n = "species"><?= e(t('species')) ?></label>
-				<select class = "class_dropdown" id = "species" name = "species">
+				<select class = "class_dropdown" id = "species" name = "species" data-lookup = "species">
 					<?php foreach ($species as $char_species): ?>
 						<option class = "Dropdown_Entry" value = "<?= e($char_species['code']) ?>"><?= e($char_species['name']) ?></option>
 					<?php endforeach; ?>
@@ -215,7 +215,7 @@ $errors = [];
 			</div>
 			<div class = "cs-field">
 				<label for = "class_dropdown" data-i18n = "class"><?= e(t('class')) ?></label>
-				<select class = "class_dropdown" id = "class_dropdown" name = "class_dropdown">
+				<select class = "class_dropdown" id = "class_dropdown" name = "class_dropdown" data-lookup = "class">
 					<?php foreach ($classes as $class): ?>
 						<option class = "Dropdown_Entry" value = "<?= e($class['code']) ?>"><?= e($class['name']) ?></option>
 					<?php endforeach; ?>
@@ -223,11 +223,11 @@ $errors = [];
 			</div>
 			<div class = "cs-field">
 				<label for = "subclass_dropdown" data-i18n = "subclass"><?= e(t('subclass')) ?></label>
-				<select class = "class_dropdown" id = "subclass_dropdown" name = "subclass_dropdown"></select>
+				<select class = "class_dropdown" id = "subclass_dropdown" name = "subclass_dropdown" data-lookup = "subclass"></select>
 			</div>
 			<div class = "cs-field">
 				<label for = "backgrounds" data-i18n = "background"><?= e(t('background')) ?></label>
-				<select class = "class_dropdown" id = "backgrounds" name = "backgrounds">
+				<select class = "class_dropdown" id = "backgrounds" name = "backgrounds" data-lookup = "background">
 					<?php foreach ($backgrounds as $background): ?>
 						<option class = "Dropdown_Entry" value = "<?= e($background['code']) ?>"><?= e($background['name']) ?></option>
 					<?php endforeach; ?>
@@ -320,13 +320,13 @@ $errors = [];
 						<button type = "button" class = "button add" id = "addDamageImmunity" aria-label = "<?= e(t('add_defense_line')) ?>" data-i18n-aria = "add_defense_line">+</button>
 					</div>
 					<div class = "cs-line" id = "defense_line0">
-						<select class = "class_dropdown" name = "damageInfluence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
+						<select class = "class_dropdown" name = "damageInfluence" data-lookup = "damage_influence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($damageInfluences as $damageInfluence): ?>
 								<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
 							<?php endforeach; ?>
 						</select>
-						<select class = "class_dropdown" name = "damageType" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
+						<select class = "class_dropdown" name = "damageType" data-lookup = "damagetype" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($damageTypes as $damageType): ?>
 								<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
@@ -342,7 +342,7 @@ $errors = [];
 						<button type = "button" class = "button add" id = "addCondition" aria-label = "<?= e(t('add_condition')) ?>" data-i18n-aria = "add_condition">+</button>
 					</div>
 					<div class = "cs-line" id = "condition_line0">
-						<select class = "class_dropdown" name = "conditions" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
+						<select class = "class_dropdown" name = "conditions" data-lookup = "condition" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($conditions as $condition): ?>
 								<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
@@ -601,6 +601,7 @@ document.getElementById("Level").addEventListener("change", function () {
 	function refreshTalentCard(card) {
 		const component = card._component;
 		if (!component) return;
+		card.querySelector(".talent_card_title").textContent = component.name;
 		const facts = [];
 		if (isFilled(component.action_type)) {
 			facts.push(String(component.action_type));
@@ -764,6 +765,54 @@ document.getElementById("Level").addEventListener("change", function () {
 		I18N = data.texts;
 		document.documentElement.lang = data.lang;
 		applyI18n();
+		refreshContentNames();
 	};
+
+	// Give the entries of a list new names ({value: name}) and sort them; the empty entry stays first.
+	// Moving an option keeps its selection.
+	function renameOptions(select, names) {
+		for (const option of select.options) {
+			if (option.value !== "" && Object.prototype.hasOwnProperty.call(names, option.value)) {
+				option.textContent = names[option.value];
+			}
+		}
+		const lang = document.documentElement.lang;
+		[...select.options]
+			.filter(option => option.value !== "")
+			.sort((a, b) => a.textContent.localeCompare(b.textContent, lang, { sensitivity: "base" }))
+			.forEach(option => select.appendChild(option));
+	}
+
+	// Load the names of the game content (lists, talents) in the new language
+	function refreshContentNames() {
+		fetch("/ajax/sandbox_endpoint.php?action=getContentNames")
+			.then(r => r.json())
+			.then(content => {
+				if (content.error) {
+					console.error("Error:", content.error);
+					return;
+				}
+				document.querySelectorAll("select[data-lookup]").forEach(select =>
+					renameOptions(select, (content.lookup || {})[select.dataset.lookup] || {}));
+				renameOptions(talentDropdown, content.talents || {});
+				updateBar();
+			})
+			.catch(err => console.error("Error:", err));
+
+		// Each talent card loads its texts again
+		talentList.querySelectorAll(".talent_card").forEach(card => {
+			fetch(`/ajax/sandbox_endpoint.php?action=getComponent&id=${encodeURIComponent(card.dataset.id)}`)
+				.then(r => r.json())
+				.then(component => {
+					if (component.error) {
+						console.error("Error:", component.error);
+						return;
+					}
+					card._component = component;
+					refreshTalentCard(card);
+				})
+				.catch(err => console.error("Error:", err));
+		});
+	}
 
 </script>

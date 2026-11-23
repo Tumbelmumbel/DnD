@@ -78,7 +78,10 @@ The application reads these tables to fill the lists in the character sheet. Use
 **Codes:** each lookup value has a fixed English code, for example `bard`, `folk_hero` or `fire`.
 The code has only lowercase letters, digits and `_`. Do not change a code after it is in use.
 The code identifies the value. The application uses the code in field values, ids and requests.
-The name is only for display. Step 3 of the language plan moves the names into translation tables.
+The name is only for display.
+
+**Names:** the application reads the names from `Lookup_translation` (see "Translations"), not from the name fields of these tables.
+The name fields (`Class`, `Subclass`, `species`, `background`, `char_condition`, `damagetype`, `influence`) are no longer read. Delete them later with a separate migration.
 
 ### `Classes`
 
@@ -211,3 +214,41 @@ The field `id` identifies each row.
 | `precondition` | char(255) | | No | | Condition that the character must meet to use the component. **(check)** |
 | `components` | char(255) | | No | | Spell components (verbal, somatic, material). **(check)** |
 | `material` | char(255) | | No | | Material that a spell needs. **(check)** |
+
+## Translations
+
+The application reads the names and texts of the game content from these tables, in the language of the user.
+If a text is missing in this language, the application uses the English text (`lang = 'en'`).
+Each new lookup value and each new game component needs an English row. A German row is recommended.
+
+### `Lookup_translation`
+
+This table stores the names of the lookup values. Each row is the name of one value in one language.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `type` | varchar(30) | PK | No | | Type of the value: `class`, `subclass`, `species`, `background`, `condition`, `damagetype` or `damage_influence`. |
+| `code` | varchar(60) | PK | No | | Code of the value, for example `bard` (see the field `code` or `class_code` / `subclass_code` of the game table). |
+| `lang` | varchar(5) | PK | No | | Language code, for example `en` or `de`. |
+| `name` | varchar(150) | | No | | Name of the value in this language, for example `Barde`. |
+
+### `Game_component_library_translation`
+
+This table stores the texts of the game components (now only talents). Each row is the texts of one component in one language.
+A field with NULL uses the English row. If the English row has NULL too, the application uses the field of `Game_component_library`.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `component_id` | int unsigned | PK | No | | Number of the component (`Game_component_library.id`). |
+| `lang` | varchar(5) | PK | No | | Language code, for example `en` or `de`. |
+| `name` | varchar(255) | | No | | Name of the component in this language. |
+| `description` | text | | No | | Rules text of the component in this language. |
+| `action_type` | varchar(255) | | Yes | NULL | Action that the component needs, for example `Bonus action`. |
+| `range` | varchar(255) | | Yes | NULL | Range of the component. |
+| `attack_type` | varchar(255) | | Yes | NULL | Type of attack. |
+| `magic_effect` | varchar(255) | | Yes | NULL | Magic effect of the component. |
+| `projectile` | varchar(255) | | Yes | NULL | Projectile that the component needs. |
+| `duration` | varchar(255) | | Yes | NULL | Duration of the effect. |
+| `precondition` | varchar(255) | | Yes | NULL | Condition that the character must meet to use the component. |
+| `components` | varchar(255) | | Yes | NULL | Spell components. |
+| `material` | varchar(255) | | Yes | NULL | Material that a spell needs. |
