@@ -76,17 +76,18 @@ $errors = [];
 .cs-card { background: var(--cs-card); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;
 	box-shadow: 0 1px 2px rgba(74, 68, 49, 0.15); min-width: 0; }
 .cs-card h2 { margin: 0; font-size: 18px; }
-/* Picture of the character (top center) and the larger view */
-.cs-picture { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.cs-picture-frame { width: 160px; height: 160px; border-radius: 50%; padding: 0; overflow: hidden; cursor: pointer;
-	border: 3px solid var(--cs-border); background: var(--cs-field); color: var(--cs-border);
-	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; }
-.cs-picture-frame:focus-visible { outline: 3px solid var(--cs-accent); outline-offset: 3px; }
+/* Picture of the character (in the bar, left) and the larger view */
+.cs-picture-frame { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 50%; padding: 0; overflow: hidden; cursor: pointer;
+	border: 2px solid rgba(255, 253, 246, 0.6); background: rgba(255, 253, 246, 0.12); color: #FFFDF6;
+	display: flex; align-items: center; justify-content: center; font: inherit; }
+.cs-picture-frame:focus-visible { outline: 3px solid #FFFDF6; outline-offset: 2px; }
 .cs-picture-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cs-picture [hidden] { display: none; }
-.cs-picture-plus { font-size: 44px; line-height: 1; font-weight: 700; }
-.cs-picture-text { font-size: 14px; font-weight: 700; color: var(--text); }
-.cs-picture-error { min-height: 1.2em; margin: 0; color: #A40000; font-size: 14px; text-align: center; }
+.cs-picture-frame [hidden] { display: none; }
+.cs-picture-plus { font-size: 30px; line-height: 1; font-weight: 700; }
+/* Error message: a box under the bar; it does not change the height of the bar */
+.cs-picture-error { position: absolute; top: 100%; left: 16px; margin: 4px 0 0; padding: 8px 12px; border-radius: 8px;
+	background: #FFECEC; color: #A40000; font-size: 14px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+.cs-picture-error:empty { display: none; }
 .cs-picture-dialog { border: 0; border-radius: 12px; padding: 16px; max-width: min(92vw, 900px); background: #F3EDDA; }
 .cs-picture-dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .cs-picture-dialog img { display: block; max-width: 100%; max-height: 72vh; margin: 0 auto; border-radius: 8px; }
@@ -157,7 +158,7 @@ $errors = [];
 .cs-bar { position: sticky; top: 0; z-index: 10; background: #4A4431; color: #FFFDF6;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); font-family: var(--fonts); }
 .cs-bar-inner { max-width: 1240px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.cs-bar-who { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; }
+.cs-bar-who { flex: 1 1 120px; min-width: 0; display: flex; flex-direction: column; }
 .cs-bar-name { font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-bar-sub { font-size: 13px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-bar-hp { display: flex; align-items: center; gap: 8px; background: rgba(255, 253, 246, 0.12); border-radius: 28px; padding: 4px; }
@@ -194,6 +195,12 @@ $errors = [];
 <body>
 <header class = "cs-bar" aria-label = "<?= e(t('character_summary')) ?>" data-i18n-aria = "character_summary">
 	<div class = "cs-bar-inner">
+		<!-- Picture of the character (only a preview in the browser; the upload comes with the save function) -->
+		<button type = "button" class = "cs-picture-frame" id = "pictureButton" aria-label = "<?= e(t('picture.add')) ?>" title = "<?= e(t('picture.add')) ?>">
+			<span class = "cs-picture-plus" id = "picturePlus" aria-hidden = "true">+</span>
+			<img id = "pictureThumb" alt = "" hidden>
+		</button>
+		<input type = "file" id = "pictureFile" accept = "image/png" hidden>
 		<div class = "cs-bar-who">
 			<span class = "cs-bar-name" id = "bar_name">–</span>
 			<span class = "cs-bar-sub" id = "bar_sub"></span>
@@ -208,19 +215,10 @@ $errors = [];
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></div>
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></div>
 	</div>
+	<p class = "cs-picture-error" id = "pictureError" role = "alert"></p>
 </header>
 <div class = "cs-page" id = "character_basics">
 
-	<!-- Picture of the character (only a preview in the browser; the upload comes with the save function) -->
-	<section class = "cs-picture" aria-label = "<?= e(t('picture.title')) ?>" data-i18n-aria = "picture.title">
-		<button type = "button" class = "cs-picture-frame" id = "pictureButton">
-			<span class = "cs-picture-plus" id = "picturePlus" aria-hidden = "true">+</span>
-			<span class = "cs-picture-text" id = "pictureText" data-i18n = "picture.add"><?= e(t('picture.add')) ?></span>
-			<img id = "pictureThumb" alt = "" hidden>
-		</button>
-		<input type = "file" id = "pictureFile" accept = "image/png" hidden>
-		<p class = "cs-picture-error" id = "pictureError" role = "alert"></p>
-	</section>
 	<dialog class = "cs-picture-dialog" id = "pictureDialog" aria-label = "<?= e(t('picture.title')) ?>" data-i18n-aria = "picture.title">
 		<img id = "pictureLarge" alt = "">
 		<div class = "cs-picture-actions">
@@ -886,10 +884,19 @@ function updatePictureUI() {
 	const hasPicture = characterPicture !== null;
 	pictureThumb.hidden = !hasPicture;
 	document.getElementById("picturePlus").hidden = hasPicture;
-	document.getElementById("pictureText").hidden = hasPicture;
-	pictureButton.setAttribute("aria-label", tr(hasPicture ? "picture.show" : "picture.add"));
+	const label = tr(hasPicture ? "picture.show" : "picture.add");
+	pictureButton.setAttribute("aria-label", label);
+	pictureButton.title = label;
 	pictureThumb.alt = hasPicture ? tr("picture.alt") : "";
 	pictureLarge.alt = hasPicture ? tr("picture.alt") : "";
+}
+
+// Error message under the bar; it disappears after 6 seconds
+let pictureErrorTimer = null;
+function showPictureError(text) {
+	pictureError.textContent = text;
+	clearTimeout(pictureErrorTimer);
+	if (text) pictureErrorTimer = setTimeout(() => { pictureError.textContent = ""; }, 6000);
 }
 
 // true if the file starts with the PNG signature (the file type alone can be wrong)
@@ -908,7 +915,7 @@ function setPicture(file) {
 }
 
 pictureButton.addEventListener("click", function () {
-	pictureError.textContent = "";
+	showPictureError("");
 	if (characterPicture) {
 		pictureDialog.showModal();
 	} else {
@@ -921,14 +928,14 @@ pictureFile.addEventListener("change", async function () {
 	this.value = ""; // the same file can be selected again
 	if (!file) return;
 	if (file.size > PICTURE_MAX_BYTES) {
-		pictureError.textContent = tr("picture.err_size");
+		showPictureError(tr("picture.err_size"));
 		return;
 	}
 	if (file.type !== "image/png" || !(await isPngFile(file))) {
-		pictureError.textContent = tr("picture.err_type");
+		showPictureError(tr("picture.err_type"));
 		return;
 	}
-	pictureError.textContent = "";
+	showPictureError("");
 	setPicture(file);
 });
 
