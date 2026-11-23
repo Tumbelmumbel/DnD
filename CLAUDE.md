@@ -33,7 +33,8 @@ PHPMailer) only after the owner agrees.
 | `calculation.js`, `calculation.php` | D&D calculations (modifiers) |
 | `i18n.php`, `lang/*.php`, `ajax/i18n.php` | Languages of the interface (see "Languages") |
 | `partials/language_footer.php` | Language menu at the end of every page (bottom right) |
-| `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`, `getComponent`) |
+| `content_translation.php` | Names and texts of the game content in the current language (`lookup_list()`, `talent_list()`, ...) |
+| `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`, `getComponent`, `getContentNames`) |
 | `Assets/style.css` | Shared stylesheet for all pages |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
@@ -246,7 +247,11 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
 - The selected language is in the session, in the cookie `lang` and in `users.language`.
 - **Every page includes `partials/language_footer.php` directly before `</body>`.** A page that can change its texts
   in place defines `window.onLanguageChanged(data)`; other pages reload after a change of the language.
-- Content from the database (classes, species, talents) is not translated yet (later steps).
+- **Content from the database** (classes, species, conditions, talents, ...) comes from the tables `Lookup_translation`
+  and `Game_component_library_translation` (functions in `content_translation.php`). A missing text falls back to English.
+  Each new value or talent needs an English row, and a German row is recommended (same migration).
+- On `CharacterSandbox.php`, a list with game content has `data-lookup="<type>"`. After a change of the language,
+  the page loads `getContentNames` and renames the entries in place.
 
 ## Communication
 
