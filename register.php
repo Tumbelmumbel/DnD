@@ -31,8 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrf     = post_text('csrf');
     $email    = trim(strtolower(post_text('email')));
     $username = trim(post_text('username'));
-    $pass     = post_text('password');
-    $pass2    = post_text('password2');
     $formEmail    = trim(post_text('email'));
     $formUsername = $username;
 
@@ -44,8 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!preg_match('/^[A-Za-z0-9_.\-]{3,40}$/D', $username)) {
         $errors[] = t('register.username_rule');
     }
-    if (strlen($pass) < 8)                          $errors[] = t('err.password_short');
-    if ($pass !== $pass2)                           $errors[] = t('err.password_mismatch');
 
     // 2) Username check: the result does not depend on the email
     if (empty($errors)) {
@@ -61,7 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         $info = t('register.sent');
 
-        $hash      = password_hash($pass, PASSWORD_DEFAULT); // always, so that all cases take the same time
+        // A random password that nobody knows. The user sets the real password with the link in the mail (verify.php).
+        // Hash it in every case, so that all cases take the same time.
+        $hash      = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
         $token     = new_token();
         $tokenHash = hash('sha256', $token);
         $expires   = (new DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
@@ -85,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             send_mail($email, t('mail.exists.subject'), $html, $text);
 
         } elseif ($existing) {
-            // Unverified account exists: keep its password and username, send a new link only
+            // Unverified account exists: keep its username, send a new link only
             $stmt = $pdo->prepare('
                 UPDATE users
                 SET verification_token_hash = :th, verification_expires_at = :exp
@@ -159,10 +157,6 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
   <input id="email" name="email" type="email" required autocomplete="email" value="<?= e($errors ? $formEmail : '') ?>">
   <label for="username"><?= e(t('username')) ?></label>
   <input id="username" name="username" type="text" value="<?= e($errors ? $formUsername : '') ?>" required minlength="3" maxlength="40" pattern="[A-Za-z0-9_.\-]{3,40}" title="<?= e(t('register.username_hint')) ?>" autocomplete="username">
-  <label for="password"><?= e(t('password')) ?></label>
-  <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
-  <label for="password2"><?= e(t('repeat_password')) ?></label>
-  <input id="password2" name="password2" type="password" required minlength="8" autocomplete="new-password">
   <button type="submit"><?= e(t('register')) ?></button>
 </form>
 

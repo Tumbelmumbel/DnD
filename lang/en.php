@@ -133,7 +133,7 @@ return [
     'register.username_hint' => '3 to 40 characters: A-Z, a-z, 0-9, . _ -',
     'register.username_rule' => 'Username must be 3 to 40 characters: A-Z, a-z, 0-9, ".", "_" or "-".',
     'register.username_taken' => 'Username already taken. Please try another.',
-    'register.sent'       => 'If your email is valid, we have sent a verification link. Please check your inbox.',
+    'register.sent'       => 'If your email is valid, we have sent you a link. Use it to confirm your email and to set your password.',
 
     // ForgottenPW.php and reset.php
     'forgot.title'        => 'Forgot password',
@@ -144,8 +144,11 @@ return [
 
     // verify.php and resend.php
     'verify.title'        => 'Email verification',
-    'verify.ok'           => 'Your email has been verified.',
+    'verify.ok'           => 'Your email has been verified and your password is saved.',
     'verify.failed'       => 'Verification failed or the link has expired. You can request a new link below.',
+    'verify.set_password' => 'Set your password',
+    'verify.account'      => 'Account:',
+    'verify.submit'       => 'Save password and confirm email',
     'resend.title'        => 'Verification link',
     'resend.info'         => 'If your email exists and is not verified, we have sent a new verification link.',
 
@@ -168,7 +171,7 @@ return [
     'mail.hello'          => 'Hello,',
     'mail.link_expires'   => 'This link expires in 24 hours.',
     'mail.verify.subject' => 'Verify your email',
-    'mail.verify.body'    => 'Please verify your email with the link below:',
+    'mail.verify.body'    => 'Please confirm your email and set your password with the link below:',
     'mail.exists.subject' => 'You already have an account',
     'mail.exists.body'    => 'Somebody tried to register with this email address. You already have an account.',
     'mail.exists.sign_in' => 'Sign in here:',
