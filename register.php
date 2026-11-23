@@ -6,6 +6,8 @@ require_once __DIR__ . '/tinymailer.php'; // send_mail()
 
 $info = '';
 $errors = [];
+$formEmail = '';    // shown again in the form after an error
+$formUsername = '';
 
 /** Text value of a POST field ('' if missing or not text) */
 function post_text(string $key): string {
@@ -31,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim(post_text('username'));
     $pass     = post_text('password');
     $pass2    = post_text('password2');
+    $formEmail    = trim(post_text('email'));
+    $formUsername = $username;
 
     // 1) Validate the form. Stop here if anything is wrong.
     if (!csrf_validate($csrf))                      $errors[] = t('err.invalid_session');
@@ -152,9 +156,9 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 <form method="post" action="">
   <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
   <label for="email"><?= e(t('email')) ?></label>
-  <input id="email" name="email" type="email" required autocomplete="email">
+  <input id="email" name="email" type="email" required autocomplete="email" value="<?= e($errors ? $formEmail : '') ?>">
   <label for="username"><?= e(t('username')) ?></label>
-  <input id="username" name="username" type="text" required minlength="3" maxlength="40" pattern="[A-Za-z0-9_.\-]{3,40}" title="<?= e(t('register.username_hint')) ?>" autocomplete="username">
+  <input id="username" name="username" type="text" value="<?= e($errors ? $formUsername : '') ?>" required minlength="3" maxlength="40" pattern="[A-Za-z0-9_.\-]{3,40}" title="<?= e(t('register.username_hint')) ?>" autocomplete="username">
   <label for="password"><?= e(t('password')) ?></label>
   <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
   <label for="password2"><?= e(t('repeat_password')) ?></label>
