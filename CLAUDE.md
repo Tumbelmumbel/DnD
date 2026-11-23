@@ -72,6 +72,8 @@ This applies to the **pull request description** and the **commit message**.
 - The pull request description must say: **"Run the migration BEFORE you merge."**
 - Code must not use a new column or table before its migration exists.
 - The current schema has no foreign keys and `sql_mode` is empty (lenient mode).
+- Code refers to a lookup value (class, species, skill, condition, ...) only by its `code`, never by its name.
+  The name is only for display.
 
 ### `database_description.md`
 

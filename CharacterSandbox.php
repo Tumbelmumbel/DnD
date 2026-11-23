@@ -18,42 +18,43 @@ $errors = [];
 
 		$subclasses[]=NULL;
 
-		$stmt = $pdo->prepare('SELECT DISTINCT Class FROM Classes');
+		// Lookup values: "code" identifies the value (never changes), "name" is only for display
+		$stmt = $pdo->prepare('SELECT DISTINCT class_code AS code, Class AS name FROM Classes ORDER BY Class');
 		$stmt->execute();
-		$classes = $stmt->fetchall(PDO::FETCH_COLUMN);
+		$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-		$stmt = $pdo->prepare('SELECT DISTINCT species FROM Species');
+		$stmt = $pdo->prepare('SELECT code, species AS name FROM Species ORDER BY species');
 		$stmt->execute();
-		$species = $stmt->fetchall(PDO::FETCH_COLUMN);
+		$species = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-		$stmt = $pdo->prepare('SELECT ability, skills FROM abilities_skills');
+		// Abilities and their skills (codes; the names come from lang/*.php)
+		$stmt = $pdo->prepare('SELECT code FROM Abilities ORDER BY sort_order');
 		$stmt->execute();
-		$abilities_skills = $stmt->fetchall();
-		
-	Foreach ($abilities_skills as $row) {
-			if ($row['skills'] === NULL) {
-				$abilities[$row['ability']]= $skills = [];
+		$abilities = array_fill_keys($stmt->fetchAll(PDO::FETCH_COLUMN), []);
+
+		$stmt = $pdo->prepare('SELECT code, ability_code FROM Skills ORDER BY sort_order');
+		$stmt->execute();
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+			if (isset($abilities[$row['ability_code']])) {
+				$abilities[$row['ability_code']][] = $row['code'];
 			}
-			else {
-				$abilities[$row['ability']]= $skills = explode(',', $row['skills']);
+		}
 
-			}
-	}		
-		$stmt = $pdo->prepare('SELECT background FROM Backgrounds');
+		$stmt = $pdo->prepare('SELECT code, background AS name FROM Backgrounds ORDER BY background');
 		$stmt->execute();
-		$backgrounds = $stmt->fetchall(PDO::FETCH_COLUMN);
-	
-		$stmt = $pdo->prepare('SELECT influence FROM Damage_influence');
-		$stmt->execute();
-		$damageInfluences = $stmt->fetchall(PDO::FETCH_COLUMN);
+		$backgrounds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-		$stmt = $pdo->prepare('SELECT damagetype FROM Damagetypes');
+		$stmt = $pdo->prepare('SELECT code, influence AS name FROM Damage_influence ORDER BY influence');
 		$stmt->execute();
-		$damageTypes = $stmt->fetchall(PDO::FETCH_COLUMN);
+		$damageInfluences = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-		$stmt = $pdo->prepare('SELECT char_condition FROM Conditions');
+		$stmt = $pdo->prepare('SELECT code, damagetype AS name FROM Damagetypes ORDER BY damagetype');
 		$stmt->execute();
-		$conditions = $stmt->fetchall(PDO::FETCH_COLUMN);
+		$damageTypes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+		$stmt = $pdo->prepare('SELECT code, char_condition AS name FROM Conditions ORDER BY char_condition');
+		$stmt->execute();
+		$conditions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 		// Talents for the talent menu (only id and name; details come from the endpoint)
 		$stmt = $pdo->prepare("SELECT id, name FROM Game_component_library WHERE FIND_IN_SET('talent', type) > 0 ORDER BY name");
@@ -204,7 +205,7 @@ $errors = [];
 				<label for = "species" data-i18n = "species"><?= e(t('species')) ?></label>
 				<select class = "class_dropdown" id = "species" name = "species">
 					<?php foreach ($species as $char_species): ?>
-						<option id = "<?= e($char_species) ?>" class = "Dropdown_Entry" value = "<?= e($char_species) ?>"><?= e($char_species) ?></option>
+						<option class = "Dropdown_Entry" value = "<?= e($char_species['code']) ?>"><?= e($char_species['name']) ?></option>
 					<?php endforeach; ?>
 				</select>
 			</div>
@@ -216,7 +217,7 @@ $errors = [];
 				<label for = "class_dropdown" data-i18n = "class"><?= e(t('class')) ?></label>
 				<select class = "class_dropdown" id = "class_dropdown" name = "class_dropdown">
 					<?php foreach ($classes as $class): ?>
-						<option id = "<?= e($class) ?>" class = "Dropdown_Entry" value = "<?= e($class) ?>"><?= e($class) ?></option>
+						<option class = "Dropdown_Entry" value = "<?= e($class['code']) ?>"><?= e($class['name']) ?></option>
 					<?php endforeach; ?>
 				</select>
 			</div>
@@ -228,7 +229,7 @@ $errors = [];
 				<label for = "backgrounds" data-i18n = "background"><?= e(t('background')) ?></label>
 				<select class = "class_dropdown" id = "backgrounds" name = "backgrounds">
 					<?php foreach ($backgrounds as $background): ?>
-						<option id = "<?= e($background) ?>" class = "Dropdown_Entry" value = "<?= e($background) ?>"><?= e($background) ?></option>
+						<option class = "Dropdown_Entry" value = "<?= e($background['code']) ?>"><?= e($background['name']) ?></option>
 					<?php endforeach; ?>
 				</select>
 			</div>
@@ -322,13 +323,13 @@ $errors = [];
 						<select class = "class_dropdown" name = "damageInfluence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($damageInfluences as $damageInfluence): ?>
-								<option class = "Dropdown_Entry" value = "<?= e($damageInfluence) ?>"><?= e($damageInfluence) ?></option>
+								<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
 							<?php endforeach; ?>
 						</select>
 						<select class = "class_dropdown" name = "damageType" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($damageTypes as $damageType): ?>
-								<option class = "Dropdown_Entry" value = "<?= e($damageType) ?>"><?= e($damageType) ?></option>
+								<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
 							<?php endforeach; ?>
 						</select>
 						<button type = "button" class = "button delete defense" aria-label = "<?= e(t('remove_line')) ?>" data-i18n-aria = "remove_line">-</button>
@@ -344,7 +345,7 @@ $errors = [];
 						<select class = "class_dropdown" name = "conditions" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
 							<option class = "Dropdown_Entry"></option>
 							<?php foreach ($conditions as $condition): ?>
-								<option class = "Dropdown_Entry"><?= e($condition) ?></option>
+								<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
 							<?php endforeach; ?>
 						</select>
 						<button type = "button" class = "button delete condition" aria-label = "<?= e(t('remove_condition')) ?>" data-i18n-aria = "remove_condition">-</button>
@@ -353,37 +354,27 @@ $errors = [];
 			</div>
 		</div>
 
-		<!-- Abilities (standard order; the logic does not depend on the order) -->
+		<!-- Abilities (order from Abilities.sort_order; ids use the codes) -->
 		<section class = "cs-abilities" aria-label = "<?= e(t('abilities')) ?>" data-i18n-aria = "abilities">
-			<?php
-			$abilityOrder = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma'];
-			$abilitiesDisplay = [];
-			foreach ($abilityOrder as $name) {
-				if (isset($abilities[$name])) {
-					$abilitiesDisplay[$name] = $abilities[$name];
-				}
-			}
-			$abilitiesDisplay += $abilities; // any other ability from the database
-			?>
-			<?php foreach ($abilitiesDisplay as $ability => $skills): ?>
+			<?php foreach ($abilities as $ability => $skills): ?>
 			<div class = "cs-card cs-ability">
 				<div class = "cs-ability-head">
-					<output class = "cs-mod" name = "<?= e($ability) ?>_Modifier" id = "<?= e($ability) ?>_Modifier">0</output>
+					<output class = "cs-mod" name = "ability_<?= e($ability) ?>_mod" id = "ability_<?= e($ability) ?>_mod">0</output>
 					<div class = "cs-field" style = "flex: 1;">
-						<label for = "<?= e($ability) ?>" data-i18n = "ability.<?= e($ability) ?>"><?= e(t('ability.' . $ability, $ability)) ?></label>
-						<input name = "<?= e($ability) ?>" id = "<?= e($ability) ?>" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
+						<label for = "ability_<?= e($ability) ?>" data-i18n = "ability.<?= e($ability) ?>"><?= e(t('ability.' . $ability, $ability)) ?></label>
+						<input name = "ability_<?= e($ability) ?>" id = "ability_<?= e($ability) ?>" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
 					</div>
 				</div>
 				<label class = "cs-check cs-save">
-					<input type = "checkbox" name = "<?= e($ability) ?>_Savingthrow_Proficiency" id = "<?= e($ability) ?>_Savingthrow_Proficiency">
+					<input type = "checkbox" name = "save_<?= e($ability) ?>_prof" id = "save_<?= e($ability) ?>_prof">
 					<span data-i18n = "saving_throw"><?= e(t('saving_throw')) ?></span>
-					<output name = "<?= e($ability) ?>_Savingthrow" id = "<?= e($ability) ?>_Savingthrow">0</output>
+					<output name = "save_<?= e($ability) ?>" id = "save_<?= e($ability) ?>">0</output>
 				</label>
 				<?php foreach ($skills as $skill): ?>
 				<label class = "cs-check">
-					<input type = "checkbox" name = "<?= e($skill) ?>_Proficiency" id = "<?= e($skill) ?>_Proficiency">
-					<span data-i18n = "skill.<?= e(trim($skill)) ?>"><?= e(t('skill.' . trim($skill), trim($skill))) ?></span>
-					<output name = "<?= e($skill) ?>" id = "<?= e($skill) ?>">0</output>
+					<input type = "checkbox" name = "skill_<?= e($skill) ?>_prof" id = "skill_<?= e($skill) ?>_prof">
+					<span data-i18n = "skill.<?= e($skill) ?>"><?= e(t('skill.' . $skill, $skill)) ?></span>
+					<output name = "skill_<?= e($skill) ?>" id = "skill_<?= e($skill) ?>">0</output>
 				</label>
 				<?php endforeach; ?>
 			</div>
@@ -488,14 +479,14 @@ function updateAbilityUI(abilityName) {
   const score = state[abilityName];
 
 
-  document.getElementById(`${abilityName}_Modifier`).textContent =
+  document.getElementById(`ability_${abilityName}_mod`).textContent =
     ability_modifier(score);
 
-  document.getElementById(`${abilityName}_Savingthrow`).textContent =
+  document.getElementById(`save_${abilityName}`).textContent =
     skill_save_modifier(score, state[`${abilityName}_Savingthrow_Proficiency`], state.Proficiency_Bonus);
 
   for (const skill of abilities[abilityName]) {
-    document.getElementById(skill).textContent =
+    document.getElementById(`skill_${skill}`).textContent =
       skill_save_modifier(score, state[`${skill}_Proficiency`], state.Proficiency_Bonus);
   }
 }
@@ -504,20 +495,20 @@ function updateAbilityUI(abilityName) {
 for (const [ability, skills] of Object.entries(abilities)) {
 
   // Ability score input
-  document.getElementById(ability).addEventListener("input", function () {
+  document.getElementById(`ability_${ability}`).addEventListener("input", function () {
     state[ability] = this.value;
     updateAbilityUI(ability);
   });
 
   // Saving throw proficiency checkbox
-  document.getElementById(`${ability}_Savingthrow_Proficiency`).addEventListener("input", function () {
+  document.getElementById(`save_${ability}_prof`).addEventListener("input", function () {
     state[`${ability}_Savingthrow_Proficiency`] = this.checked ? 1 : 0;
     updateAbilityUI(ability);
   });
 
   // Skill proficiency checkboxes
 	for (const skill of skills) {
-	document.getElementById(`${skill}_Proficiency`).addEventListener("input", function () {
+	document.getElementById(`skill_${skill}_prof`).addEventListener("input", function () {
 	  state[`${skill}_Proficiency`] = this.checked ? 1 : 0;
 	  updateAbilityUI(ability);
 	});
@@ -531,7 +522,7 @@ document.getElementById("Level").addEventListener("change", function () {
 			return;
 	}
 	else {
-	fetch(`/ajax/sandbox_endpoint.php?action=getHitDice&class=${class_set.class}&level=${level}`)
+	fetch(`/ajax/sandbox_endpoint.php?action=getHitDice&class=${encodeURIComponent(class_set.class)}&level=${encodeURIComponent(level)}`)
 		.then(r => r.json())
 		.then (dice => {
 		document.getElementById("hitDice").textContent = `${level}D${dice.Hit_Dice}`;
@@ -546,7 +537,7 @@ document.getElementById("Level").addEventListener("change", function () {
 //CLASS & SUBCLASS SELECT
 	document.getElementById("class_dropdown").addEventListener("change", function () {
 		class_set.class = this.value;			
-		fetch(`/ajax/sandbox_endpoint.php?action=getSubclasses&class=${class_set.class}`)
+		fetch(`/ajax/sandbox_endpoint.php?action=getSubclasses&class=${encodeURIComponent(class_set.class)}`)
 			.then(r => r.json())
 			.then(subclasses => populateSelect("subclass_dropdown", subclasses))
 			.catch(err => console.error("Error:", err));
@@ -561,8 +552,8 @@ document.getElementById("Level").addEventListener("change", function () {
 		items.forEach(item => {
 
 			const opt = document.createElement("option");
-			opt.value = item.Subclass;
-			opt.textContent = item.Subclass;
+			opt.value = item.code;
+			opt.textContent = item.name;
 			select.appendChild(opt);
 		});
 	}
@@ -721,6 +712,11 @@ document.getElementById("Level").addEventListener("change", function () {
 //STICKY BAR (summary at the top)
 	function barText(id) {
 		const el = document.getElementById(id);
+		if (el && el.tagName === "SELECT") {
+			// A list shows the name of the selected entry; its value is a code
+			const option = el.selectedOptions[0];
+			return option ? option.textContent.trim() : "";
+		}
 		const v = el ? (("value" in el && el.tagName !== "LABEL") ? el.value : el.textContent) : "";
 		return String(v ?? "").trim();
 	}
