@@ -234,9 +234,11 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
 
 - **English (`en`) is the base language.** Every text key must exist in `lang/en.php`.
   Other languages (now `de`) can leave out keys: then the English text is shown.
-- **No fixed interface text in the HTML.** Use `t('key')` in PHP and `tr('key')` in JavaScript.
-  Mark the element with `data-i18n="key"` (text), `data-i18n-aria` (aria-label),
-  `data-i18n-placeholder` or `data-i18n-title`, so that the language menu can change it without a reload.
+- **No fixed interface text in the HTML, in messages or in emails.** Use `t('key')` in PHP and `tr('key')` in JavaScript.
+  Emails use the language of the person who sends the request.
+- On a page that changes its texts without a reload (now `CharacterSandbox.php`), also mark the element with
+  `data-i18n="key"` (text), `data-i18n-aria` (aria-label), `data-i18n-placeholder` or `data-i18n-title`.
+  Other pages reload after a change of the language and need only `t()`.
 - Add every new key to `lang/en.php` and `lang/de.php` in the same branch.
 - To add a language: add `lang/<code>.php` and one entry in `i18n_languages()` in `i18n.php`.
 - The selected language is in the session, in the cookie `lang` and in `users.language`.

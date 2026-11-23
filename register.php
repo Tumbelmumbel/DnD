@@ -16,12 +16,12 @@ function post_text(string $key): string {
 /** Send the verification link to $email */
 function send_verification_mail(string $email, string $token): void {
     $verifyUrl = BASE_URL . '/verify.php?email=' . urlencode($email) . '&token=' . urlencode($token);
-    $subject = 'Verify your email';
-    $html = '<p>Hello,</p>
-             <p>Please verify your email by clicking the link below:</p>
+    $subject = t('mail.verify.subject');
+    $html = '<p>'.e(t('mail.hello')).'</p>
+             <p>'.e(t('mail.verify.body')).'</p>
              <p><a href="'.e($verifyUrl).'">'.e($verifyUrl).'</a></p>
-             <p>This link expires in 24 hours.</p>';
-    $text = "Hello,\n\nPlease verify your email by opening this link:\n$verifyUrl\n\nThis link expires in 24 hours.";
+             <p>'.e(t('mail.link_expires')).'</p>';
+    $text = t('mail.hello') . "\n\n" . t('mail.verify.body') . "\n" . $verifyUrl . "\n\n" . t('mail.link_expires');
     send_mail($email, $subject, $html, $text); // logs SMTP errors itself
 }
 
@@ -33,15 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pass2    = post_text('password2');
 
     // 1) Validate the form. Stop here if anything is wrong.
-    if (!csrf_validate($csrf))                      $errors[] = 'Invalid session, please try again.';
+    if (!csrf_validate($csrf))                      $errors[] = t('err.invalid_session');
     if (strlen($email) > 255 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Please enter a valid email.';
+        $errors[] = t('err.invalid_email');
     }
     if (!preg_match('/^[A-Za-z0-9_.\-]{3,40}$/D', $username)) {
-        $errors[] = 'Username must be 3 to 40 characters: A-Z, a-z, 0-9, ".", "_" or "-".';
+        $errors[] = t('register.username_rule');
     }
-    if (strlen($pass) < 8)                          $errors[] = 'Password must be at least 8 characters.';
-    if ($pass !== $pass2)                           $errors[] = 'Passwords do not match.';
+    if (strlen($pass) < 8)                          $errors[] = t('err.password_short');
+    if ($pass !== $pass2)                           $errors[] = t('err.password_mismatch');
 
     // 2) Username check: the result does not depend on the email
     if (empty($errors)) {
@@ -49,13 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare('SELECT 1 FROM users WHERE username = :username');
         $stmt->execute([':username' => $username]);
         if ($stmt->fetchColumn()) {
-            $errors[] = 'Username already taken. Please try another.';
+            $errors[] = t('register.username_taken');
         }
     }
 
     // 3) Handle the email. Same message and same work in every case.
     if (empty($errors)) {
-        $info = 'If your email is valid, we have sent a verification link. Please check your inbox.';
+        $info = t('register.sent');
 
         $hash      = password_hash($pass, PASSWORD_DEFAULT); // always, so that all cases take the same time
         $token     = new_token();
@@ -70,13 +70,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Verified account exists: change nothing, tell only the mailbox owner
             $loginUrl = BASE_URL . '/login.php';
             $resetUrl = BASE_URL . '/ForgottenPW.php';
-            $html = '<p>Hello,</p>
-                     <p>Somebody tried to register with this email address. You already have an account.</p>
-                     <p>Sign in here: <a href="'.e($loginUrl).'">'.e($loginUrl).'</a></p>
-                     <p>If you do not know your password: <a href="'.e($resetUrl).'">'.e($resetUrl).'</a></p>
-                     <p>If this was not you, you can ignore this email. Your account does not change.</p>';
-            $text = "Hello,\n\nSomebody tried to register with this email address. You already have an account.\n\nSign in: $loginUrl\nForgot password: $resetUrl\n\nIf this was not you, you can ignore this email. Your account does not change.";
-            send_mail($email, 'You already have an account', $html, $text);
+            $html = '<p>'.e(t('mail.hello')).'</p>
+                     <p>'.e(t('mail.exists.body')).'</p>
+                     <p>'.e(t('mail.exists.sign_in')).' <a href="'.e($loginUrl).'">'.e($loginUrl).'</a></p>
+                     <p>'.e(t('mail.exists.forgot')).' <a href="'.e($resetUrl).'">'.e($resetUrl).'</a></p>
+                     <p>'.e(t('mail.exists.ignore')).'</p>';
+            $text = t('mail.hello') . "\n\n" . t('mail.exists.body') . "\n\n"
+                  . t('mail.exists.sign_in') . ' ' . $loginUrl . "\n" . t('mail.exists.forgot') . ' ' . $resetUrl . "\n\n"
+                  . t('mail.exists.ignore');
+            send_mail($email, t('mail.exists.subject'), $html, $text);
 
         } elseif ($existing) {
             // Unverified account exists: keep its password and username, send a new link only
@@ -112,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([':username' => $username]);
                 if ($stmt->fetchColumn()) {
                     $info = '';
-                    $errors[] = 'Username already taken. Please try another.';
+                    $errors[] = t('register.username_taken');
                 }
                 // Same email: keep the neutral message
             }
@@ -121,10 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
-<title>Register</title>
+<title><?= e(t('register.title')) ?></title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:2rem;max-width:640px}
@@ -137,7 +139,7 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 </style>
 </head>
 <body>
-<h1>Create account</h1>
+<h1><?= e(t('register.title')) ?></h1>
 
 <?php foreach ($errors as $err): ?>
   <div class="alert err"><?= e($err) ?></div>
@@ -149,18 +151,18 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 
 <form method="post" action="">
   <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-  <label for="email">Email</label>
+  <label for="email"><?= e(t('email')) ?></label>
   <input id="email" name="email" type="email" required autocomplete="email">
-  <label for="username">Username</label>
-  <input id="username" name="username" type="text" required minlength="3" maxlength="40" pattern="[A-Za-z0-9_.\-]{3,40}" title="3 to 40 characters: A-Z, a-z, 0-9, . _ -" autocomplete="username">
-  <label for="password">Password</label>
+  <label for="username"><?= e(t('username')) ?></label>
+  <input id="username" name="username" type="text" required minlength="3" maxlength="40" pattern="[A-Za-z0-9_.\-]{3,40}" title="<?= e(t('register.username_hint')) ?>" autocomplete="username">
+  <label for="password"><?= e(t('password')) ?></label>
   <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
-  <label for="password2">Repeat password</label>
+  <label for="password2"><?= e(t('repeat_password')) ?></label>
   <input id="password2" name="password2" type="password" required minlength="8" autocomplete="new-password">
-  <button type="submit">Register</button>
+  <button type="submit"><?= e(t('register')) ?></button>
 </form>
 
-<p>Already have an account? <a href="/login.php">Sign in</a></p>
+<p><?= e(t('register.have_account')) ?> <a href="/login.php"><?= e(t('sign_in')) ?></a></p>
 <?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

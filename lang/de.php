@@ -101,4 +101,79 @@ return [
     'field.precondition'  => 'Voraussetzung',
     'field.components'    => 'Komponenten',
     'field.material'      => 'Material',
+
+    // Kontoseiten: allgemein
+    'email'               => 'E-Mail',
+    'password'            => 'Passwort',
+    'repeat_password'     => 'Passwort wiederholen',
+    'username'            => 'Benutzername',
+    'sign_in'             => 'Anmelden',
+    'register'            => 'Registrieren',
+    'log_out'             => 'Abmelden',
+    'forgot_password'     => 'Passwort vergessen?',
+    'no_account'          => 'Noch kein Konto?',
+    'back_to_sign_in'     => 'Zurück zur Anmeldung',
+    'resend_link'         => 'Bestätigungslink erneut senden',
+    'reset_button'        => 'Zurücksetzen',
+    'err.invalid_session'   => 'Ungültige Sitzung. Bitte versuche es erneut.',
+    'err.invalid_email'     => 'Bitte gib eine gültige E-Mail-Adresse ein.',
+    'err.password_short'    => 'Das Passwort muss mindestens 8 Zeichen lang sein.',
+    'err.password_mismatch' => 'Die Passwörter stimmen nicht überein.',
+
+    // login.php
+    'login.title'         => 'Anmelden',
+    'login.please_sign_in' => 'Bitte melde dich an, um fortzufahren.',
+    'login.invalid'       => 'E-Mail-Adresse oder Passwort ist falsch.',
+    'login.verify_first'  => 'Bitte bestätige zuerst deine E-Mail-Adresse. Unten kannst du den Link erneut senden.',
+
+    // register.php
+    'register.title'      => 'Konto erstellen',
+    'register.have_account' => 'Du hast schon ein Konto?',
+    'register.username_hint' => '3 bis 40 Zeichen: A-Z, a-z, 0-9, . _ -',
+    'register.username_rule' => 'Der Benutzername muss 3 bis 40 Zeichen lang sein: A-Z, a-z, 0-9, ".", "_" oder "-".',
+    'register.username_taken' => 'Dieser Benutzername ist schon vergeben. Bitte wähle einen anderen.',
+    'register.sent'       => 'Wenn deine E-Mail-Adresse gültig ist, haben wir dir einen Bestätigungslink gesendet. Bitte prüfe dein Postfach.',
+
+    // ForgottenPW.php und reset.php
+    'forgot.title'        => 'Passwort vergessen',
+    'forgot.sent'         => 'Wenn diese E-Mail-Adresse registriert ist, haben wir dir einen Link zum Zurücksetzen gesendet. Bitte prüfe dein Postfach.',
+    'reset.title'         => 'Passwort zurücksetzen',
+    'reset.done'          => 'Dein Passwort wurde zurückgesetzt. Du kannst dich jetzt anmelden.',
+    'reset.link_invalid'  => 'Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.',
+
+    // verify.php und resend.php
+    'verify.title'        => 'E-Mail-Bestätigung',
+    'verify.ok'           => 'Deine E-Mail-Adresse wurde bestätigt.',
+    'verify.failed'       => 'Die Bestätigung ist fehlgeschlagen oder der Link ist abgelaufen. Unten kannst du einen neuen Link anfordern.',
+    'resend.title'        => 'Bestätigungslink',
+    'resend.info'         => 'Wenn deine E-Mail-Adresse existiert und noch nicht bestätigt ist, haben wir dir einen neuen Bestätigungslink gesendet.',
+
+    // dashboard.php
+    'dashboard.title'     => 'Übersicht',
+    'dashboard.welcome'   => 'Willkommen,',
+    'dashboard.role'      => 'Deine Rolle:',
+
+    // characteroverview.php
+    'overview.title'      => 'Deine Charaktere',
+    'overview.create'     => 'Erstellen',
+    'overview.no_characters' => 'Du hast noch keine Charaktere.',
+    'overview.modal_title' => 'Wie möchtest du deinen Charakter erstellen?',
+    'overview.sandbox_text' => 'Sandbox-Modus: Du gibst jeden Wert selbst ein.',
+    'overview.railroad_text' => 'Railroad-Modus: Du gibst die Werte mit Hilfe der 5e-Regeln ein.',
+    'overview.sandbox'    => 'Sandbox',
+    'overview.railroad'   => 'Railroad',
+
+    // E-Mails
+    'mail.hello'          => 'Hallo,',
+    'mail.link_expires'   => 'Dieser Link ist 24 Stunden gültig.',
+    'mail.verify.subject' => 'Bestätige deine E-Mail-Adresse',
+    'mail.verify.body'    => 'Bitte bestätige deine E-Mail-Adresse mit dem folgenden Link:',
+    'mail.exists.subject' => 'Du hast bereits ein Konto',
+    'mail.exists.body'    => 'Jemand hat versucht, sich mit dieser E-Mail-Adresse zu registrieren. Du hast bereits ein Konto.',
+    'mail.exists.sign_in' => 'Hier anmelden:',
+    'mail.exists.forgot'  => 'Wenn du dein Passwort nicht kennst:',
+    'mail.exists.ignore'  => 'Wenn du das nicht warst, kannst du diese E-Mail ignorieren. Dein Konto ändert sich nicht.',
+    'mail.reset.subject'  => 'Setze dein Passwort zurück',
+    'mail.reset.body'     => 'Bitte setze dein Passwort mit dem folgenden Link zurück:',
+    'mail.reset.ignore'   => 'Wenn du das nicht angefordert hast, ignoriere diese E-Mail. Dein Passwort ändert sich nicht.',
 ];

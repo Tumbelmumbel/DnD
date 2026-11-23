@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$email = trim(strtolower($_POST['email'] ?? ''));
 	
     if (!csrf_validate($csrf)) {
-        $errors[] = 'Invalid session. Please try again.';
+        $errors[] = t('err.invalid_session');
     } else {
         $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email');
         $stmt->execute([':email' => $email]);
@@ -36,28 +36,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $resetUrl = BASE_URL . '/reset.php?email=' . urlencode($email) . '&token=' . urlencode($token);
-            $subject  = 'Reset your password';
-            $html = '<p>Hello,</p>
-                     <p>Please reset your password with the link below:</p>
+            $subject  = t('mail.reset.subject');
+            $html = '<p>'.e(t('mail.hello')).'</p>
+                     <p>'.e(t('mail.reset.body')).'</p>
                      <p><a href="'.e($resetUrl).'">'.e($resetUrl).'</a></p>
-                     <p>This link expires in 24 hours. If you did not ask for this, ignore this email. Your password does not change.</p>';
-            $text = "Hello,\n\nPlease reset your password with the link below:\n$resetUrl\n\nThis link expires in 24 hours. If you did not ask for this, ignore this email. Your password does not change.";
+                     <p>'.e(t('mail.link_expires')).' '.e(t('mail.reset.ignore')).'</p>';
+            $text = t('mail.hello') . "\n\n" . t('mail.reset.body') . "\n" . $resetUrl . "\n\n"
+                  . t('mail.link_expires') . ' ' . t('mail.reset.ignore');
 
             // send_mail() logs SMTP errors itself; the user sees no difference
             send_mail($email, $subject, $html, $text);
         }
 
         // Always the same message, known email or not (avoid user enumeration)
-        $info = 'If this email is registered, we have sent a reset link. Please check your inbox.';
+        $info = t('forgot.sent');
 	}
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
-<title>Reset password</title>
+<title><?= e(t('forgot.title')) ?></title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:2rem;max-width:640px}
@@ -70,7 +71,7 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 </style>
 </head>
 <body>
-<h1>Forgot Password</h1>
+<h1><?= e(t('forgot.title')) ?></h1>
 <?php foreach ($errors as $err): ?>
   <div class="alert err"><?= e($err) ?></div>
 <?php endforeach; ?>
@@ -82,9 +83,9 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 
 <form method="post" action="">
   <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-  <label for="email">Email</label>
+  <label for="email"><?= e(t('email')) ?></label>
   <input id="email" name="email" type="email" required autocomplete="email">
-  <button type="submit">Reset</button>
+  <button type="submit"><?= e(t('reset_button')) ?></button>
 </form>
 
 <?php require __DIR__ . '/partials/language_footer.php'; ?>

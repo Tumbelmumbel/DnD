@@ -17,10 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$pass  = $_POST['password'] ?? '';
     $pass2 = $_POST['password2'] ?? '';
 	
-	if (!csrf_validate($csrf))                         $errors[] = 'Invalid session, please try again.';
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Please enter a valid email.';
-    if (strlen($pass) < 8)                          $errors[] = 'Password must be at least 8 characters.';
-    if ($pass !== $pass2)                           $errors[] = 'Passwords do not match.';
+	if (!csrf_validate($csrf))                         $errors[] = t('err.invalid_session');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = t('reset.link_invalid');
+    if (strlen($pass) < 8)                          $errors[] = t('err.password_short');
+    if ($pass !== $pass2)                           $errors[] = t('err.password_mismatch');
 	
 	if (empty($errors)) {
 		if ($email && $token) {
@@ -46,27 +46,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 						':id' => (int)$user['id'],
 						':pwh' => $pwhash
 						]);
-						$info = "Password was reset sucessfully.";
+						$info = t('reset.done');
 					} else {
-						$errors[] = 'Hash error. Please request again.';
+						$errors[] = t('reset.link_invalid');
 					}
 				} else {
-					$errors[] = 'Token expired oe empty. Please request again.';
+					$errors[] = t('reset.link_invalid');
 				}
 			} else {
-				$errors[] = 'Token error. Please request again.';
+				$errors[] = t('reset.link_invalid');
 			}
 		} else {
-			$errors[] = 'Email or token error. Please request again.';
+			$errors[] = t('reset.link_invalid');
 		}
 	}
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
-<title>Reset Password</title>
+<title><?= e(t('reset.title')) ?></title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:2rem;max-width:640px}
@@ -79,7 +79,7 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 </style>
 </head>
 <body>
-<h1>Reset Password</h1>
+<h1><?= e(t('reset.title')) ?></h1>
 
 <?php foreach ($errors as $err): ?>
   <div class="alert err"><?= e($err) ?></div>
@@ -91,11 +91,11 @@ button{margin-top:1rem;padding:.6rem 1rem;background:#0a66c2;color:#fff;border:0
 
 <form method="post" action="">
   <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-  <label for="password">Password</label>
+  <label for="password"><?= e(t('password')) ?></label>
   <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
-  <label for="password2">Repeat password</label>
+  <label for="password2"><?= e(t('repeat_password')) ?></label>
   <input id="password2" name="password2" type="password" required minlength="8" autocomplete="new-password">
-  <button type="submit">Reset</button>
+  <button type="submit"><?= e(t('reset_button')) ?></button>
 </form>
 
 <?php require __DIR__ . '/partials/language_footer.php'; ?>

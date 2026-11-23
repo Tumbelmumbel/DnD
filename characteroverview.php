@@ -23,17 +23,17 @@ $stmt->execute([":u" => $username]);
 $characters = $stmt->fetchAll();
 
 if (!$characters) {
-	$info = 'No chars selected' . $username;
+	$info = t('overview.no_characters');
 }
 
 
 ?>
-<html lang="en">
+<html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/Assets/style.css">
-    <title>Your Characters</title>
+    <title><?= e(t('overview.title')) ?></title>
 
     <style>
 		
@@ -75,13 +75,13 @@ if (!$characters) {
  <div class="container_vertical">
 	<div class="container_horizontal">
 		<form class = "button-form" method="get">
-			<button class="Button" type = "Button" onclick="openCreateModal()">Create</button>
+			<button class="Button" type = "Button" onclick="openCreateModal()"><?= e(t('overview.create')) ?></button>
 		</form>	
 			<div class="page-header">
-				<h1>Your Characters</h1>
+				<h1><?= e(t('overview.title')) ?></h1>
 			</div>
 	    	<form class = "button-form" method="get" action="/logout.php">
-				<button class="Button" type="submit">Logout</button>
+				<button class="Button" type="submit"><?= e(t('log_out')) ?></button>
 			</form>			
 
 	</div>
@@ -108,15 +108,15 @@ if (!$characters) {
 
 		<div id="create-modal" class="modal">
 			<div class="modal-content">
-				<h2>How do you want to create your character</h2>
-				<p>Sandbox mode: Enter each stat yourself</p>
-				<p>Railroad mode: Enter stats guided by the 5e ruleset</p>
+				<h2><?= e(t('overview.modal_title')) ?></h2>
+				<p><?= e(t('overview.sandbox_text')) ?></p>
+				<p><?= e(t('overview.railroad_text')) ?></p>
 				<div class="container_horizontal_relative">
 					<form class = "button-form" method="get" action="/CharacterSandbox.php">
-						<button class="Button" type="submit">Sandbox</button>
+						<button class="Button" type="submit"><?= e(t('overview.sandbox')) ?></button>
 					</form>	
 					<div class="button-form">
-						<button class="button" type="submit" onclick="closeCreateModal()">Railroad</button>
+						<button class="button" type="submit" onclick="closeCreateModal()"><?= e(t('overview.railroad')) ?></button>
 					</div>
 				</div>
 			</div>
