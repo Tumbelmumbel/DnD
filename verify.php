@@ -35,24 +35,24 @@ if ($email && $token) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
-<title>Email verification</title>
+<title><?= e(t('verify.title')) ?></title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:2rem;max-width:640px}.ok{color:#2e7d32}.bad{color:#a40000}</style>
 </head>
 <body>
-<h1>Email verification</h1>
+<h1><?= e(t('verify.title')) ?></h1>
 <?php if ($ok): ?>
-  <p class="ok">Your email has been verified. You can now <a href="/login.php">sign in</a>.</p>
+  <p class="ok"><?= e(t('verify.ok')) ?> <a href="/login.php"><?= e(t('sign_in')) ?></a></p>
 <?php else: ?>
-  <p class="bad">Verification failed or link expired. You can request a new link below.</p>
+  <p class="bad"><?= e(t('verify.failed')) ?></p>
   <form method="post" action="/resend.php">
     <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-    <label for="email">Email</label>
+    <label for="email"><?= e(t('email')) ?></label>
     <input id="email" name="email" type="email" required>
-    <button type="submit">Resend verification link</button>
+    <button type="submit"><?= e(t('resend_link')) ?></button>
   </form>
 <?php endif; ?>
 <?php require __DIR__ . '/partials/language_footer.php'; ?>

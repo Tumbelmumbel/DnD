@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pass  = $_POST['password'] ?? '';
 	
     if (!csrf_validate($csrf)) {
-        $errors[] = 'Invalid session. Please try again.';
+        $errors[] = t('err.invalid_session');
     } else {
 		
 		$pdo = db();
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user && password_verify($pass, $hashToCheck)) {
             if (empty($user['email_verified_at'])) {
-                $info = 'Please verify your email first. You can resend the link below.';
+                $info = t('login.verify_first');
             } else {
                 session_regenerate_id(true);
                 $_SESSION['user'] = [
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect('/characteroverview.php');
             }
         } else {
-            $errors[] = 'Invalid email or password.';
+            $errors[] = t('login.invalid');
         }
     }
 }
@@ -52,11 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= e(current_lang()) ?>">
 
 <head>
 <meta charset="utf-8">
-<title class= label>Sign in</title>
+<title><?= e(t('login.title')) ?></title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/Assets/style.css">
 <style>
@@ -71,9 +71,9 @@ form {
 
 <body>
  <div class="container_vertical">
-	<h1>Sign in</h1>
+	<h1><?= e(t('login.title')) ?></h1>
 	<?php if (isset($_GET['m']) && $_GET['m']==='auth'): ?>
-	  <div class="alert">Please sign in to continue.</div>
+	  <div class="alert"><?= e(t('login.please_sign_in')) ?></div>
 	<?php endif; ?>
 
 	<?php foreach ($errors as $err): ?>
@@ -85,26 +85,26 @@ form {
 	  <form method="post" action="/resend.php">
 		<input class= label type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
 		<input class= label type="hidden" name="email" value="<?= e($_POST['email'] ?? '') ?>">
-		<button class= button type="submit">Resend verification link</button>
+		<button class= button type="submit"><?= e(t('resend_link')) ?></button>
 	  </form>
 	<?php endif; ?>
 
 	<form method="post" action="">
 	  <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-	  <label class= label for="email">Email</label>
+	  <label class= label for="email"><?= e(t('email')) ?></label>
 	  <input class= input id="email" name="email" type="email" required autocomplete="username">
-	  <label class= label for="password">Password</label>
+	  <label class= label for="password"><?= e(t('password')) ?></label>
 	  <input class= input id="password" name="password" type="password" required autocomplete="current-password">
-	  <button class= button type="submit">Sign in</button>
+	  <button class= button type="submit"><?= e(t('sign_in')) ?></button>
 	</form>
 
 	<form method="get" action="/ForgottenPW.php">
-		<button class= button type="submit">Forgot password?</button>
+		<button class= button type="submit"><?= e(t('forgot_password')) ?></button>
 	</form>	
 
-	<p>No account yet?</p>
+	<p><?= e(t('no_account')) ?></p>
 	<form method="get" action="/register.php">
-		<button class= button type="submit">Register</button>
+		<button class= button type="submit"><?= e(t('register')) ?></button>
 	</form>	
 </div>
 <?php require __DIR__ . '/partials/language_footer.php'; ?>
