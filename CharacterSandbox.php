@@ -158,7 +158,27 @@ $errors = [];
 .cs-bar { position: sticky; top: 0; z-index: 10; background: #4A4431; color: #FFFDF6;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); font-family: var(--fonts); }
 .cs-bar-inner { max-width: 1240px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.cs-bar-who { flex: 1 1 120px; min-width: 0; display: flex; flex-direction: column; }
+.cs-bar-who { flex: 1 1 120px; min-width: 0; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 8px;
+	padding: 0 10px; border: 0; border-radius: 10px; background: rgba(255, 253, 246, 0.12); color: inherit; font: inherit;
+	text-align: left; cursor: pointer; }
+.cs-bar-who:hover, .cs-bar-who[aria-expanded="true"] { background: rgba(255, 253, 246, 0.22); }
+.cs-bar-who:focus-visible { outline: 3px solid #FFFDF6; outline-offset: 2px; }
+.cs-bar-who-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cs-bar-who svg { flex: 0 0 18px; opacity: 0.85; }
+/* Identity panel: opens under the bar; it lies over the page, so the bar keeps its height */
+.cs-identity-panel { --cs-field: #FFFDF6; --cs-line: #D8CDA8; --cs-border: #A99E78; --cs-accent: #3B4BC4; }
+.cs-identity-panel { position: absolute; top: 100%; left: max(16px, calc((100% - 1240px) / 2 + 16px)); z-index: 11;
+	width: min(640px, calc(100% - 32px)); box-sizing: border-box; margin-top: 6px; padding: 14px; border-radius: 12px;
+	background: #FFFDF6; color: var(--text); border: 1px solid var(--cs-border); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+	display: flex; flex-direction: column; gap: 12px; }
+.cs-identity-panel[hidden] { display: none; }
+.cs-identity-panel input, .cs-identity-panel select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 48px;
+	padding: 0 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: #FFFFFF;
+	color: var(--text); font: inherit; font-size: 16px; }
+.cs-identity-panel .cs-identity { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cs-identity-panel .cs-identity .cs-name { grid-column: auto; }
+.cs-identity-done { align-self: flex-end; min-height: 44px; padding: 0 24px; border: 0; border-radius: 8px;
+	background: var(--cs-accent); color: #FFFFFF; font: inherit; font-weight: 700; cursor: pointer; }
 .cs-bar-name { font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-bar-sub { font-size: 13px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-bar-hp { display: flex; align-items: center; gap: 8px; background: rgba(255, 253, 246, 0.12); border-radius: 28px; padding: 4px; }
@@ -187,6 +207,8 @@ $errors = [];
 @media (max-width: 640px) {
 	.cs-page { padding: 10px; gap: 12px; }
 	.cs-identity, .cs-two, .talent_list { grid-template-columns: minmax(0, 1fr); }
+	.cs-identity-panel .cs-identity { grid-template-columns: minmax(0, 1fr); }
+	.cs-identity-panel { left: 8px; width: calc(100% - 16px); }
 	.cs-identity .cs-name { grid-column: auto; }
 	.cs-abilities { grid-template-columns: minmax(0, 1fr); }
 }
@@ -201,10 +223,14 @@ $errors = [];
 			<img id = "pictureThumb" alt = "" hidden>
 		</button>
 		<input type = "file" id = "pictureFile" accept = "image/png" hidden>
-		<div class = "cs-bar-who">
-			<span class = "cs-bar-name" id = "bar_name">–</span>
-			<span class = "cs-bar-sub" id = "bar_sub"></span>
-		</div>
+		<button type = "button" class = "cs-bar-who" id = "identityButton" aria-expanded = "false" aria-controls = "identityPanel"
+			title = "<?= e(t('identity.edit')) ?>" data-i18n-title = "identity.edit">
+			<span class = "cs-bar-who-text">
+				<span class = "cs-bar-name" id = "bar_name">–</span>
+				<span class = "cs-bar-sub" id = "bar_sub"></span>
+			</span>
+			<svg aria-hidden = "true" width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor" stroke-width = "2" stroke-linecap = "round" stroke-linejoin = "round"><path d = "M12 20h9"></path><path d = "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+		</button>
 		<div class = "cs-bar-hp">
 			<button type = "button" class = "cs-hp-minus" id = "hpMinus" aria-label = "<?= e(t('lose_hp')) ?>" data-i18n-aria = "lose_hp">−</button>
 			<div class = "cs-bar-stat" aria-live = "polite"><span data-i18n = "hit_points"><?= e(t('hit_points')) ?></span><span id = "bar_hp">– / –</span></div>
@@ -216,21 +242,8 @@ $errors = [];
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></div>
 	</div>
 	<p class = "cs-picture-error" id = "pictureError" role = "alert"></p>
-</header>
-<div class = "cs-page" id = "character_basics">
-
-	<dialog class = "cs-picture-dialog" id = "pictureDialog" aria-label = "<?= e(t('picture.title')) ?>" data-i18n-aria = "picture.title">
-		<img id = "pictureLarge" alt = "">
-		<div class = "cs-picture-actions">
-			<button type = "button" id = "pictureChange" data-i18n = "picture.change"><?= e(t('picture.change')) ?></button>
-			<button type = "button" class = "cs-picture-remove" id = "pictureRemove" data-i18n = "picture.remove"><?= e(t('picture.remove')) ?></button>
-			<button type = "button" id = "pictureClose" data-i18n = "picture.close"><?= e(t('picture.close')) ?></button>
-		</div>
-	</dialog>
-
-	<!-- Identity -->
-	<section class = "cs-card" aria-labelledby = "cs-basics-title">
-		<h2 id = "cs-basics-title" data-i18n = "basics"><?= e(t('basics')) ?></h2>
+	<!-- Identity panel: name, species, level, class, subclass, background (opens with the name in the bar) -->
+	<div class = "cs-identity-panel" id = "identityPanel" role = "dialog" aria-label = "<?= e(t('basics')) ?>" data-i18n-aria = "basics" hidden>
 		<div class = "cs-identity">
 			<div class = "cs-field cs-name">
 				<label for = "name" data-i18n = "character_name"><?= e(t('character_name')) ?></label>
@@ -269,7 +282,20 @@ $errors = [];
 				</select>
 			</div>
 		</div>
-	</section>
+		<button type = "button" class = "cs-identity-done" id = "identityDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
+	</div>
+</header>
+<div class = "cs-page" id = "character_basics">
+
+	<dialog class = "cs-picture-dialog" id = "pictureDialog" aria-label = "<?= e(t('picture.title')) ?>" data-i18n-aria = "picture.title">
+		<img id = "pictureLarge" alt = "">
+		<div class = "cs-picture-actions">
+			<button type = "button" id = "pictureChange" data-i18n = "picture.change"><?= e(t('picture.change')) ?></button>
+			<button type = "button" class = "cs-picture-remove" id = "pictureRemove" data-i18n = "picture.remove"><?= e(t('picture.remove')) ?></button>
+			<button type = "button" id = "pictureClose" data-i18n = "picture.close"><?= e(t('picture.close')) ?></button>
+		</div>
+	</dialog>
+
 
 	<!-- Combat values -->
 	<section class = "cs-stats" aria-label = "<?= e(t('combat_values')) ?>" data-i18n-aria = "combat_values">
@@ -774,7 +800,8 @@ document.getElementById("Level").addEventListener("change", function () {
 
 	function updateBar() {
 		document.getElementById("bar_name").textContent = barText("name") || "–";
-		const sub = [barText("class_dropdown"), barText("subclass_dropdown"), barText("Level") ? tr("level") + " " + barText("Level") : ""]
+		const sub = [barText("species"), barText("class_dropdown"), barText("subclass_dropdown"),
+			barText("Level") ? tr("level") + " " + barText("Level") : "", barText("backgrounds")]
 			.filter(t => t !== "").join(" · ");
 		document.getElementById("bar_sub").textContent = sub;
 		document.getElementById("bar_hp").textContent = (barText("currentHitpoints") || "–") + " / " + (barText("maxHitpoints") || "–");
@@ -808,6 +835,31 @@ document.getElementById("Level").addEventListener("change", function () {
 	new MutationObserver(updateBar).observe(document.getElementById("subclass_dropdown"), { childList: true });
 	new MutationObserver(updateBar).observe(document.getElementById("initiative"), { childList: true, characterData: true, subtree: true });
 	updateBar();
+
+
+//IDENTITY PANEL: a tap on the name in the bar opens the fields; Done, Esc or a tap outside closes them
+	const identityButton = document.getElementById("identityButton");
+	const identityPanel = document.getElementById("identityPanel");
+
+	function setIdentityPanel(open, returnFocus) {
+		identityPanel.hidden = !open;
+		identityButton.setAttribute("aria-expanded", open ? "true" : "false");
+		if (open) {
+			document.getElementById("name").focus();
+		} else if (returnFocus) {
+			identityButton.focus();
+		}
+	}
+	identityButton.addEventListener("click", () => setIdentityPanel(identityPanel.hidden, true));
+	document.getElementById("identityDone").addEventListener("click", () => setIdentityPanel(false, true));
+	identityPanel.addEventListener("keydown", function (event) {
+		if (event.key === "Escape") setIdentityPanel(false, true);
+	});
+	document.addEventListener("pointerdown", function (event) {
+		if (!identityPanel.hidden && !identityPanel.contains(event.target) && !identityButton.contains(event.target)) {
+			setIdentityPanel(false, false);
+		}
+	});
 
 
 //LANGUAGE MENU (footer): change the texts without a reload; entered values stay

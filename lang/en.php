@@ -29,6 +29,8 @@ return [
 
     // Basics
     'basics'              => 'Basics',
+    'identity.edit'       => 'Edit character details',
+    'identity.done'       => 'Done',
     'character_name'      => 'Character name',
     'species'             => 'Species',
     'class'               => 'Class',

@@ -28,6 +28,8 @@ return [
 
     // Grunddaten
     'basics'              => 'Grunddaten',
+    'identity.edit'       => 'Charakterdaten bearbeiten',
+    'identity.done'       => 'Fertig',
     'character_name'      => 'Charaktername',
     'species'             => 'Spezies',
     'class'               => 'Klasse',
