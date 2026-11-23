@@ -4,7 +4,7 @@ This file describes the database of the DnD character manager.
 It shows all tables and all fields, the data type of each field, and the data that each field stores.
 
 - **Database:** `dbs15432866` (MySQL on IONOS)
-- **Last update:** 2026-11-22
+- **Last update:** 2026-11-23
 - **Foreign keys:** None. The tables do not have links in the database.
 - **SQL mode:** Empty (lenient). MySQL does not stop an incorrect value. It changes the value and gives a warning.
 
@@ -75,15 +75,22 @@ The combination of `name` and `username` identifies a character.
 
 The application reads these tables to fill the lists in the character sheet. Users do not change these tables.
 
+**Codes:** each lookup value has a fixed English code, for example `bard`, `folk_hero` or `fire`.
+The code has only lowercase letters, digits and `_`. Do not change a code after it is in use.
+The code identifies the value. The application uses the code in field values, ids and requests.
+The name is only for display. Step 3 of the language plan moves the names into translation tables.
+
 ### `Classes`
 
 This table stores the values of each class and subclass for each level.
 Each row is one combination of class, subclass and level (levels 1 to 20).
 The table has 380 rows: 19 class/subclass combinations × 20 levels.
-The table does not have a primary key.
+The primary key is the combination of `class_code`, `subclass_code` and `Level`.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `class_code` | varchar(40) | PK | No | `''` | Code of the class, for example `bard`. |
+| `subclass_code` | varchar(60) | PK | No | `''` | Code of the subclass, for example `college_of_lore`. Empty = the base class without a subclass. |
 | `Class` | text | | No | | Name of the class, for example `Barde` or `Fighter`. The names are in German and English. |
 | `Subclass` | text | | No | | Name of the subclass, for example `Schule des Wissens`. Empty = the base class without a subclass. |
 | `Level` | tinyint | | No | | Character level (1 to 20). |
@@ -108,6 +115,7 @@ This table stores the species that a character can have. Each row is one species
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `code` | varchar(40) | UNI | No | `''` | Code of the species, for example `half_elf`. |
 | `species` | char(50) | PK | No | | Name of the species. |
 | `movement` | float | | No | | Walking speed of the species. **(check: unit feet or meters)** |
 
@@ -117,9 +125,33 @@ This table stores the backgrounds that a character can have. Each row is one bac
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `background` | char(100) | PK | No | | Name of the background. |
+| `code` | varchar(40) | UNI | No | `''` | Code of the background, for example `folk_hero`. |
+| `background` | char(100) | PK | No | | Name of the background. Two names (`Folk Hero`, `Guild Artisan`) contain a non-breaking space. |
 
-### `abilities_skills`
+### `Abilities`
+
+This table stores the six abilities. Each row is one ability (6 rows).
+The names come from the language files (`lang/*.php`, key `ability.<code>`).
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `code` | varchar(20) | PK | No | | Code of the ability, for example `dexterity`. |
+| `sort_order` | tinyint | | No | | Position of the ability in the character sheet (1 = first). |
+
+### `Skills`
+
+This table stores the skills and the ability of each skill. Each row is one skill (18 rows).
+The names come from the language files (`lang/*.php`, key `skill.<code>`).
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `code` | varchar(40) | PK | No | | Code of the skill, for example `sleight_of_hand`. |
+| `ability_code` | varchar(20) | IDX | No | | Code of the ability of the skill (`Abilities.code`). |
+| `sort_order` | tinyint | | No | | Position of the skill in the character sheet. The skills of an ability are in alphabetical order. |
+
+### `abilities_skills` (no longer used)
+
+The application does not use this table. `Abilities` and `Skills` replace it. Delete it later with a separate migration.
 
 This table stores the six abilities and the skills of each ability. Each row is one ability.
 
@@ -134,6 +166,7 @@ This table stores the conditions that can have an effect on a character, for exa
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `code` | varchar(40) | UNI | No | `''` | Code of the condition, for example `unconscious`. Three names have spelling errors (`blind`, `deafend`, `unconcious`); their codes use the correct words. |
 | `char_condition` | char(30) | PK | No | | Name of the condition. |
 
 ### `Damagetypes`
@@ -142,6 +175,7 @@ This table stores the types of damage, for example "fire". Each row is one damag
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `code` | varchar(40) | UNI | No | `''` | Code of the damage type, for example `fire`. |
 | `damagetype` | char(255) | PK | No | | Name of the damage type. |
 
 ### `Damage_influence`
@@ -150,6 +184,7 @@ This table stores how a damage type can have an effect on a character. Each row 
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `code` | varchar(40) | UNI | No | `''` | Code of the influence, for example `resistant`. |
 | `influence` | char(30) | PK | No | | Name of the influence. |
 
 ### `Game_component_library`

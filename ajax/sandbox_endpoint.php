@@ -14,6 +14,11 @@ $action = $_GET['action'] ?? null;
 $char_class = $_GET['class'] ?? null;
 $level = $_GET['level'] ?? null;
 
+// The class is a code from Classes.class_code, for example "bard"
+if ($char_class !== null && !preg_match('/^[a-z0-9_]{1,40}$/D', (string)$char_class)) {
+    $char_class = null;
+}
+
 
 switch ($action) {
 
@@ -24,7 +29,8 @@ switch ($action) {
             break;
         }
 
-        $stmt = $pdo->prepare('SELECT DISTINCT Subclass FROM Classes WHERE Class = :class');
+        // Base class (empty code) first, then the subclasses by name
+        $stmt = $pdo->prepare("SELECT DISTINCT subclass_code AS code, Subclass AS name FROM Classes WHERE class_code = :class ORDER BY subclass_code <> '', Subclass");
         $stmt->execute([':class' => $char_class]);
 
         echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -37,7 +43,7 @@ switch ($action) {
             break;
         }
 
-        $stmt = $pdo->prepare('SELECT DISTINCT Hit_Dice FROM Classes WHERE Class = :class');
+        $stmt = $pdo->prepare('SELECT DISTINCT Hit_Dice FROM Classes WHERE class_code = :class');
         $stmt->execute([':class' => $char_class]);
 
         echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));	
