@@ -80,8 +80,8 @@ The code has only lowercase letters, digits and `_`. Do not change a code after 
 The code identifies the value. The application uses the code in field values, ids and requests.
 The name is only for display.
 
-**Names:** the application reads the names from `Lookup_translation` (see "Translations"), not from the name fields of these tables.
-The name fields (`Class`, `Subclass`, `species`, `background`, `char_condition`, `damagetype`, `influence`) are no longer read. Delete them later with a separate migration.
+**Names:** these tables do not store names. The names are in `Lookup_translation` (see "Translations").
+`migration_cleanup_lookup_names.sql` deleted the old name fields on 2026-11-23. The end of that file has a rollback.
 
 ### `Classes`
 
@@ -94,8 +94,6 @@ The primary key is the combination of `class_code`, `subclass_code` and `Level`.
 |---|---|---|---|---|---|
 | `class_code` | varchar(40) | PK | No | `''` | Code of the class, for example `bard`. |
 | `subclass_code` | varchar(60) | PK | No | `''` | Code of the subclass, for example `college_of_lore`. Empty = the base class without a subclass. |
-| `Class` | text | | No | | Name of the class, for example `Barde` or `Fighter`. The names are in German and English. |
-| `Subclass` | text | | No | | Name of the subclass, for example `Schule des Wissens`. Empty = the base class without a subclass. |
 | `Level` | tinyint | | No | | Character level (1 to 20). |
 | `Proficiency_Bonus` | tinyint | | No | | Proficiency bonus at this level. |
 | `Hit_Dice` | tinyint | | No | | Size of the hit die of the class, for example 8 for a d8. |
@@ -118,8 +116,7 @@ This table stores the species that a character can have. Each row is one species
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `code` | varchar(40) | UNI | No | `''` | Code of the species, for example `half_elf`. |
-| `species` | char(50) | PK | No | | Name of the species. |
+| `code` | varchar(40) | PK | No | `''` | Code of the species, for example `half_elf`. |
 | `movement` | float | | No | | Walking speed of the species. **(check: unit feet or meters)** |
 
 ### `Backgrounds`
@@ -128,8 +125,7 @@ This table stores the backgrounds that a character can have. Each row is one bac
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `code` | varchar(40) | UNI | No | `''` | Code of the background, for example `folk_hero`. |
-| `background` | char(100) | PK | No | | Name of the background. Two names (`Folk Hero`, `Guild Artisan`) contain a non-breaking space. |
+| `code` | varchar(40) | PK | No | `''` | Code of the background, for example `folk_hero`. |
 
 ### `Abilities`
 
@@ -152,25 +148,13 @@ The names come from the language files (`lang/*.php`, key `skill.<code>`).
 | `ability_code` | varchar(20) | IDX | No | | Code of the ability of the skill (`Abilities.code`). |
 | `sort_order` | tinyint | | No | | Position of the skill in the character sheet. The skills of an ability are in alphabetical order. |
 
-### `abilities_skills` (no longer used)
-
-The application does not use this table. `Abilities` and `Skills` replace it. Delete it later with a separate migration.
-
-This table stores the six abilities and the skills of each ability. Each row is one ability.
-
-| Field | Data type | Key | Null | Default | Description |
-|---|---|---|---|---|---|
-| `ability` | char(30) | PK | No | | Name of the ability, for example `Dexterity`. |
-| `skills` | char(255) | | Yes | NULL | Skills of this ability, separated by commas, for example `Acrobatics, Slight Of Hand, Stealth`. NULL = the ability has no skills (`Constitution`). |
-
 ### `Conditions`
 
 This table stores the conditions that can have an effect on a character, for example "poisoned". Each row is one condition.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `code` | varchar(40) | UNI | No | `''` | Code of the condition, for example `unconscious`. Three names have spelling errors (`blind`, `deafend`, `unconcious`); their codes use the correct words. |
-| `char_condition` | char(30) | PK | No | | Name of the condition. |
+| `code` | varchar(40) | PK | No | `''` | Code of the condition, for example `unconscious`. |
 
 ### `Damagetypes`
 
@@ -178,8 +162,7 @@ This table stores the types of damage, for example "fire". Each row is one damag
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `code` | varchar(40) | UNI | No | `''` | Code of the damage type, for example `fire`. |
-| `damagetype` | char(255) | PK | No | | Name of the damage type. |
+| `code` | varchar(40) | PK | No | `''` | Code of the damage type, for example `fire`. |
 
 ### `Damage_influence`
 
@@ -187,8 +170,7 @@ This table stores how a damage type can have an effect on a character. Each row 
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `code` | varchar(40) | UNI | No | `''` | Code of the influence, for example `resistant`. |
-| `influence` | char(30) | PK | No | | Name of the influence. |
+| `code` | varchar(40) | PK | No | `''` | Code of the influence, for example `resistant`. |
 
 ### `Game_component_library`
 
@@ -218,6 +200,7 @@ The field `id` identifies each row.
 ## Translations
 
 The application reads the names and texts of the game content from these tables, in the language of the user.
+The game tables do not store names (except `Game_component_library`, see below).
 If a text is missing in this language, the application uses the English text (`lang = 'en'`).
 Each new lookup value and each new game component needs an English row. A German row is recommended.
 
@@ -235,7 +218,7 @@ This table stores the names of the lookup values. Each row is the name of one va
 ### `Game_component_library_translation`
 
 This table stores the texts of the game components (now only talents). Each row is the texts of one component in one language.
-A field with NULL uses the English row. If the English row has NULL too, the application uses the field of `Game_component_library`.
+A field with NULL uses the English row. If the English row has NULL too, the application uses the field of `Game_component_library`. That table keeps its texts as the last fallback.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
