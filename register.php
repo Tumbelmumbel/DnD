@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/tinymailer.php'; // send_mail()
+require_once __DIR__ . '/rate_limit.php';
 
 $info = '';
 $errors = [];
@@ -41,6 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!preg_match('/^[A-Za-z0-9_.\-]{3,40}$/D', $username)) {
         $errors[] = t('register.username_rule');
+    }
+
+    // Limit: 5 registrations per IP address and 3 per email address in one hour
+    if (empty($errors)) {
+        $pdo = db();
+        $limitSubjects = [rate_limit_ip_hash(), rate_limit_email_hash($email)];
+        if (rate_limit_exceeded($pdo, 'register', [[$limitSubjects[0], 5], [$limitSubjects[1], 3]], 60 * 60)) {
+            $errors[] = t('err.too_many');
+        } else {
+            rate_limit_record($pdo, 'register', $limitSubjects);
+        }
     }
 
     // 2) Username check: the result does not depend on the email

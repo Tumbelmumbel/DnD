@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/tinymailer.php';
+require_once __DIR__ . '/rate_limit.php';
 
 // Database connection via bootstrap
 $pdo  = db();
@@ -12,11 +13,16 @@ $info = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrf  = $_POST['csrf'] ?? '';
-	$email = trim(strtolower($_POST['email'] ?? ''));
+	$email = is_string($_POST['email'] ?? null) ? trim(strtolower($_POST['email'])) : '';
+    // Limit: 5 requests per IP address and 3 per email address in one hour
+    $limitSubjects = [rate_limit_ip_hash(), rate_limit_email_hash($email)];
 	
-    if (!csrf_validate($csrf)) {
+    if (!csrf_validate(is_string($csrf) ? $csrf : '')) {
         $errors[] = t('err.invalid_session');
+    } elseif (rate_limit_exceeded($pdo, 'forgot', [[$limitSubjects[0], 5], [$limitSubjects[1], 3]], 60 * 60)) {
+        $errors[] = t('err.too_many');
     } else {
+        rate_limit_record($pdo, 'forgot', $limitSubjects);
         $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email');
         $stmt->execute([':email' => $email]);
         $user = $stmt->fetch();

@@ -119,6 +119,7 @@ return [
     'err.invalid_email'     => 'Bitte gib eine gültige E-Mail-Adresse ein.',
     'err.password_short'    => 'Das Passwort muss mindestens 8 Zeichen lang sein.',
     'err.password_mismatch' => 'Die Passwörter stimmen nicht überein.',
+    'err.too_many'          => 'Zu viele Versuche. Bitte versuche es später noch einmal.',
 
     // login.php
     'login.title'         => 'Anmelden',

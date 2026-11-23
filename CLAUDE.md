@@ -27,6 +27,7 @@ PHPMailer) only after the owner agrees.
 | `bootstrap.php` | Session, CSRF, `db()`, `guard_protect()`. Every page includes it. |
 | `helper_functions.php` | Small helpers (`e()`, tokens, ...) |
 | `tinymailer.php` | `send_mail()` |
+| `rate_limit.php` | Limits for sign-in, registration, new verification links and password resets (table `rate_limit`) |
 | `login.php`, `register.php`, `verify.php`, `resend.php`, `ForgottenPW.php`, `reset.php`, `logout.php` | User accounts |
 | `characteroverview.php` | List of the user's characters (start page after login) |
 | `CharacterSandbox.php` | Character sheet |
@@ -96,6 +97,7 @@ This applies to the **pull request description** and the **commit message**.
 - Protected pages call `guard_protect()` at the top.
 - Do not show PHP errors to users in production.
 - Messages must not reveal whether an email address is registered.
+- Pages that send emails or check passwords use the rate limit (`rate_limit.php`). The message is always `err.too_many`.
 
 ### Security-relevant issues: direct contact only
 

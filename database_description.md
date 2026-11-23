@@ -74,6 +74,21 @@ The combination of `name` and `username` identifies a character.
 
 ---
 
+### `rate_limit`
+
+This table stores the attempts for the rate limit (`rate_limit.php`). Each row is one attempt of one subject.
+The table does not store IP addresses or email addresses. It stores only a keyed hash (HMAC-SHA-256 with `RATE_LIMIT_KEY` from `.env`).
+The application deletes the rows that are older than 24 hours.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `action` | varchar(30) | IDX | No | | Action of the attempt: `login_failed` (failed sign-in), `register`, `resend` (new verification link) or `forgot` (password reset). |
+| `subject_hash` | char(64) | IDX | No | | Keyed hash of the IP address or of the email address of the attempt. |
+| `created_at` | datetime | IDX | No | | Date and time of the attempt (PHP time). |
+
+Limits: sign-in 10 failed attempts per IP address and 5 per email address in 15 minutes.
+Registration, new verification link and password reset: 5 per IP address and 3 per email address in one hour.
+
 ## Game data (lookup tables)
 
 The application reads these tables to fill the lists in the character sheet. Users do not change these tables.
