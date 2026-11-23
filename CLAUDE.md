@@ -252,6 +252,9 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
 - **Content from the database** (classes, species, conditions, talents, ...) comes from the tables `Lookup_translation`
   and `Game_component_library_translation` (functions in `content_translation.php`). A missing text falls back to English.
   Each new value or talent needs an English row, and a German row is recommended (same migration).
+- **Items:** the English name is in `items.name` (unique), other languages are in `items_translation` (unique per language).
+  Tags come only from the table `tags` (names in `Lookup_translation`, type `item_tag`). Only a migration adds tags.
+  Logic for a tag uses the tag code, never its name.
 - On `CharacterSandbox.php`, a list with game content has `data-lookup="<type>"`. After a change of the language,
   the page loads `getContentNames` and renames the entries in place.
 
