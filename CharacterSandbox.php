@@ -76,6 +76,24 @@ $errors = [];
 .cs-card { background: var(--cs-card); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;
 	box-shadow: 0 1px 2px rgba(74, 68, 49, 0.15); min-width: 0; }
 .cs-card h2 { margin: 0; font-size: 18px; }
+/* Picture of the character (top center) and the larger view */
+.cs-picture { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.cs-picture-frame { width: 160px; height: 160px; border-radius: 50%; padding: 0; overflow: hidden; cursor: pointer;
+	border: 3px solid var(--cs-border); background: var(--cs-field); color: var(--cs-border);
+	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; }
+.cs-picture-frame:focus-visible { outline: 3px solid var(--cs-accent); outline-offset: 3px; }
+.cs-picture-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cs-picture [hidden] { display: none; }
+.cs-picture-plus { font-size: 44px; line-height: 1; font-weight: 700; }
+.cs-picture-text { font-size: 14px; font-weight: 700; color: var(--text); }
+.cs-picture-error { min-height: 1.2em; margin: 0; color: #A40000; font-size: 14px; text-align: center; }
+.cs-picture-dialog { border: 0; border-radius: 12px; padding: 16px; max-width: min(92vw, 900px); background: #F3EDDA; }
+.cs-picture-dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+.cs-picture-dialog img { display: block; max-width: 100%; max-height: 72vh; margin: 0 auto; border-radius: 8px; }
+.cs-picture-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+.cs-picture-actions button { min-height: 48px; padding: 0 18px; border-radius: 24px; border: 1px solid var(--cs-border, #A99E78);
+	background: #FFFDF6; font: inherit; font-weight: 700; cursor: pointer; }
+.cs-picture-actions .cs-picture-remove { color: #A40000; }
 .cs-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .cs-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cs-field > label, .cs-mini { font-size: 13px; font-weight: 700; }
@@ -192,6 +210,25 @@ $errors = [];
 	</div>
 </header>
 <div class = "cs-page" id = "character_basics">
+
+	<!-- Picture of the character (only a preview in the browser; the upload comes with the save function) -->
+	<section class = "cs-picture" aria-label = "<?= e(t('picture.title')) ?>" data-i18n-aria = "picture.title">
+		<button type = "button" class = "cs-picture-frame" id = "pictureButton">
+			<span class = "cs-picture-plus" id = "picturePlus" aria-hidden = "true">+</span>
+			<span class = "cs-picture-text" id = "pictureText" data-i18n = "picture.add"><?= e(t('picture.add')) ?></span>
+			<img id = "pictureThumb" alt = "" hidden>
+		</button>
+		<input type = "file" id = "pictureFile" accept = "image/png" hidden>
+		<p class = "cs-picture-error" id = "pictureError" role = "alert"></p>
+	</section>
+	<dialog class = "cs-picture-dialog" id = "pictureDialog" aria-label = "<?= e(t('picture.title')) ?>" data-i18n-aria = "picture.title">
+		<img id = "pictureLarge" alt = "">
+		<div class = "cs-picture-actions">
+			<button type = "button" id = "pictureChange" data-i18n = "picture.change"><?= e(t('picture.change')) ?></button>
+			<button type = "button" class = "cs-picture-remove" id = "pictureRemove" data-i18n = "picture.remove"><?= e(t('picture.remove')) ?></button>
+			<button type = "button" id = "pictureClose" data-i18n = "picture.close"><?= e(t('picture.close')) ?></button>
+		</div>
+	</dialog>
 
 	<!-- Identity -->
 	<section class = "cs-card" aria-labelledby = "cs-basics-title">
@@ -422,6 +459,7 @@ function applyI18n() {
 	document.querySelectorAll("[data-i18n-title]").forEach(el => el.setAttribute("title", tr(el.dataset.i18nTitle)));
 	document.querySelectorAll(".talent_card").forEach(card => refreshTalentCard(card));
 	if (typeof updateBar === "function") updateBar();
+	if (typeof updatePictureUI === "function") updatePictureUI();
 }
 
 // --- Configuration ---
@@ -829,4 +867,85 @@ document.getElementById("Level").addEventListener("change", function () {
 		});
 	}
 
+
+// --- Picture of the character ---
+// Only PNG, max. 20 MB. The picture stays in the browser (preview). The save function will upload characterPicture later.
+const PICTURE_MAX_BYTES = 20 * 1024 * 1024;
+const PNG_SIGNATURE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+let characterPicture = null;    // the selected File, or null
+let characterPictureUrl = null; // object URL of the preview
+
+const pictureButton = document.getElementById("pictureButton");
+const pictureFile   = document.getElementById("pictureFile");
+const pictureThumb  = document.getElementById("pictureThumb");
+const pictureError  = document.getElementById("pictureError");
+const pictureDialog = document.getElementById("pictureDialog");
+const pictureLarge  = document.getElementById("pictureLarge");
+
+function updatePictureUI() {
+	const hasPicture = characterPicture !== null;
+	pictureThumb.hidden = !hasPicture;
+	document.getElementById("picturePlus").hidden = hasPicture;
+	document.getElementById("pictureText").hidden = hasPicture;
+	pictureButton.setAttribute("aria-label", tr(hasPicture ? "picture.show" : "picture.add"));
+	pictureThumb.alt = hasPicture ? tr("picture.alt") : "";
+	pictureLarge.alt = hasPicture ? tr("picture.alt") : "";
+}
+
+// true if the file starts with the PNG signature (the file type alone can be wrong)
+async function isPngFile(file) {
+	const bytes = new Uint8Array(await file.slice(0, PNG_SIGNATURE.length).arrayBuffer());
+	return PNG_SIGNATURE.every((b, i) => bytes[i] === b);
+}
+
+function setPicture(file) {
+	if (characterPictureUrl) URL.revokeObjectURL(characterPictureUrl);
+	characterPicture = file;
+	characterPictureUrl = file ? URL.createObjectURL(file) : null;
+	pictureThumb.src = characterPictureUrl || "";
+	pictureLarge.src = characterPictureUrl || "";
+	updatePictureUI();
+}
+
+pictureButton.addEventListener("click", function () {
+	pictureError.textContent = "";
+	if (characterPicture) {
+		pictureDialog.showModal();
+	} else {
+		pictureFile.click();
+	}
+});
+
+pictureFile.addEventListener("change", async function () {
+	const file = this.files && this.files[0];
+	this.value = ""; // the same file can be selected again
+	if (!file) return;
+	if (file.size > PICTURE_MAX_BYTES) {
+		pictureError.textContent = tr("picture.err_size");
+		return;
+	}
+	if (file.type !== "image/png" || !(await isPngFile(file))) {
+		pictureError.textContent = tr("picture.err_type");
+		return;
+	}
+	pictureError.textContent = "";
+	setPicture(file);
+});
+
+document.getElementById("pictureChange").addEventListener("click", function () {
+	pictureDialog.close();
+	pictureFile.click();
+});
+document.getElementById("pictureRemove").addEventListener("click", function () {
+	pictureDialog.close();
+	setPicture(null);
+	pictureButton.focus();
+});
+document.getElementById("pictureClose").addEventListener("click", () => pictureDialog.close());
+// A tap outside the picture box closes the larger view
+pictureDialog.addEventListener("click", function (event) {
+	if (event.target === pictureDialog) pictureDialog.close();
+});
+
+updatePictureUI();
 </script>
