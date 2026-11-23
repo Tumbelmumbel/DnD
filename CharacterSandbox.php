@@ -362,7 +362,7 @@ $errors = [];
 					<output class = "cs-mod" name = "ability_<?= e($ability) ?>_mod" id = "ability_<?= e($ability) ?>_mod">0</output>
 					<div class = "cs-field" style = "flex: 1;">
 						<label for = "ability_<?= e($ability) ?>" data-i18n = "ability.<?= e($ability) ?>"><?= e(t('ability.' . $ability, $ability)) ?></label>
-						<input name = "ability_<?= e($ability) ?>" id = "ability_<?= e($ability) ?>" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
+						<input name = "ability_<?= e($ability) ?>" id = "ability_<?= e($ability) ?>" value = "10" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
 					</div>
 				</div>
 				<label class = "cs-check cs-save">
@@ -437,8 +437,11 @@ let level;
 let immunitiesCounter = 0;
 
 // Pre-populate state for all abilities, saves, and skills
+// An empty ability score counts as 10 (modifier 0)
+const DEFAULT_ABILITY_SCORE = 10;
+
 for (const [ability, skills] of Object.entries(abilities)) {
-  state[ability] = 0;
+  state[ability] = DEFAULT_ABILITY_SCORE;
   state[`${ability}_Savingthrow_Proficiency`] = 0;
   for (const skill of skills) state[`${skill}_Proficiency`] = 0;
 }
@@ -496,7 +499,7 @@ for (const [ability, skills] of Object.entries(abilities)) {
 
   // Ability score input
   document.getElementById(`ability_${ability}`).addEventListener("input", function () {
-    state[ability] = this.value;
+    state[ability] = this.value.trim() === "" ? DEFAULT_ABILITY_SCORE : this.value;
     updateAbilityUI(ability);
   });
 
