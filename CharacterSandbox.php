@@ -492,6 +492,15 @@ function updateAbilityUI(abilityName) {
     document.getElementById(`skill_${skill}`).textContent =
       skill_save_modifier(score, state[`${skill}_Proficiency`], state.Proficiency_Bonus);
   }
+
+  if (abilityName === "dexterity") {
+    updateInitiative();
+  }
+}
+
+// Initiative = modifier of Dexterity (D&D 5e)
+function updateInitiative() {
+  document.getElementById("initiative").textContent = ability_modifier(state.dexterity);
 }
 
 // --- Event Listeners ---
@@ -517,6 +526,8 @@ for (const [ability, skills] of Object.entries(abilities)) {
 	});
 	}
 }
+
+updateInitiative();
 
 document.getElementById("Level").addEventListener("change", function () {
 	class_set.class = document.getElementById("class_dropdown").value;
