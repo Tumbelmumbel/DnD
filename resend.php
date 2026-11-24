@@ -50,19 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="<?= e(current_lang()) ?>">
 <head>
-<meta charset="utf-8">
-<title><?= e(t('resend.title')) ?></title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:2rem;max-width:640px}.info{background:#eef5ff;color:#0a47a0;padding:.6rem;border-radius:6px}</style>
+<?php $pageTitle = t('resend.title'); require __DIR__ . '/partials/page_head.php'; ?>
 </head>
 <body>
-<h1><?= e(t('resend.title')) ?></h1>
-<?php if ($errors): ?>
-  <div class="info"><?= e(implode(' ', $errors)) ?></div>
-<?php else: ?>
-  <div class="info"><?= e($info) ?></div>
-<?php endif; ?>
-<p><a href="/login.php"><?= e(t('back_to_sign_in')) ?></a></p>
+<main class="auth-card">
+  <h1><?= e(t('resend.title')) ?></h1>
+  <?php if ($errors): ?>
+    <p class="auth-msg info"><?= e(implode(' ', $errors)) ?></p>
+  <?php else: ?>
+    <p class="auth-msg info"><?= e($info) ?></p>
+  <?php endif; ?>
+  <p class="auth-links"><a href="/login.php"><?= e(t('back_to_sign_in')) ?></a></p>
+</main>
 <?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>

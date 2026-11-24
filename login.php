@@ -59,60 +59,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="<?= e(current_lang()) ?>">
-
 <head>
-<meta charset="utf-8">
-<title><?= e(t('login.title')) ?></title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="/Assets/style.css">
-<style>
-form {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch; /* change to stretch if you prefer full-width inputs */
-    gap: 0.2rem;
-}
-</style>
+<?php $pageTitle = t('login.title'); require __DIR__ . '/partials/page_head.php'; ?>
 </head>
-
 <body>
- <div class="container_vertical">
-	<h1><?= e(t('login.title')) ?></h1>
-	<?php if (isset($_GET['m']) && $_GET['m']==='auth'): ?>
-	  <div class="alert"><?= e(t('login.please_sign_in')) ?></div>
-	<?php endif; ?>
-
-	<?php foreach ($errors as $err): ?>
-	  <div class="err"><?= e($err) ?></div>
-	<?php endforeach; ?>
-
-	<?php if ($info): ?>
-	  <div class="alert"><?= e($info) ?></div>
-	  <form method="post" action="/resend.php">
-		<input class= label type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-		<input class= label type="hidden" name="email" value="<?= e($_POST['email'] ?? '') ?>">
-		<button class= button type="submit"><?= e(t('resend_link')) ?></button>
-	  </form>
-	<?php endif; ?>
-
-	<form method="post" action="">
-	  <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-	  <label class= label for="email"><?= e(t('email')) ?></label>
-	  <input class= input id="email" name="email" type="email" required autocomplete="username">
-	  <label class= label for="password"><?= e(t('password')) ?></label>
-	  <input class= input id="password" name="password" type="password" required autocomplete="current-password">
-	  <button class= button type="submit"><?= e(t('sign_in')) ?></button>
-	</form>
-
-	<form method="get" action="/ForgottenPW.php">
-		<button class= button type="submit"><?= e(t('forgot_password')) ?></button>
-	</form>	
-
-	<p><?= e(t('no_account')) ?></p>
-	<form method="get" action="/register.php">
-		<button class= button type="submit"><?= e(t('register')) ?></button>
-	</form>	
-</div>
+<main class="auth-card">
+  <h1><?= e(t('login.title')) ?></h1>
+  <?php if (isset($_GET['m']) && $_GET['m']==='auth'): ?>
+    <p class="auth-msg info"><?= e(t('login.please_sign_in')) ?></p>
+  <?php endif; ?>
+  <?php foreach ($errors as $err): ?>
+    <p class="auth-msg err"><?= e($err) ?></p>
+  <?php endforeach; ?>
+  <?php if ($info): ?>
+    <p class="auth-msg info"><?= e($info) ?></p>
+    <form class="auth-form" method="post" action="/resend.php">
+      <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+      <input type="hidden" name="email" value="<?= e($_POST['email'] ?? '') ?>">
+      <button class="auth-button secondary" type="submit"><?= e(t('resend_link')) ?></button>
+    </form>
+  <?php endif; ?>
+  <form class="auth-form" method="post" action="">
+    <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+    <label for="email"><?= e(t('email')) ?></label>
+    <input id="email" name="email" type="email" required autocomplete="username">
+    <label for="password"><?= e(t('password')) ?></label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+    <button class="auth-button" type="submit"><?= e(t('sign_in')) ?></button>
+  </form>
+  <a class="auth-button secondary" href="/ForgottenPW.php"><?= e(t('forgot_password')) ?></a>
+  <p class="auth-links"><?= e(t('no_account')) ?> <a href="/register.php"><?= e(t('register')) ?></a></p>
+</main>
 <?php require __DIR__ . '/partials/language_footer.php'; ?>
 </body>
 </html>
