@@ -117,6 +117,15 @@ $errors = [];
 .cs-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
 .cs-check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .cs-check span { flex: 1; }
+.cs-toggles-title { font-size: 14px; font-weight: 600; }
+.cs-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cs-toggles .cs-check { justify-content: center; min-height: 44px; padding: 4px 12px; border: 1px solid var(--cs-border);
+	border-radius: 22px; background: var(--cs-field); font-weight: 600; text-align: center; }
+.cs-toggles .cs-check span { flex: 0 1 auto; }
+.cs-toggles .cs-check input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.cs-toggles .cs-check:has(input:checked) { background: var(--cs-accent); border-color: var(--cs-accent); color: #FFFFFF; }
+.cs-toggles .cs-check:has(input:checked) span::before { content: "\2713\00A0"; }
+.cs-toggles .cs-check:has(input:focus-visible) { outline: 3px solid var(--cs-accent); outline-offset: 2px; }
 .cs-abilities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .cs-ability { gap: 2px; }
 .cs-ability-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
@@ -355,7 +364,8 @@ $errors = [];
 						<label for = "shield" data-i18n = "shield"><?= e(t('shield')) ?></label>
 						<select class = "class_dropdown" name = "shield" id = "shield"></select>
 					</div>
-					<div class = "cs-checks">
+					<span class = "cs-toggles-title" id = "cs-armor-prof-title" data-i18n = "armor_proficiency"><?= e(t('armor_proficiency')) ?></span>
+					<div class = "cs-toggles" role = "group" aria-labelledby = "cs-armor-prof-title">
 						<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span data-i18n = "light_armor"><?= e(t('light_armor')) ?></span></label>
 						<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span data-i18n = "medium_armor"><?= e(t('medium_armor')) ?></span></label>
 						<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span data-i18n = "heavy_armor"><?= e(t('heavy_armor')) ?></span></label>
