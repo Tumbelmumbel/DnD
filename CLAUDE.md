@@ -40,6 +40,7 @@ PHPMailer) only after the owner agrees.
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
 | `migration_*.sql` | Database changes, run by hand in phpMyAdmin |
+| `.htaccess` | Blocks downloads of `.env`, logs and other non-public files. Do not remove it. |
 | `.github/workflows/deploy.yml` | Uploads `main` to IONOS over SFTP |
 | `.github/workflows/claude.yml` | Claude review agent on GitHub: answers `@claude` comments (review only) |
 
@@ -91,6 +92,8 @@ This applies to the **pull request description** and the **commit message**.
 
 - **No secrets in the repository.** Passwords, hosts and keys come only from `.env`.
   `.env` is on the server only; `.env.example` lists the keys without values.
+- `.htaccess` blocks access to dot files (`.env`) and to `*.log`, `*.ini`, `*.sql`, `*.md`, `*.example`.
+  Do not remove or weaken these rules.
 - Use prepared statements for all SQL. Never put user input directly into SQL.
 - Escape all output with `e()`.
 - Every form that changes data needs a CSRF token (`csrf_token()` / `csrf_validate()`).

@@ -1,0 +1,12 @@
+# .htaccess – protects files that must never be downloaded from the website.
+# Do not remove this file. The deploy uploads it with every merge.
+
+# 1) Files whose name starts with a dot: .env, .env.example, .gitignore, ...
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# 2) Logs, PHP settings, database scripts, documentation and example files
+<FilesMatch "\.(log|ini|sql|md|example)$">
+    Require all denied
+</FilesMatch>
