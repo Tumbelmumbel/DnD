@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
-require __DIR__ . '/calculation.php';
 require __DIR__ . '/content_translation.php';
 guard_protect();
 
@@ -107,7 +106,6 @@ $errors = [];
 /* Grids */
 .cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .cs-identity .cs-name { grid-column: 1 / -1; }
-.cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
 .cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cs-hp input { text-align: center; }
 .cs-stat-panel.cs-hp-panel, .cs-stat-panel.cs-armor-panel { width: 340px; }
@@ -119,7 +117,6 @@ $errors = [];
 .cs-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .cs-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--cs-line); padding-top: 8px; }
 .cs-row input { width: 72px !important; text-align: center; }
-.cs-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
 .cs-check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .cs-check span { flex: 1; }
 .cs-toggles-title { font-size: var(--font-text); font-weight: 600; }
@@ -251,13 +248,12 @@ $errors = [];
 	.cs-identity { grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.2fr); }
 	.cs-identity .cs-name { grid-column: auto; }
 	.cs-main { display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; }
-	.cs-side .cs-two { grid-template-columns: minmax(0, 1fr); }
 	.cs-abilities { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 /* Phone: one column */
 @media (max-width: 640px) {
 	.cs-page { padding: 10px; gap: 10px; }
-	.cs-identity, .cs-two, .talent_list { grid-template-columns: minmax(0, 1fr); }
+	.cs-identity, .talent_list { grid-template-columns: minmax(0, 1fr); }
 	.cs-identity-panel .cs-identity { grid-template-columns: minmax(0, 1fr); }
 	.cs-identity-panel { left: 8px; width: calc(100% - 16px); }
 	.cs-identity .cs-name { grid-column: auto; }

@@ -31,7 +31,7 @@ PHPMailer) only after the owner agrees.
 | `login.php`, `register.php`, `verify.php`, `resend.php`, `ForgottenPW.php`, `reset.php`, `logout.php` | User accounts |
 | `characteroverview.php` | List of the user's characters (start page after login) |
 | `CharacterSandbox.php` | Character sheet |
-| `calculation.js`, `calculation.php` | D&D calculations (modifiers) |
+| `calculation.js` | D&D calculations (modifiers) |
 | `i18n.php`, `lang/*.php`, `ajax/i18n.php` | Languages of the interface (see "Languages") |
 | `partials/language_footer.php` | Language menu at the end of every page (bottom right) |
 | `content_translation.php` | Names and texts of the game content in the current language (`lookup_list()`, `talent_list()`, ...) |

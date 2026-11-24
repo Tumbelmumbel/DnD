@@ -169,10 +169,6 @@ return [
     'resend.title'        => 'Verification link',
     'resend.info'         => 'If your email exists and is not verified, we have sent a new verification link.',
 
-    // dashboard.php
-    'dashboard.title'     => 'Dashboard',
-    'dashboard.welcome'   => 'Welcome,',
-    'dashboard.role'      => 'Your role:',
 
     // characteroverview.php
     'overview.title'      => 'Your characters',
