@@ -72,10 +72,10 @@ $errors = [];
 /* ===== Character sheet: tablet-first layout (page-only rules, prefix cs-) ===== */
 .cs-page { --cs-card: #F3EDDA; --cs-field: #FFFDF6; --cs-line: #D8CDA8; --cs-border: #A99E78; --cs-accent: #3B4BC4;
 	max-width: 1240px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
-	color: var(--text); font-family: var(--fonts); font-size: 16px; text-align: left; }
+	color: var(--text); font-family: var(--fonts); font-size: var(--font-text); text-align: left; }
 .cs-card { background: var(--cs-card); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
 	box-shadow: 0 1px 2px rgba(74, 68, 49, 0.15); min-width: 0; }
-.cs-card h2 { margin: 0; font-size: 18px; }
+.cs-card h2 { margin: 0; font-size: var(--font-header); }
 /* Picture of the character (in the bar, left) and the larger view */
 .cs-picture-frame { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 50%; padding: 0; overflow: hidden; cursor: pointer;
 	border: 2px solid rgba(255, 253, 246, 0.6); background: rgba(255, 253, 246, 0.12); color: #FFFDF6;
@@ -83,10 +83,10 @@ $errors = [];
 .cs-picture-frame:focus-visible { outline: 3px solid #FFFDF6; outline-offset: 2px; }
 .cs-picture-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cs-picture-frame [hidden] { display: none; }
-.cs-picture-plus { font-size: 30px; line-height: 1; font-weight: 700; }
+.cs-picture-plus { font-size: var(--font-header); line-height: 1; font-weight: 700; }
 /* Error message: a box under the bar; it does not change the height of the bar */
 .cs-picture-error { position: absolute; top: 100%; left: 16px; margin: 4px 0 0; padding: 8px 12px; border-radius: 8px;
-	background: #FFECEC; color: #A40000; font-size: 14px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+	background: #FFECEC; color: #A40000; font-size: var(--font-text); font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
 .cs-picture-error:empty { display: none; }
 .cs-picture-dialog { border: 0; border-radius: 12px; padding: 16px; max-width: min(92vw, 900px); background: #F3EDDA; }
 .cs-picture-dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
@@ -97,12 +97,12 @@ $errors = [];
 .cs-picture-actions .cs-picture-remove { color: #A40000; }
 .cs-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .cs-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.cs-field > label, .cs-mini { font-size: 13px; font-weight: 700; }
+.cs-field > label, .cs-mini { font-size: var(--font-text); font-weight: 700; }
 .cs-page input:not([type=checkbox]), .cs-page select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px;
 	padding: 0 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-field);
-	color: var(--text); font: inherit; font-size: 16px; font-weight: 600; }
+	color: var(--text); font: inherit; font-size: var(--font-text); font-weight: 600; }
 .cs-page input[type=checkbox] { width: 24px; height: 24px; margin: 0; flex: 0 0 24px; accent-color: var(--cs-accent); }
-.cs-name input { font-size: 20px !important; font-weight: 700; }
+.cs-name input { font-weight: 700; }
 
 /* Grids */
 .cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -117,10 +117,10 @@ $errors = [];
 .cs-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
 .cs-check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .cs-check span { flex: 1; }
-.cs-toggles-title { font-size: 14px; font-weight: 600; }
+.cs-toggles-title { font-size: var(--font-text); font-weight: 600; }
 .cs-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .cs-toggles .cs-check { justify-content: center; min-height: 40px; padding: 2px 10px; border: 1px solid var(--cs-border);
-	border-radius: 8px; background: var(--cs-field); font-size: 16px; font-weight: 600; text-align: center; }
+	border-radius: 8px; background: var(--cs-field); font-size: var(--font-text); font-weight: 600; text-align: center; }
 .cs-toggles .cs-check span { flex: 0 1 auto; }
 .cs-toggles .cs-check input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .cs-toggles .cs-check:has(input:checked) { background: var(--cs-accent); border-color: var(--cs-accent); color: #FFFFFF; }
@@ -133,22 +133,22 @@ $errors = [];
 .cs-ability-head .cs-field { flex-direction: row; align-items: center; gap: 8px; }
 .cs-ability-head .cs-field label { flex: 1; min-width: 0; }
 .cs-ability-head .cs-field input { flex: 0 0 64px; width: 64px; }
-.cs-ability-head label { font-size: 17px; font-weight: 700; }
+.cs-ability-head label { font-size: var(--font-header); font-weight: 700; }
 .cs-ability-head input { text-align: center; }
 .cs-mod { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 22px; background: var(--cs-accent); color: #FFFFFF;
-	display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
+	display: flex; align-items: center; justify-content: center; font-size: var(--font-header); font-weight: 700; }
 .cs-ability .cs-save { font-weight: 700; border-bottom: 1px solid var(--cs-line); min-height: 40px; }
 .cs-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .cs-chips:empty { display: none; }
 .cs-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 4px 0 10px; border: 1px solid var(--cs-border);
-	border-radius: 8px; background: var(--cs-field); font-size: 16px; font-weight: 600; }
-.cs-chip-remove { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; font-size: 20px; line-height: 1;
+	border-radius: 8px; background: var(--cs-field); font-size: var(--font-text); font-weight: 600; }
+.cs-chip-remove { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; font-size: var(--font-header); line-height: 1;
 	color: #C62828; cursor: pointer; }
 .cs-chip-remove:hover { background: #F6DADA; }
-.cs-chips-empty, .cs-chip-message { margin: 0; font-size: 14px; color: #5C5442; }
+.cs-chips-empty, .cs-chip-message { margin: 0; font-size: var(--font-text); color: #5C5442; }
 .cs-chip-message:empty { display: none; }
 .cs-chip-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-.cs-chip-add, .cs-chip-confirm { box-sizing: border-box; min-height: 40px; padding: 0 12px; border-radius: 8px; font: inherit; font-size: 16px;
+.cs-chip-add, .cs-chip-confirm { box-sizing: border-box; min-height: 40px; padding: 0 12px; border-radius: 8px; font: inherit; font-size: var(--font-text);
 	font-weight: 600; cursor: pointer; }
 .cs-chip-add { border: 1px solid #2E7D32; background: var(--cs-field); color: #2E7D32; }
 .cs-chip-add[aria-expanded="true"] { background: #2E7D32; color: #FFFFFF; }
@@ -161,7 +161,7 @@ $errors = [];
 
 /* Buttons from the existing logic, restyled for touch */
 .cs-page .button.add, .cs-page .button.delete { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 24px;
-	padding: 0; font-size: 22px; font-weight: 700; background: transparent; cursor: pointer; }
+	padding: 0; font-size: var(--font-header); font-weight: 700; background: transparent; cursor: pointer; }
 .cs-page .button.add { border: 2px solid #2E7D32; color: #2E7D32; }
 .cs-page .button.delete { border: 2px solid #C62828; color: #C62828; }
 .cs-page #addTalent { flex: 0 0 auto; min-height: 48px; padding: 0 24px; border: 0; border-radius: 8px;
@@ -176,7 +176,7 @@ $errors = [];
 .talent_list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; width: 100%; }
 .talent_card { border: 1px solid var(--cs-line); border-radius: 10px; background: var(--cs-field); }
 .talent_card_header { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 8px 0 14px; cursor: pointer; user-select: none; }
-.talent_card_arrow { display: inline-block; width: 1em; transition: transform 0.15s; }
+.talent_card_arrow { display: inline-block; width: 1em; font-size: var(--font-header); transition: transform 0.15s; }
 .talent_card.open .talent_card_arrow { transform: rotate(90deg); }
 .talent_card_title { font-weight: 700; }
 .talent_card_facts { flex: 1; color: #6B6346; }
@@ -204,20 +204,20 @@ $errors = [];
 .cs-identity-panel[hidden] { display: none; }
 .cs-identity-panel input, .cs-identity-panel select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 48px;
 	padding: 0 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: #FFFFFF;
-	color: var(--text); font: inherit; font-size: 16px; }
+	color: var(--text); font: inherit; font-size: var(--font-text); }
 .cs-identity-panel .cs-identity { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .cs-identity-panel .cs-identity .cs-name { grid-column: auto; }
 .cs-identity-done { align-self: flex-end; min-height: 44px; padding: 0 24px; border: 0; border-radius: 8px;
 	background: var(--cs-accent); color: #FFFFFF; font: inherit; font-weight: 700; cursor: pointer; }
-.cs-bar-name { font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cs-bar-sub { font-size: 13px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-bar-name { font-size: var(--font-title); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-bar-sub { font-size: var(--font-text); opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-bar-hp { display: flex; align-items: center; gap: 8px; background: rgba(255, 253, 246, 0.12); border-radius: 28px; padding: 4px; }
-.cs-bar-hp button { width: 48px; height: 48px; border-radius: 24px; border: 0; color: #FFFFFF; font-size: 24px; font-weight: 700; cursor: pointer; }
+.cs-bar-hp button { width: 48px; height: 48px; border-radius: 24px; border: 0; color: #FFFFFF; font-size: var(--font-header); font-weight: 700; cursor: pointer; }
 .cs-bar-hp .cs-hp-minus { background: #C62828; }
 .cs-bar-hp .cs-hp-plus { background: #2E7D32; }
 .cs-bar-stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
-.cs-bar-stat span:first-child { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.cs-bar-stat span:last-child { font-size: 22px; font-weight: 700; }
+.cs-bar-stat span:first-child { font-size: var(--font-text); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.cs-bar-stat span:last-child { font-size: var(--font-header); font-weight: 700; }
 @media (max-width: 640px) {
 	.cs-bar-inner { gap: 8px 12px; padding: 6px 10px; }
 	.cs-bar-optional { display: none; }

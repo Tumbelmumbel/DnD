@@ -28,8 +28,10 @@
 	
 	/* FONTS */
 	--fonts:   Arial, Helvetica, sans-serif;
-	--headersize: 24px;
-	--standardsize: 16px;
+	/* The project uses only these three font sizes */
+	--font-title: 24px;   /* page titles, character name */
+	--font-header: 18px;  /* headers in cards and containers, icons, big values in circles and in the bar */
+	--font-text: 14px;    /* labels, buttons, values, all other text */
 }
 
 body {
@@ -37,10 +39,16 @@ body {
 	align-items: center;
 	margin: 0;
 	font-family: var(--fonts);
+	font-size: var(--font-text);
 	justify-content: center;
 	/*height: 100vh;*/
 	min-height: 100vh; /* background fills the window; the page scrolls when the content is higher */
 }
+
+/* Font sizes: headings use the title and header sizes, form controls use the text size */
+h1 { font-size: var(--font-title); }
+h2, h3, h4 { font-size: var(--font-header); }
+button, input, select, textarea { font-family: inherit; font-size: var(--font-text); }
 
 .label {
 	flex: 1;
@@ -49,14 +57,14 @@ body {
 }
 
 .label.section_header {
-	font-size: var(--headersize);
+	font-size: var(--font-header);
 }
 
 .skill_modifier {
 	flex: 1;
 	font-family: var(--fonts);
 	color: var(--text);
-	font-size: 16;
+	font-size: var(--font-text);
 	width: 2em;
 	text-align: center;
 }
@@ -65,7 +73,7 @@ body {
 	flex: 1;
 	font-family: var(--fonts);
 	color: var(--text);
-	font-size: var(--headersize);
+	font-size: var(--font-header);
 	width: 2em;
 	text-align: center;
 }
@@ -81,7 +89,7 @@ body {
     color: var(--text);
 	text-align: center; 
 	width: 2em; 
-	font-size: 16px;
+	font-size: var(--font-text);
 }
 
 .button {
@@ -103,7 +111,7 @@ body {
   cursor: pointer;
   outline: none;
   padding: 0px 0px;
-  font-size: var(--standardsize);
+  font-size: var(--font-header);
   font-weight: 600;
   color: rgba(255, 0, 0, 1);
   background: rgba(255, 0, 0, 0);
@@ -127,7 +135,7 @@ body {
   cursor: pointer;
   outline: none;
   padding: 0px 0px;
-  font-size: var(--standardsize);
+  font-size: var(--font-header);
   font-weight: 600;
   color: rgba(0, 200, 0, 0.5);
   background: rgba(0, 200, 0, 0);
@@ -249,7 +257,7 @@ body {
 	left: 12px;
 	right: 12px;
 	color: white;
-	font-size: 18px;
+	font-size: var(--font-header);
 	font-weight: bold;
 	text-shadow: 0 1px 3px black;
 }
@@ -271,7 +279,7 @@ body {
 
 .page-header h1 {
 	margin: 0;
-	font-size: 32px;
+	font-size: var(--font-title);
 	font-weight: bold;
 	flex-grow: 2;
 }
