@@ -40,7 +40,8 @@ PHPMailer) only after the owner agrees.
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
 | `migration_*.sql` | Database changes, run by hand in phpMyAdmin |
-| `.htaccess` | Blocks downloads of `.env`, logs and other non-public files. Do not remove it. |
+| `index.php` | Start page: sends the visitor to the sign-in page |
+| `.htaccess` | Sets `index.php` as the start page. Blocks downloads of `.env`, logs and other non-public files. Do not remove it. |
 | `.github/workflows/deploy.yml` | Uploads `main` to IONOS over SFTP |
 | `.github/workflows/claude.yml` | Claude review agent on GitHub: answers `@claude` comments (review only) |
 
