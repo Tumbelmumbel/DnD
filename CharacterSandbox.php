@@ -107,12 +107,8 @@ $errors = [];
 /* Grids */
 .cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cs-identity .cs-name { grid-column: 1 / -1; }
-.cs-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-.cs-stat { align-items: center; text-align: center; }
-.cs-stat .cs-mini { text-transform: uppercase; letter-spacing: 0.04em; }
-.cs-stat input, .cs-stat select { text-align: center; font-size: 20px !important; font-weight: 700; }
-.cs-value { min-height: 48px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; }
-.cs-value:empty::before { content: "–"; opacity: 0.5; }
+.cs-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cs-combat input, .cs-combat select { text-align: center; font-size: 20px !important; font-weight: 700; }
 .cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cs-hp input { text-align: center; font-size: 20px !important; }
@@ -237,7 +233,7 @@ $errors = [];
 			<button type = "button" class = "cs-hp-plus" id = "hpPlus" aria-label = "<?= e(t('gain_hp')) ?>" data-i18n-aria = "gain_hp">+</button>
 		</div>
 		<div class = "cs-bar-stat"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac">–</span></div>
-		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative">–</span></div>
+		<div class = "cs-bar-stat"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative">–</span></div>
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></div>
 		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></div>
 	</div>
@@ -297,42 +293,12 @@ $errors = [];
 	</dialog>
 
 
-	<!-- Combat values -->
-	<section class = "cs-stats" aria-label = "<?= e(t('combat_values')) ?>" data-i18n-aria = "combat_values">
-		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
-			<input name = "armorClass" id = "armorClass" inputmode = "numeric">
-		</div>
-		<div class = "cs-card cs-stat">
-			<span class = "cs-mini" id = "cs-initiative-label" data-i18n = "initiative"><?= e(t('initiative')) ?></span>
-			<label class = "cs-value" name = "initiative" id = "initiative" aria-labelledby = "cs-initiative-label"></label>
-		</div>
-		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "Walking_Speed" data-i18n = "walking_speed"><?= e(t('walking_speed')) ?></label>
-			<input type = "number" name = "Walking_Speed" id = "Walking_Speed" inputmode = "numeric">
-		</div>
-		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "Proficiency_Bonus" data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></label>
-			<input type = "number" name = "Proficiency_Bonus" id = "Proficiency_Bonus" inputmode = "numeric">
-		</div>
-		<div class = "cs-card cs-stat">
-			<label class = "cs-mini" for = "inspiration" data-i18n = "inspiration"><?= e(t('inspiration')) ?></label>
-			<select id = "inspiration" name = "inspiration">
-				<option id = "empty" class = "Dropdown_Entry" value = "">–</option>
-				<option id = "D4" class = "Dropdown_Entry" value = "D4">D4</option>
-				<option id = "D6" class = "Dropdown_Entry" value = "D6">D6</option>
-				<option id = "D8" class = "Dropdown_Entry" value = "D8">D8</option>
-				<option id = "D12" class = "Dropdown_Entry" value = "D12">D12</option>
-			</select>
-		</div>
-	</section>
-
 	<div class = "cs-main">
 		<!-- Left column (landscape) -->
 		<div class = "cs-side">
 			<div class = "cs-two">
 				<section class = "cs-card" aria-labelledby = "cs-hp-title">
-					<h2 id = "cs-hp-title" data-i18n = "hit_points"><?= e(t('hit_points')) ?></h2>
+					<h2 id = "cs-hp-title" data-i18n = "combat_values"><?= e(t('combat_values')) ?></h2>
 					<div class = "cs-hp">
 						<div class = "cs-field">
 							<label for = "currentHitpoints" data-i18n = "hp_current"><?= e(t('hp_current')) ?></label>
@@ -345,6 +311,30 @@ $errors = [];
 						<div class = "cs-field">
 							<label for = "tempHitpoints" data-i18n = "hp_temporary"><?= e(t('hp_temporary')) ?></label>
 							<input name = "tempHitpoints" id = "tempHitpoints" inputmode = "numeric">
+						</div>
+					</div>
+					<div class = "cs-combat">
+						<div class = "cs-field">
+							<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
+							<input name = "armorClass" id = "armorClass" inputmode = "numeric">
+						</div>
+						<div class = "cs-field">
+							<label for = "Walking_Speed" data-i18n = "walking_speed"><?= e(t('walking_speed')) ?></label>
+							<input type = "number" name = "Walking_Speed" id = "Walking_Speed" inputmode = "numeric">
+						</div>
+						<div class = "cs-field">
+							<label for = "Proficiency_Bonus" data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></label>
+							<input type = "number" name = "Proficiency_Bonus" id = "Proficiency_Bonus" inputmode = "numeric">
+						</div>
+						<div class = "cs-field">
+							<label for = "inspiration" data-i18n = "inspiration"><?= e(t('inspiration')) ?></label>
+							<select id = "inspiration" name = "inspiration">
+								<option id = "empty" class = "Dropdown_Entry" value = "">–</option>
+								<option id = "D4" class = "Dropdown_Entry" value = "D4">D4</option>
+								<option id = "D6" class = "Dropdown_Entry" value = "D6">D6</option>
+								<option id = "D8" class = "Dropdown_Entry" value = "D8">D8</option>
+								<option id = "D12" class = "Dropdown_Entry" value = "D12">D12</option>
+							</select>
 						</div>
 					</div>
 					<div class = "cs-row">
@@ -562,7 +552,7 @@ function updateAbilityUI(abilityName) {
 
 // Initiative = modifier of Dexterity (D&D 5e)
 function updateInitiative() {
-  document.getElementById("initiative").textContent = ability_modifier(state.dexterity);
+  document.getElementById("bar_initiative").textContent = ability_modifier(state.dexterity);
 }
 
 // --- Event Listeners ---
@@ -806,7 +796,6 @@ document.getElementById("Level").addEventListener("change", function () {
 		document.getElementById("bar_sub").textContent = sub;
 		document.getElementById("bar_hp").textContent = (barText("currentHitpoints") || "–") + " / " + (barText("maxHitpoints") || "–");
 		document.getElementById("bar_ac").textContent = barText("armorClass") || "–";
-		document.getElementById("bar_initiative").textContent = barText("initiative") || "–";
 		document.getElementById("bar_speed").textContent = barText("Walking_Speed") || "–";
 		document.getElementById("bar_inspiration").textContent = barText("inspiration") || "–";
 	}
@@ -833,7 +822,6 @@ document.getElementById("Level").addEventListener("change", function () {
 	document.addEventListener("input", updateBar);
 	document.addEventListener("change", updateBar);
 	new MutationObserver(updateBar).observe(document.getElementById("subclass_dropdown"), { childList: true });
-	new MutationObserver(updateBar).observe(document.getElementById("initiative"), { childList: true, characterData: true, subtree: true });
 	updateBar();
 
 
