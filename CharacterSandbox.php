@@ -158,6 +158,12 @@ $errors = [];
 .cs-chip-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cs-chip-form[hidden] { display: none; }
 .cs-chip-form select { flex: 1 1 120px; min-width: 0; }
+/* Defense and conditions as a strip: title | chips | buttons in one row; the forms and the message under it */
+.cs-strip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; }
+.cs-strip > h2 { grid-column: 1; grid-row: 1; white-space: nowrap; }
+.cs-strip > .cs-chips, .cs-strip > .cs-chips-empty { grid-column: 2; grid-row: 1; }
+.cs-strip > .cs-chip-buttons { grid-column: 3; grid-row: 1; }
+.cs-strip > .cs-chip-form, .cs-strip > .cs-chip-message { grid-column: 1 / -1; }
 .cs-line { display: flex; align-items: center; gap: 8px; }
 .cs-line select { flex: 1; }
 
@@ -241,13 +247,10 @@ $errors = [];
 	.cs-bar-more { display: inline-flex; align-items: center; }
 }
 
-/* Tablet landscape and desktop: two columns */
-.cs-main { display: flex; flex-direction: column; gap: 10px; }
-.cs-side { display: flex; flex-direction: column; gap: 10px; }
+/* Tablet landscape and desktop: abilities in 3 columns */
 @media (min-width: 1000px) {
 	.cs-identity { grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.2fr); }
 	.cs-identity .cs-name { grid-column: auto; }
-	.cs-main { display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; }
 	.cs-abilities { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 /* Phone: one column */
@@ -258,6 +261,8 @@ $errors = [];
 	.cs-identity-panel { left: 8px; width: calc(100% - 16px); }
 	.cs-identity .cs-name { grid-column: auto; }
 	.cs-abilities { grid-template-columns: minmax(0, 1fr); }
+	.cs-strip { grid-template-columns: minmax(0, 1fr); }
+	.cs-strip > * { grid-column: auto !important; grid-row: auto !important; }
 }
 </style>
 </head>
@@ -419,72 +424,68 @@ $errors = [];
 	</dialog>
 
 
-	<div class = "cs-main">
-		<!-- Left column (landscape) -->
-		<div class = "cs-side">
-			<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
-				<h2 id = "cs-defense-title" data-i18n = "defense_and_conditions"><?= e(t('defense_and_conditions')) ?></h2>
-				<ul class = "cs-chips" id = "defenseChips" aria-labelledby = "cs-defense-title"></ul>
-				<p class = "cs-chips-empty" id = "defenseEmpty" data-i18n = "defense.none"><?= e(t('defense.none')) ?></p>
-				<div class = "cs-chip-buttons">
-					<button type = "button" class = "cs-chip-add" id = "addDamageImmunity" aria-expanded = "false" aria-controls = "defenseForm">+ <span data-i18n = "defense"><?= e(t('defense')) ?></span></button>
-					<button type = "button" class = "cs-chip-add" id = "addCondition" aria-expanded = "false" aria-controls = "conditionForm">+ <span data-i18n = "condition"><?= e(t('condition')) ?></span></button>
+	<!-- Abilities (order from Abilities.sort_order; ids use the codes) -->
+	<section class = "cs-abilities" aria-label = "<?= e(t('abilities')) ?>" data-i18n-aria = "abilities">
+		<?php foreach ($abilities as $ability => $skills): ?>
+		<div class = "cs-card cs-ability">
+			<div class = "cs-ability-head">
+				<output class = "cs-mod" name = "ability_<?= e($ability) ?>_mod" id = "ability_<?= e($ability) ?>_mod">0</output>
+				<div class = "cs-field" style = "flex: 1;">
+					<label for = "ability_<?= e($ability) ?>" data-i18n = "ability.<?= e($ability) ?>"><?= e(t('ability.' . $ability, $ability)) ?></label>
+					<input name = "ability_<?= e($ability) ?>" id = "ability_<?= e($ability) ?>" value = "10" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
 				</div>
-				<div class = "cs-chip-form" id = "defenseForm" hidden>
-					<select class = "class_dropdown" id = "defenseInfluence" name = "damageInfluence" data-lookup = "damage_influence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
-						<option class = "Dropdown_Entry" value = ""></option>
-						<?php foreach ($damageInfluences as $damageInfluence): ?>
-							<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
-						<?php endforeach; ?>
-					</select>
-					<select class = "class_dropdown" id = "defenseDamageType" name = "damageType" data-lookup = "damagetype" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
-						<option class = "Dropdown_Entry" value = ""></option>
-						<?php foreach ($damageTypes as $damageType): ?>
-							<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
-						<?php endforeach; ?>
-					</select>
-					<button type = "button" class = "cs-chip-confirm" id = "defenseAdd" data-i18n = "add"><?= e(t('add')) ?></button>
-				</div>
-				<div class = "cs-chip-form" id = "conditionForm" hidden>
-					<select class = "class_dropdown" id = "conditionSelect" name = "conditions" data-lookup = "condition" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
-						<option class = "Dropdown_Entry" value = ""></option>
-						<?php foreach ($conditions as $condition): ?>
-							<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
-						<?php endforeach; ?>
-					</select>
-					<button type = "button" class = "cs-chip-confirm" id = "conditionAdd" data-i18n = "add"><?= e(t('add')) ?></button>
-				</div>
-				<p class = "cs-chip-message" id = "defenseMessage" aria-live = "polite"></p>
-			</section>
-		</div>
-
-		<!-- Abilities (order from Abilities.sort_order; ids use the codes) -->
-		<section class = "cs-abilities" aria-label = "<?= e(t('abilities')) ?>" data-i18n-aria = "abilities">
-			<?php foreach ($abilities as $ability => $skills): ?>
-			<div class = "cs-card cs-ability">
-				<div class = "cs-ability-head">
-					<output class = "cs-mod" name = "ability_<?= e($ability) ?>_mod" id = "ability_<?= e($ability) ?>_mod">0</output>
-					<div class = "cs-field" style = "flex: 1;">
-						<label for = "ability_<?= e($ability) ?>" data-i18n = "ability.<?= e($ability) ?>"><?= e(t('ability.' . $ability, $ability)) ?></label>
-						<input name = "ability_<?= e($ability) ?>" id = "ability_<?= e($ability) ?>" value = "10" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
-					</div>
-				</div>
-				<label class = "cs-check cs-save">
-					<input type = "checkbox" name = "save_<?= e($ability) ?>_prof" id = "save_<?= e($ability) ?>_prof">
-					<span data-i18n = "saving_throw"><?= e(t('saving_throw')) ?></span>
-					<output name = "save_<?= e($ability) ?>" id = "save_<?= e($ability) ?>">0</output>
-				</label>
-				<?php foreach ($skills as $skill): ?>
-				<label class = "cs-check">
-					<input type = "checkbox" name = "skill_<?= e($skill) ?>_prof" id = "skill_<?= e($skill) ?>_prof">
-					<span data-i18n = "skill.<?= e($skill) ?>"><?= e(t('skill.' . $skill, $skill)) ?></span>
-					<output name = "skill_<?= e($skill) ?>" id = "skill_<?= e($skill) ?>">0</output>
-				</label>
-				<?php endforeach; ?>
 			</div>
+			<label class = "cs-check cs-save">
+				<input type = "checkbox" name = "save_<?= e($ability) ?>_prof" id = "save_<?= e($ability) ?>_prof">
+				<span data-i18n = "saving_throw"><?= e(t('saving_throw')) ?></span>
+				<output name = "save_<?= e($ability) ?>" id = "save_<?= e($ability) ?>">0</output>
+			</label>
+			<?php foreach ($skills as $skill): ?>
+			<label class = "cs-check">
+				<input type = "checkbox" name = "skill_<?= e($skill) ?>_prof" id = "skill_<?= e($skill) ?>_prof">
+				<span data-i18n = "skill.<?= e($skill) ?>"><?= e(t('skill.' . $skill, $skill)) ?></span>
+				<output name = "skill_<?= e($skill) ?>" id = "skill_<?= e($skill) ?>">0</output>
+			</label>
 			<?php endforeach; ?>
-		</section>
-	</div>
+		</div>
+		<?php endforeach; ?>
+	</section>
+
+	<!-- Defense and conditions: one strip over the full width -->
+	<section class = "cs-card cs-strip" id = "Defense" aria-labelledby = "cs-defense-title">
+		<h2 id = "cs-defense-title" data-i18n = "defense_and_conditions"><?= e(t('defense_and_conditions')) ?></h2>
+		<ul class = "cs-chips" id = "defenseChips" aria-labelledby = "cs-defense-title"></ul>
+		<p class = "cs-chips-empty" id = "defenseEmpty" data-i18n = "defense.none"><?= e(t('defense.none')) ?></p>
+		<div class = "cs-chip-buttons">
+			<button type = "button" class = "cs-chip-add" id = "addDamageImmunity" aria-expanded = "false" aria-controls = "defenseForm">+ <span data-i18n = "defense"><?= e(t('defense')) ?></span></button>
+			<button type = "button" class = "cs-chip-add" id = "addCondition" aria-expanded = "false" aria-controls = "conditionForm">+ <span data-i18n = "condition"><?= e(t('condition')) ?></span></button>
+		</div>
+		<div class = "cs-chip-form" id = "defenseForm" hidden>
+			<select class = "class_dropdown" id = "defenseInfluence" name = "damageInfluence" data-lookup = "damage_influence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
+				<option class = "Dropdown_Entry" value = ""></option>
+				<?php foreach ($damageInfluences as $damageInfluence): ?>
+					<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<select class = "class_dropdown" id = "defenseDamageType" name = "damageType" data-lookup = "damagetype" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
+				<option class = "Dropdown_Entry" value = ""></option>
+				<?php foreach ($damageTypes as $damageType): ?>
+					<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<button type = "button" class = "cs-chip-confirm" id = "defenseAdd" data-i18n = "add"><?= e(t('add')) ?></button>
+		</div>
+		<div class = "cs-chip-form" id = "conditionForm" hidden>
+			<select class = "class_dropdown" id = "conditionSelect" name = "conditions" data-lookup = "condition" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
+				<option class = "Dropdown_Entry" value = ""></option>
+				<?php foreach ($conditions as $condition): ?>
+					<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<button type = "button" class = "cs-chip-confirm" id = "conditionAdd" data-i18n = "add"><?= e(t('add')) ?></button>
+		</div>
+		<p class = "cs-chip-message" id = "defenseMessage" aria-live = "polite"></p>
+	</section>
 
 	<!-- Talents -->
 	<section class = "cs-card" id = "Talents" aria-labelledby = "cs-talents-title">
