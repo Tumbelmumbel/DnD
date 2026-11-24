@@ -1,6 +1,9 @@
 # .htaccess – protects files that must never be downloaded from the website.
 # Do not remove this file. The deploy uploads it with every merge.
 
+# 0) The start page is index.php (it sends the visitor to the sign-in page)
+DirectoryIndex index.php
+
 # 1) Files whose name starts with a dot: .env, .env.example, .gitignore, ...
 <FilesMatch "^\.">
     Require all denied
