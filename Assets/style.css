@@ -28,6 +28,7 @@
     --card: #F3EDDA;       /* cards and boxes */
     --field: #FFFDF6;      /* input fields */
     --border: #A99E78;     /* borders of fields */
+    --line: #D8CDA8;       /* lines between rows */
     --accent: #3B4BC4;     /* buttons, links, active toggles */
 	
 	/* FONTS */

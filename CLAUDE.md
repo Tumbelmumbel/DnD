@@ -25,19 +25,20 @@ PHPMailer) only after the owner agrees.
 |---|---|
 | `config.php` | Loads `.env`, builds `$APP_CONFIG`. No secrets in this file. |
 | `bootstrap.php` | Session, CSRF, `db()`, `guard_protect()`. Every page includes it. |
-| `helper_functions.php` | Small helpers (`e()`, tokens, ...) |
+| `helper_functions.php` | Small helpers (`e()`, tokens, `asset_url()` for CSS/JS links with a version number, ...) |
 | `tinymailer.php` | `send_mail()` |
 | `rate_limit.php` | Limits for sign-in, registration, new verification links and password resets (table `rate_limit`) |
 | `login.php`, `register.php`, `verify.php`, `resend.php`, `ForgottenPW.php`, `reset.php`, `logout.php` | User accounts |
 | `characteroverview.php` | List of the user's characters (start page after login) |
-| `CharacterSandbox.php` | Character sheet |
+| `CharacterSandbox.php` | Character sheet: PHP and HTML, plus a small script with the data from PHP |
+| `Assets/sandbox.css`, `Assets/sandbox.js` | Styles and logic of the character sheet |
 | `calculation.js` | D&D calculations (modifiers) |
 | `i18n.php`, `lang/*.php`, `ajax/i18n.php` | Languages of the interface (see "Languages") |
 | `partials/language_footer.php` | Language menu at the end of every page (bottom right) |
 | `partials/page_head.php` | Shared `<head>` of the account pages (title, viewport, `style.css` with a version number). Set `$pageTitle` before you include it. |
 | `content_translation.php` | Names and texts of the game content in the current language (`lookup_list()`, `talent_list()`, ...) |
 | `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`, `getComponent`, `getContentNames`) |
-| `Assets/style.css` | Shared stylesheet for all pages |
+| `Assets/style.css` | Shared stylesheet for all pages: colors and font sizes as variables in `:root` |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
 | `migration_*.sql` | Database changes, run by hand in phpMyAdmin |

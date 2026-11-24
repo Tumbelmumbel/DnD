@@ -23,3 +23,11 @@ function new_token(): string {
     return bin2hex(random_bytes(32)); // 64 hex chars
 }	
 
+/**
+ * URL of a file in the web folder with a version number (its file time).
+ * Browsers then load the new file after a deploy. Example: asset_url('/Assets/sandbox.css')
+ */
+function asset_url(string $path): string {
+    $time = @filemtime(__DIR__ . $path);
+    return $time ? $path . '?v=' . $time : $path;
+}
