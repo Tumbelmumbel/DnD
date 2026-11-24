@@ -168,10 +168,6 @@ return [
     'resend.title'        => 'Bestätigungslink',
     'resend.info'         => 'Wenn deine E-Mail-Adresse existiert und noch nicht bestätigt ist, haben wir dir einen neuen Bestätigungslink gesendet.',
 
-    // dashboard.php
-    'dashboard.title'     => 'Übersicht',
-    'dashboard.welcome'   => 'Willkommen,',
-    'dashboard.role'      => 'Deine Rolle:',
 
     // characteroverview.php
     'overview.title'      => 'Deine Charaktere',

@@ -9,7 +9,7 @@ declare(strict_types=1);
  *  - Initialize error handling
  *  - Initialize secure session cookie settings + session_start()
  *  - Provide helper functions:
- *        redirect(), e(), flash(), csrf_token(), csrf_validate(),
+ *        redirect(), e(), csrf_token(), csrf_validate(),
  *        current_user(), db(), guard_protect()
  *  - Provide session lifecycle enforcement (timeouts + rotation)
  *
@@ -105,24 +105,6 @@ function redirect(string $to, int $code = 302): never
         header("Location: {$to}", true, $code);
     }
     exit;
-}
-
-
-/**
- * Flash messages (set once, read once)
- */
-function flash(?string $key = null, ?string $message = null): mixed {
-    if (!isset($_SESSION['_flash'])) $_SESSION['_flash'] = [];
-    if ($key !== null && $message !== null) {
-        $_SESSION['_flash'][$key] = $message;
-        return true;
-    }
-    if ($key !== null) {
-        $v = $_SESSION['_flash'][$key] ?? null;
-        unset($_SESSION['_flash'][$key]);
-        return $v;
-    }
-    return null;
 }
 
 
