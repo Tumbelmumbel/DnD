@@ -110,6 +110,13 @@ $errors = [];
 .cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
 .cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cs-hp input { text-align: center; }
+.cs-stat-panel.cs-hp-panel { width: 340px; }
+.cs-hp-panel .cs-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--cs-border); padding-top: 8px; }
+.cs-hp-panel .cs-row input { width: 64px; flex: 0 0 64px; text-align: center; }
+.cs-hp-panel .cs-field > label, .cs-hp-panel .cs-mini { font-weight: 700; white-space: nowrap; }
+/* Current + temporary hit points: white on the blue accent */
+.cs-hp-temp { padding: 0 6px; border-radius: 6px; background: #3B4BC4; color: #FFFFFF; }
+.cs-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .cs-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--cs-line); padding-top: 8px; }
 .cs-row input { width: 72px !important; text-align: center; }
 .cs-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
@@ -210,12 +217,13 @@ $errors = [];
 .cs-bar-name { font-size: var(--font-title); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-bar-sub { font-size: var(--font-text); opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-bar-hp { display: flex; align-items: center; gap: 8px; background: rgba(255, 253, 246, 0.12); border-radius: 28px; padding: 4px; }
-.cs-bar-hp button { width: 48px; height: 48px; border-radius: 24px; border: 0; color: #FFFFFF; font-size: var(--font-header); font-weight: 700; cursor: pointer; }
+.cs-bar-hp .cs-hp-minus, .cs-bar-hp .cs-hp-plus { width: 48px; height: 48px; border-radius: 24px; border: 0; color: #FFFFFF; font-size: var(--font-header); font-weight: 700; cursor: pointer; }
+.cs-bar-hp, .cs-bar-hp > * { flex: 0 0 auto; }
 .cs-bar-hp .cs-hp-minus { background: #C62828; }
 .cs-bar-hp .cs-hp-plus { background: #2E7D32; }
 .cs-bar-stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
-.cs-bar-stat span:first-child { font-size: var(--font-text); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.cs-bar-stat span:last-child { font-size: var(--font-header); font-weight: 700; }
+.cs-bar-stat > span:first-child { white-space: nowrap; font-size: var(--font-text); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.cs-bar-stat > span:last-child { white-space: nowrap; font-size: var(--font-header); font-weight: 700; }
 /* Values in the bar that open the box "statPanel" */
 .cs-bar-edit { border: 0; border-radius: 10px; padding: 4px 8px; background: rgba(255, 253, 246, 0.12); color: inherit; font: inherit; cursor: pointer; }
 .cs-bar-edit:hover, .cs-bar-edit[aria-expanded="true"], .cs-bar-more:hover, .cs-bar-more[aria-expanded="true"] { background: rgba(255, 253, 246, 0.24); }
@@ -276,7 +284,10 @@ $errors = [];
 		</button>
 		<div class = "cs-bar-hp">
 			<button type = "button" class = "cs-hp-minus" id = "hpMinus" aria-label = "<?= e(t('lose_hp')) ?>" data-i18n-aria = "lose_hp">−</button>
-			<div class = "cs-bar-stat" aria-live = "polite"><span data-i18n = "hit_points"><?= e(t('hit_points')) ?></span><span id = "bar_hp">– / –</span></div>
+			<button type = "button" class = "cs-bar-stat cs-bar-edit" id = "hpButton" aria-expanded = "false" aria-controls = "hpPanel">
+				<span data-i18n = "hit_points"><?= e(t('hit_points')) ?></span>
+				<span id = "bar_hp" aria-live = "polite"><span id = "bar_hp_current">–</span> / <span id = "bar_hp_max">–</span><span class = "cs-sr-only" id = "bar_hp_note"></span></span>
+			</button>
 			<button type = "button" class = "cs-hp-plus" id = "hpPlus" aria-label = "<?= e(t('gain_hp')) ?>" data-i18n-aria = "gain_hp">+</button>
 		</div>
 		<div class = "cs-bar-stat"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac">–</span></div>
@@ -352,6 +363,30 @@ $errors = [];
 		</div>
 		<button type = "button" class = "cs-identity-done" id = "statDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
 	</div>
+	<!-- Hit point menu: current, maximum, temporary hit points and hit dice (opens with the middle of the hit point dial) -->
+	<div class = "cs-stat-panel cs-hp-panel" id = "hpPanel" role = "dialog" aria-label = "<?= e(t('hit_points')) ?>" data-i18n-aria = "hit_points" hidden>
+		<div class = "cs-hp">
+			<div class = "cs-field">
+				<label for = "currentHitpoints" data-i18n = "hp_current"><?= e(t('hp_current')) ?></label>
+				<input name = "currentHitpoints" id = "currentHitpoints" inputmode = "numeric">
+			</div>
+			<div class = "cs-field">
+				<label for = "maxHitpoints" data-i18n = "hp_maximum"><?= e(t('hp_maximum')) ?></label>
+				<input name = "maxHitpoints" id = "maxHitpoints" inputmode = "numeric">
+			</div>
+			<div class = "cs-field">
+				<label for = "tempHitpoints" data-i18n = "hp_temporary"><?= e(t('hp_temporary')) ?></label>
+				<input name = "tempHitpoints" id = "tempHitpoints" inputmode = "numeric">
+			</div>
+		</div>
+		<div class = "cs-row">
+			<span class = "cs-mini" data-i18n = "hit_dice"><?= e(t('hit_dice')) ?></span>
+			<span id = "hitDice" style = "flex: 1; font-weight: 700;"></span>
+			<label class = "cs-mini" for = "HitDiceUsed" data-i18n = "hit_dice_used"><?= e(t('hit_dice_used')) ?></label>
+			<input name = "HitDiceUsed" id = "HitDiceUsed" inputmode = "numeric">
+		</div>
+		<button type = "button" class = "cs-identity-done" id = "hpDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
+	</div>
 </header>
 <div class = "cs-page" id = "character_basics">
 
@@ -368,54 +403,28 @@ $errors = [];
 	<div class = "cs-main">
 		<!-- Left column (landscape) -->
 		<div class = "cs-side">
-			<div class = "cs-two">
-				<section class = "cs-card" aria-labelledby = "cs-hp-title">
-					<h2 id = "cs-hp-title" data-i18n = "hit_points"><?= e(t('hit_points')) ?></h2>
-					<div class = "cs-hp">
-						<div class = "cs-field">
-							<label for = "currentHitpoints" data-i18n = "hp_current"><?= e(t('hp_current')) ?></label>
-							<input name = "currentHitpoints" id = "currentHitpoints" inputmode = "numeric">
-						</div>
-						<div class = "cs-field">
-							<label for = "maxHitpoints" data-i18n = "hp_maximum"><?= e(t('hp_maximum')) ?></label>
-							<input name = "maxHitpoints" id = "maxHitpoints" inputmode = "numeric">
-						</div>
-						<div class = "cs-field">
-							<label for = "tempHitpoints" data-i18n = "hp_temporary"><?= e(t('hp_temporary')) ?></label>
-							<input name = "tempHitpoints" id = "tempHitpoints" inputmode = "numeric">
-						</div>
-					</div>
-					<div class = "cs-row">
-						<span class = "cs-mini" data-i18n = "hit_dice"><?= e(t('hit_dice')) ?></span>
-						<label name = "hitDice" id = "hitDice" style = "flex: 1; font-weight: 700;"></label>
-						<label class = "cs-mini" for = "HitDiceUsed" data-i18n = "used"><?= e(t('used')) ?></label>
-						<input name = "HitDiceUsed" id = "HitDiceUsed" inputmode = "numeric">
-					</div>
-				</section>
-
-				<section class = "cs-card" aria-labelledby = "cs-armor-title">
-					<h2 id = "cs-armor-title" data-i18n = "armor"><?= e(t('armor')) ?></h2>
-					<div class = "cs-field">
-						<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
-						<input name = "armorClass" id = "armorClass" inputmode = "numeric">
-					</div>
-					<div class = "cs-field">
-						<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
-						<select class = "class_dropdown" name = "armor" id = "armor"></select>
-					</div>
-					<div class = "cs-field">
-						<label for = "shield" data-i18n = "shield"><?= e(t('shield')) ?></label>
-						<select class = "class_dropdown" name = "shield" id = "shield"></select>
-					</div>
-					<span class = "cs-toggles-title" id = "cs-armor-prof-title" data-i18n = "armor_proficiency"><?= e(t('armor_proficiency')) ?></span>
-					<div class = "cs-toggles" role = "group" aria-labelledby = "cs-armor-prof-title">
-						<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span data-i18n = "light_armor"><?= e(t('light_armor')) ?></span></label>
-						<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span data-i18n = "medium_armor"><?= e(t('medium_armor')) ?></span></label>
-						<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span data-i18n = "heavy_armor"><?= e(t('heavy_armor')) ?></span></label>
-						<label class = "cs-check"><input type = "checkbox" name = "shieldProficiency" id = "shieldProficiency"><span data-i18n = "shield"><?= e(t('shield')) ?></span></label>
-					</div>
-				</section>
-			</div>
+			<section class = "cs-card" aria-labelledby = "cs-armor-title">
+				<h2 id = "cs-armor-title" data-i18n = "armor"><?= e(t('armor')) ?></h2>
+				<div class = "cs-field">
+					<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
+					<input name = "armorClass" id = "armorClass" inputmode = "numeric">
+				</div>
+				<div class = "cs-field">
+					<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
+					<select class = "class_dropdown" name = "armor" id = "armor"></select>
+				</div>
+				<div class = "cs-field">
+					<label for = "shield" data-i18n = "shield"><?= e(t('shield')) ?></label>
+					<select class = "class_dropdown" name = "shield" id = "shield"></select>
+				</div>
+				<span class = "cs-toggles-title" id = "cs-armor-prof-title" data-i18n = "armor_proficiency"><?= e(t('armor_proficiency')) ?></span>
+				<div class = "cs-toggles" role = "group" aria-labelledby = "cs-armor-prof-title">
+					<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span data-i18n = "light_armor"><?= e(t('light_armor')) ?></span></label>
+					<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span data-i18n = "medium_armor"><?= e(t('medium_armor')) ?></span></label>
+					<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span data-i18n = "heavy_armor"><?= e(t('heavy_armor')) ?></span></label>
+					<label class = "cs-check"><input type = "checkbox" name = "shieldProficiency" id = "shieldProficiency"><span data-i18n = "shield"><?= e(t('shield')) ?></span></label>
+				</div>
+			</section>
 
 			<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
 				<h2 id = "cs-defense-title" data-i18n = "defense_and_conditions"><?= e(t('defense_and_conditions')) ?></h2>
@@ -916,26 +925,60 @@ document.getElementById("Level").addEventListener("change", function () {
 			barText("Level") ? tr("level") + " " + barText("Level") : "", barText("backgrounds")]
 			.filter(t => t !== "").join(" · ");
 		document.getElementById("bar_sub").textContent = sub;
-		document.getElementById("bar_hp").textContent = (barText("currentHitpoints") || "–") + " / " + (barText("maxHitpoints") || "–");
+		const hpCurrent = hpValue("currentHitpoints");
+		const hpTemp = Math.max(0, hpValue("tempHitpoints") ?? 0);
+		const hpShown = document.getElementById("bar_hp_current");
+		hpShown.textContent = hpCurrent === null ? (hpTemp > 0 ? String(hpTemp) : "–") : String(hpCurrent + hpTemp);
+		hpShown.classList.toggle("cs-hp-temp", hpTemp > 0);
+		document.getElementById("bar_hp_max").textContent = barText("maxHitpoints") || "–";
+		document.getElementById("bar_hp_note").textContent = hpTemp > 0 ? " " + tr("hp.includes_temp").replace("{n}", hpTemp) : "";
 		document.getElementById("bar_ac").textContent = barText("armorClass") || "–";
 		document.getElementById("bar_speed").textContent = barText("Walking_Speed") || "–";
 		document.getElementById("bar_proficiency").textContent = barText("Proficiency_Bonus") || "–";
 		document.getElementById("bar_inspiration").textContent = barText("inspiration") || "–";
 	}
 
-	// Change the current hit points by +1 or -1 (not below 0, not above the maximum)
-	function changeHitpoints(delta) {
-		const current = document.getElementById("currentHitpoints");
-		const max = parseInt(document.getElementById("maxHitpoints").value, 10);
-		let value = parseInt(current.value, 10);
-		if (Number.isNaN(value)) {
-			value = Number.isNaN(max) ? 0 : max; // start from the maximum
+	// Hit point values as numbers (null if the field is empty)
+	function hpValue(id) {
+		const v = parseInt(document.getElementById(id).value, 10);
+		return Number.isNaN(v) ? null : v;
+	}
+	function setHp(id, value) {
+		const field = document.getElementById(id);
+		if (field.value !== String(value)) {
+			field.value = String(value);
+			field.dispatchEvent(new Event("input", { bubbles: true }));
 		}
+	}
+
+	// Rules: current hit points are 0 to maximum; temporary hit points are 0 or more
+	function limitHitpoints() {
+		const max = hpValue("maxHitpoints");
+		const current = hpValue("currentHitpoints");
+		const temp = hpValue("tempHitpoints");
+		if (current !== null && current < 0) setHp("currentHitpoints", 0);
+		if (current !== null && max !== null && current > max) setHp("currentHitpoints", max);
+		if (temp !== null && temp < 0) setHp("tempHitpoints", 0);
+	}
+	// Current and temporary: check while typing. Maximum: check when the field is left (else "2" of "25" would cut the current value)
+	document.getElementById("currentHitpoints").addEventListener("input", limitHitpoints);
+	document.getElementById("tempHitpoints").addEventListener("input", limitHitpoints);
+	document.getElementById("maxHitpoints").addEventListener("change", limitHitpoints);
+
+	// −: temporary hit points go down first, then current hit points. +: current hit points go up to the maximum
+	function changeHitpoints(delta) {
+		const max = hpValue("maxHitpoints");
+		const temp = hpValue("tempHitpoints") ?? 0;
+		if (delta < 0 && temp > 0) {
+			setHp("tempHitpoints", temp - 1);
+			return;
+		}
+		let value = hpValue("currentHitpoints");
+		if (value === null) value = max ?? 0; // start from the maximum
 		value += delta;
 		if (value < 0) value = 0;
-		if (!Number.isNaN(max) && value > max) value = max;
-		current.value = String(value);
-		current.dispatchEvent(new Event("input", { bubbles: true }));
+		if (max !== null && value > max) value = max;
+		setHp("currentHitpoints", value);
 	}
 
 	document.getElementById("hpMinus").addEventListener("click", () => changeHitpoints(-1));
@@ -975,8 +1018,16 @@ document.getElementById("Level").addEventListener("change", function () {
 
 //BAR VALUES: speed, proficiency bonus and inspiration change only in the box "statPanel"
 	const statPanel = document.getElementById("statPanel");
-	const statOpeners = [...document.querySelectorAll(".cs-bar-edit"), document.getElementById("barMore")];
+	const statOpeners = [...document.querySelectorAll(".cs-bar-edit[data-field]"), document.getElementById("barMore")];
 	let statOpener = null;
+
+	// Put a box under its button, inside the window
+	function placeUnder(panel, opener) {
+		const r = opener.getBoundingClientRect();
+		const width = panel.offsetWidth;
+		const maxLeft = document.documentElement.clientWidth - width - 8;
+		panel.style.left = Math.max(8, Math.min(r.left + r.width / 2 - width / 2, maxLeft)) + "px";
+	}
 
 	// opener = the button that opens the box (null closes it); a value button shows one field, "More" shows all fields
 	function setStatPanel(opener, returnFocus) {
@@ -987,11 +1038,7 @@ document.getElementById("Level").addEventListener("change", function () {
 		if (opener) {
 			const field = opener.dataset.field || "";
 			statPanel.querySelectorAll("[data-stat]").forEach(f => { f.hidden = field !== "" && f.dataset.stat !== field; });
-			// Put the box under the button, inside the window
-			const r = opener.getBoundingClientRect();
-			const width = statPanel.offsetWidth;
-			const maxLeft = document.documentElement.clientWidth - width - 8;
-			statPanel.style.left = Math.max(8, Math.min(r.left + r.width / 2 - width / 2, maxLeft)) + "px";
+			placeUnder(statPanel, opener);
 			statPanel.querySelector("[data-stat]:not([hidden]) input, [data-stat]:not([hidden]) select").focus();
 		} else if (returnFocus && last) {
 			last.focus();
@@ -1008,6 +1055,32 @@ document.getElementById("Level").addEventListener("change", function () {
 		}
 	});
 
+
+//HIT POINT MENU: a tap on the middle of the hit point dial opens the fields; Done, Esc or a tap outside closes them
+	const hpButton = document.getElementById("hpButton");
+	const hpPanel = document.getElementById("hpPanel");
+
+	function setHpPanel(open, returnFocus) {
+		hpPanel.hidden = !open;
+		hpButton.setAttribute("aria-expanded", open ? "true" : "false");
+		if (open) {
+			placeUnder(hpPanel, hpButton);
+			document.getElementById("currentHitpoints").focus();
+		} else {
+			limitHitpoints();
+			if (returnFocus) hpButton.focus();
+		}
+	}
+	hpButton.addEventListener("click", () => setHpPanel(hpPanel.hidden, true));
+	document.getElementById("hpDone").addEventListener("click", () => setHpPanel(false, true));
+	hpPanel.addEventListener("keydown", function (event) {
+		if (event.key === "Escape") setHpPanel(false, true);
+	});
+	document.addEventListener("pointerdown", function (event) {
+		if (!hpPanel.hidden && !hpPanel.contains(event.target) && !hpButton.contains(event.target)) {
+			setHpPanel(false, false);
+		}
+	});
 
 //LANGUAGE MENU (footer): change the texts without a reload; entered values stay
 	window.onLanguageChanged = function (data) {
