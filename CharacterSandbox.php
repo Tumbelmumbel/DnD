@@ -73,7 +73,7 @@ $errors = [];
 .cs-page { --cs-card: #F3EDDA; --cs-field: #FFFDF6; --cs-line: #D8CDA8; --cs-border: #A99E78; --cs-accent: #3B4BC4;
 	max-width: 1240px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
 	color: var(--text); font-family: var(--fonts); font-size: 16px; text-align: left; }
-.cs-card { background: var(--cs-card); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+.cs-card { background: var(--cs-card); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
 	box-shadow: 0 1px 2px rgba(74, 68, 49, 0.15); min-width: 0; }
 .cs-card h2 { margin: 0; font-size: 18px; }
 /* Picture of the character (in the bar, left) and the larger view */
@@ -100,7 +100,7 @@ $errors = [];
 .cs-field > label, .cs-mini { font-size: 13px; font-weight: 700; }
 .cs-page input:not([type=checkbox]), .cs-page select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px;
 	padding: 0 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-field);
-	color: var(--text); font: inherit; font-size: 16px; }
+	color: var(--text); font: inherit; font-size: 16px; font-weight: 600; }
 .cs-page input[type=checkbox] { width: 24px; height: 24px; margin: 0; flex: 0 0 24px; accent-color: var(--cs-accent); }
 .cs-name input { font-size: 20px !important; font-weight: 700; }
 
@@ -108,19 +108,19 @@ $errors = [];
 .cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .cs-identity .cs-name { grid-column: 1 / -1; }
 .cs-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.cs-combat input, .cs-combat select { text-align: center; font-size: 20px !important; font-weight: 700; }
+.cs-combat input, .cs-combat select { text-align: center; }
 .cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
 .cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.cs-hp input { text-align: center; font-size: 20px !important; }
-.cs-row { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--cs-line); padding-top: 10px; }
+.cs-hp input { text-align: center; }
+.cs-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--cs-line); padding-top: 8px; }
 .cs-row input { width: 72px !important; text-align: center; }
 .cs-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
 .cs-check { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .cs-check span { flex: 1; }
 .cs-toggles-title { font-size: 14px; font-weight: 600; }
 .cs-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.cs-toggles .cs-check { justify-content: center; min-height: 44px; padding: 4px 12px; border: 1px solid var(--cs-border);
-	border-radius: 22px; background: var(--cs-field); font-weight: 600; text-align: center; }
+.cs-toggles .cs-check { justify-content: center; min-height: 40px; padding: 2px 10px; border: 1px solid var(--cs-border);
+	border-radius: 8px; background: var(--cs-field); font-size: 16px; font-weight: 600; text-align: center; }
 .cs-toggles .cs-check span { flex: 0 1 auto; }
 .cs-toggles .cs-check input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .cs-toggles .cs-check:has(input:checked) { background: var(--cs-accent); border-color: var(--cs-accent); color: #FFFFFF; }
@@ -129,29 +129,30 @@ $errors = [];
 .cs-abilities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .cs-ability { gap: 0; }
 .cs-ability .cs-check { min-height: 40px; }
-.cs-ability-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-.cs-ability-head .cs-field { flex-direction: row; align-items: center; gap: 10px; }
+.cs-ability-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cs-ability-head .cs-field { flex-direction: row; align-items: center; gap: 8px; }
 .cs-ability-head .cs-field label { flex: 1; min-width: 0; }
 .cs-ability-head .cs-field input { flex: 0 0 64px; width: 64px; }
 .cs-ability-head label { font-size: 17px; font-weight: 700; }
-.cs-ability-head input { text-align: center; font-size: 18px !important; }
+.cs-ability-head input { text-align: center; }
 .cs-mod { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 22px; background: var(--cs-accent); color: #FFFFFF;
 	display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
 .cs-ability .cs-save { font-weight: 700; border-bottom: 1px solid var(--cs-line); min-height: 40px; }
 .cs-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .cs-chips:empty { display: none; }
-.cs-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 4px 0 14px; border: 1px solid var(--cs-border);
-	border-radius: 20px; background: var(--cs-field); font-weight: 600; }
-.cs-chip-remove { width: 36px; height: 36px; border: 0; border-radius: 18px; background: transparent; font-size: 20px; line-height: 1;
+.cs-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 4px 0 10px; border: 1px solid var(--cs-border);
+	border-radius: 8px; background: var(--cs-field); font-size: 16px; font-weight: 600; }
+.cs-chip-remove { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; font-size: 20px; line-height: 1;
 	color: #C62828; cursor: pointer; }
 .cs-chip-remove:hover { background: #F6DADA; }
 .cs-chips-empty, .cs-chip-message { margin: 0; font-size: 14px; color: #5C5442; }
 .cs-chip-message:empty { display: none; }
 .cs-chip-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-.cs-chip-add, .cs-chip-confirm { min-height: 44px; padding: 0 16px; border-radius: 22px; font: inherit; font-weight: 600; cursor: pointer; }
-.cs-chip-add { border: 2px solid #2E7D32; background: var(--cs-field); color: #2E7D32; }
+.cs-chip-add, .cs-chip-confirm { box-sizing: border-box; min-height: 40px; padding: 0 12px; border-radius: 8px; font: inherit; font-size: 16px;
+	font-weight: 600; cursor: pointer; }
+.cs-chip-add { border: 1px solid #2E7D32; background: var(--cs-field); color: #2E7D32; }
 .cs-chip-add[aria-expanded="true"] { background: #2E7D32; color: #FFFFFF; }
-.cs-chip-confirm { border: 0; background: var(--cs-accent); color: #FFFFFF; }
+.cs-chip-confirm { border: 1px solid var(--cs-accent); background: var(--cs-accent); color: #FFFFFF; }
 .cs-chip-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cs-chip-form[hidden] { display: none; }
 .cs-chip-form select { flex: 1 1 120px; min-width: 0; }
@@ -167,8 +168,8 @@ $errors = [];
 	background: var(--cs-accent); color: #FFFFFF; font-weight: 700; cursor: pointer; }
 .cs-talent-add { display: flex; align-items: center; gap: 10px; }
 /* The Talents section keeps its earlier sizes */
-.cs-page #Talents { padding: 16px; }
-.cs-page #Talents input:not([type=checkbox]), .cs-page #Talents select { min-height: 48px; }
+.cs-page #Talents { padding: 16px; gap: 10px; }
+.cs-page #Talents input:not([type=checkbox]), .cs-page #Talents select { min-height: 48px; font-weight: 400; }
 .cs-talent-add select { flex: 1; }
 
 /* Talent cards */
