@@ -71,9 +71,9 @@ $errors = [];
 <style>
 /* ===== Character sheet: tablet-first layout (page-only rules, prefix cs-) ===== */
 .cs-page { --cs-card: #F3EDDA; --cs-field: #FFFDF6; --cs-line: #D8CDA8; --cs-border: #A99E78; --cs-accent: #3B4BC4;
-	max-width: 1240px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;
+	max-width: 1240px; margin: 0 auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
 	color: var(--text); font-family: var(--fonts); font-size: 16px; text-align: left; }
-.cs-card { background: var(--cs-card); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+.cs-card { background: var(--cs-card); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
 	box-shadow: 0 1px 2px rgba(74, 68, 49, 0.15); min-width: 0; }
 .cs-card h2 { margin: 0; font-size: 18px; }
 /* Picture of the character (in the bar, left) and the larger view */
@@ -98,18 +98,18 @@ $errors = [];
 .cs-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .cs-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cs-field > label, .cs-mini { font-size: 13px; font-weight: 700; }
-.cs-page input:not([type=checkbox]), .cs-page select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 48px;
+.cs-page input:not([type=checkbox]), .cs-page select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px;
 	padding: 0 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-field);
 	color: var(--text); font: inherit; font-size: 16px; }
 .cs-page input[type=checkbox] { width: 24px; height: 24px; margin: 0; flex: 0 0 24px; accent-color: var(--cs-accent); }
 .cs-name input { font-size: 20px !important; font-weight: 700; }
 
 /* Grids */
-.cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .cs-identity .cs-name { grid-column: 1 / -1; }
 .cs-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .cs-combat input, .cs-combat select { text-align: center; font-size: 20px !important; font-weight: 700; }
-.cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
 .cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cs-hp input { text-align: center; font-size: 20px !important; }
 .cs-row { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--cs-line); padding-top: 10px; }
@@ -126,14 +126,18 @@ $errors = [];
 .cs-toggles .cs-check:has(input:checked) { background: var(--cs-accent); border-color: var(--cs-accent); color: #FFFFFF; }
 .cs-toggles .cs-check:has(input:checked) span::before { content: "\2713\00A0"; }
 .cs-toggles .cs-check:has(input:focus-visible) { outline: 3px solid var(--cs-accent); outline-offset: 2px; }
-.cs-abilities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.cs-ability { gap: 2px; }
+.cs-abilities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cs-ability { gap: 0; }
+.cs-ability .cs-check { min-height: 40px; }
 .cs-ability-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.cs-ability-head .cs-field { flex-direction: row; align-items: center; gap: 10px; }
+.cs-ability-head .cs-field label { flex: 1; min-width: 0; }
+.cs-ability-head .cs-field input { flex: 0 0 64px; width: 64px; }
 .cs-ability-head label { font-size: 17px; font-weight: 700; }
 .cs-ability-head input { text-align: center; font-size: 18px !important; }
-.cs-mod { width: 56px; height: 56px; flex: 0 0 56px; border-radius: 28px; background: var(--cs-accent); color: #FFFFFF;
-	display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; }
-.cs-save { font-weight: 700; border-bottom: 1px solid var(--cs-line); min-height: 48px; }
+.cs-mod { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 22px; background: var(--cs-accent); color: #FFFFFF;
+	display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
+.cs-ability .cs-save { font-weight: 700; border-bottom: 1px solid var(--cs-line); min-height: 40px; }
 .cs-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .cs-chips:empty { display: none; }
 .cs-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 4px 0 14px; border: 1px solid var(--cs-border);
@@ -162,6 +166,9 @@ $errors = [];
 .cs-page #addTalent { flex: 0 0 auto; min-height: 48px; padding: 0 24px; border: 0; border-radius: 8px;
 	background: var(--cs-accent); color: #FFFFFF; font-weight: 700; cursor: pointer; }
 .cs-talent-add { display: flex; align-items: center; gap: 10px; }
+/* The Talents section keeps its earlier sizes */
+.cs-page #Talents { padding: 16px; }
+.cs-page #Talents input:not([type=checkbox]), .cs-page #Talents select { min-height: 48px; }
 .cs-talent-add select { flex: 1; }
 
 /* Talent cards */
@@ -216,8 +223,8 @@ $errors = [];
 }
 
 /* Tablet landscape and desktop: two columns */
-.cs-main { display: flex; flex-direction: column; gap: 16px; }
-.cs-side { display: flex; flex-direction: column; gap: 16px; }
+.cs-main { display: flex; flex-direction: column; gap: 10px; }
+.cs-side { display: flex; flex-direction: column; gap: 10px; }
 @media (min-width: 1000px) {
 	.cs-identity { grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.2fr); }
 	.cs-identity .cs-name { grid-column: auto; }
@@ -227,7 +234,7 @@ $errors = [];
 }
 /* Phone: one column */
 @media (max-width: 640px) {
-	.cs-page { padding: 10px; gap: 12px; }
+	.cs-page { padding: 10px; gap: 10px; }
 	.cs-identity, .cs-two, .talent_list { grid-template-columns: minmax(0, 1fr); }
 	.cs-identity-panel .cs-identity { grid-template-columns: minmax(0, 1fr); }
 	.cs-identity-panel { left: 8px; width: calc(100% - 16px); }
