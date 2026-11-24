@@ -28,6 +28,7 @@ if (!$characters) {
 
 
 ?>
+<!DOCTYPE html>
 <html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
@@ -75,13 +76,13 @@ if (!$characters) {
  <div class="container_vertical">
 	<div class="container_horizontal">
 		<form class = "button-form" method="get">
-			<button class="Button" type = "Button" onclick="openCreateModal()"><?= e(t('overview.create')) ?></button>
+			<button class="button" type = "button" onclick="openCreateModal()"><?= e(t('overview.create')) ?></button>
 		</form>	
 			<div class="page-header">
 				<h1><?= e(t('overview.title')) ?></h1>
 			</div>
 	    	<form class = "button-form" method="get" action="/logout.php">
-				<button class="Button" type="submit"><?= e(t('log_out')) ?></button>
+				<button class="button" type="submit"><?= e(t('log_out')) ?></button>
 			</form>			
 
 	</div>
@@ -113,7 +114,7 @@ if (!$characters) {
 				<p><?= e(t('overview.railroad_text')) ?></p>
 				<div class="container_horizontal_relative">
 					<form class = "button-form" method="get" action="/CharacterSandbox.php">
-						<button class="Button" type="submit"><?= e(t('overview.sandbox')) ?></button>
+						<button class="button" type="submit"><?= e(t('overview.sandbox')) ?></button>
 					</form>	
 					<div class="button-form">
 						<button class="button" type="submit" onclick="closeCreateModal()"><?= e(t('overview.railroad')) ?></button>

@@ -61,6 +61,7 @@ $errors = [];
 		$talents = talent_list($pdo);
 ?>
 
+<!DOCTYPE html>
 <html lang="<?= e(current_lang()) ?>">
 <head>
 <meta charset="utf-8">
