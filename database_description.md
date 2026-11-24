@@ -217,7 +217,7 @@ The field `id` identifies each row.
 
 ## Items
 
-An item has only a name and tags. The name is unique. The tags come from a fixed list.
+An item has a name, a weight, a rarity, a cost and tags. The name is unique. The rarities and the tags come from fixed lists.
 Now there is no page to add items. Items and tags are added with SQL (a migration).
 
 ### `items`
@@ -228,6 +228,9 @@ This table stores the items. Each row is one item.
 |---|---|---|---|---|---|
 | `id` | int unsigned | PK | No | AUTO_INCREMENT | Number of the item. Other tables refer to the item with this number, so the name can change. |
 | `name` | varchar(150) | UNI | No | | English name of the item (base language). Two items cannot have the same name. Upper and lower case count as the same name. |
+| `weight_lb` | decimal(8,2) | | Yes | NULL | Weight of the item in pounds (lb), for example `55.00` or `0.25`. NULL: the item has no weight. |
+| `rarity_code` | varchar(20) | IDX | No | `mundane` | Code of the rarity (`item_rarities.code`). `mundane` is an item that is not magical. |
+| `cost_gp` | decimal(10,2) | | Yes | NULL | Cost of the item in gold pieces (gp), with 2 decimals. 1 sp = `0.10`, 1 cp = `0.01`. NULL: the item has no fixed cost. |
 | `created_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time when the item was added. |
 | `updated_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time of the last change (MySQL sets it). |
 
@@ -241,6 +244,17 @@ If a language has no row, the application shows the English name from `items`.
 | `item_id` | int unsigned | PK | No | | Number of the item (`items.id`). |
 | `lang` | varchar(5) | PK, UNI | No | | Language code, for example `de`. |
 | `name` | varchar(150) | UNI | No | | Name of the item in this language. Two items cannot have the same name in the same language. |
+
+### `item_rarities`
+
+This table stores the rarities that an item can have. Each row is one rarity.
+Only a migration adds or changes rarities. The names are in `Lookup_translation` (type `item_rarity`).
+Code uses a rarity always by its `code`.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `code` | varchar(20) | PK | No | | Code of the rarity: `mundane`, `common`, `uncommon`, `rare`, `very_rare`, `legendary` or `artifact`. |
+| `sort_order` | smallint | | No | 0 | Position of the rarity in lists, from `mundane` (0) to `artifact` (6). |
 
 ### `tags`
 
@@ -275,7 +289,7 @@ This table stores the names of the lookup values. Each row is the name of one va
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `type` | varchar(30) | PK | No | | Type of the value: `class`, `subclass`, `species`, `background`, `condition`, `damagetype`, `damage_influence` or `item_tag`. |
+| `type` | varchar(30) | PK | No | | Type of the value: `class`, `subclass`, `species`, `background`, `condition`, `damagetype`, `damage_influence`, `item_tag` or `item_rarity`. |
 | `code` | varchar(60) | PK | No | | Code of the value, for example `bard` (see the field `code` or `class_code` / `subclass_code` of the game table). |
 | `lang` | varchar(5) | PK | No | | Language code, for example `en` or `de`. |
 | `name` | varchar(150) | | No | | Name of the value in this language, for example `Barde`. |
