@@ -25,6 +25,10 @@
     --text: #4A4431;
     --primary: #5465DB;
     --primary-hover: #005fcb;
+    --card: #F3EDDA;       /* cards and boxes */
+    --field: #FFFDF6;      /* input fields */
+    --border: #A99E78;     /* borders of fields */
+    --accent: #3B4BC4;     /* buttons, links, active toggles */
 	
 	/* FONTS */
 	--fonts:   Arial, Helvetica, sans-serif;
@@ -259,3 +263,23 @@ button, input, select, textarea { font-family: inherit; font-size: var(--font-te
 .Dropdown_Entry:active {
 	background-color: var(--bg);
 }
+
+/* ACCOUNT PAGES: sign-in, registration, verification, password reset (one card in the middle of the page) */
+.auth-card { box-sizing: border-box; width: min(400px, calc(100% - 32px)); margin: 48px auto; padding: 24px;
+	border-radius: 12px; background: var(--card); color: var(--text); display: flex; flex-direction: column; gap: 12px; }
+.auth-card h1, .auth-card h2, .auth-card p { margin: 0; }
+.auth-form { display: flex; flex-direction: column; gap: 8px; }
+.auth-form label { font-weight: 700; }
+.auth-form input:not([type=hidden]) { box-sizing: border-box; width: 100%; min-height: 40px; padding: 0 10px;
+	border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--text); font-weight: 600; }
+.auth-button { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 12px;
+	border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: #FFFFFF; font-weight: 600;
+	text-decoration: none; cursor: pointer; }
+.auth-form .auth-button { margin-top: 4px; }
+.auth-button.secondary { background: var(--field); color: var(--accent); }
+.auth-button:focus-visible, .auth-form input:focus-visible, .auth-links a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.auth-msg { padding: 8px 10px; border-radius: 8px; }
+.auth-msg.err { background: #FFECEC; color: #A40000; }
+.auth-msg.info { background: #EEF0FB; color: #2A3590; }
+.auth-msg.ok { background: #E8F3E9; color: #1F5E23; }
+.auth-links a { color: var(--accent); font-weight: 700; }
