@@ -38,7 +38,8 @@ return [
     'background'          => 'Background',
 
     // Combat values
-    'combat_values'       => 'Combat values',
+    'more'                => 'More',
+    'bar_values'          => 'Values in the bar',
     'walking_speed'       => 'Walking speed',
     'proficiency_bonus'   => 'Proficiency bonus',
 

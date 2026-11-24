@@ -107,8 +107,6 @@ $errors = [];
 /* Grids */
 .cs-identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .cs-identity .cs-name { grid-column: 1 / -1; }
-.cs-combat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.cs-combat input, .cs-combat select { text-align: center; }
 .cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
 .cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cs-hp input { text-align: center; }
@@ -218,9 +216,24 @@ $errors = [];
 .cs-bar-stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
 .cs-bar-stat span:first-child { font-size: var(--font-text); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .cs-bar-stat span:last-child { font-size: var(--font-header); font-weight: 700; }
+/* Values in the bar that open the box "statPanel" */
+.cs-bar-edit { border: 0; border-radius: 10px; padding: 4px 8px; background: rgba(255, 253, 246, 0.12); color: inherit; font: inherit; cursor: pointer; }
+.cs-bar-edit:hover, .cs-bar-edit[aria-expanded="true"], .cs-bar-more:hover, .cs-bar-more[aria-expanded="true"] { background: rgba(255, 253, 246, 0.24); }
+.cs-bar-edit:focus-visible, .cs-bar-more:focus-visible { outline: 3px solid #FFFDF6; outline-offset: 2px; }
+.cs-bar-more { display: none; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: rgba(255, 253, 246, 0.12);
+	color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.cs-stat-panel { --cs-field: #FFFDF6; --cs-border: #A99E78; --cs-accent: #3B4BC4; }
+.cs-stat-panel { position: absolute; top: 100%; left: 16px; z-index: 11; width: 240px; max-width: calc(100% - 16px); box-sizing: border-box;
+	margin-top: 6px; padding: 12px; border-radius: 12px; background: #FFFDF6; color: var(--text); border: 1px solid var(--cs-border);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28); display: flex; flex-direction: column; gap: 8px; }
+.cs-stat-panel[hidden], .cs-stat-panel [hidden] { display: none; }
+.cs-stat-panel input, .cs-stat-panel select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 0 10px;
+	border: 1px solid var(--cs-border); border-radius: 8px; background: #FFFFFF; color: var(--text); font: inherit;
+	font-size: var(--font-text); font-weight: 600; }
 @media (max-width: 640px) {
 	.cs-bar-inner { gap: 8px 12px; padding: 6px 10px; }
 	.cs-bar-optional { display: none; }
+	.cs-bar-more { display: inline-flex; align-items: center; }
 }
 
 /* Tablet landscape and desktop: two columns */
@@ -268,8 +281,11 @@ $errors = [];
 		</div>
 		<div class = "cs-bar-stat"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac">–</span></div>
 		<div class = "cs-bar-stat"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative">–</span></div>
-		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></div>
-		<div class = "cs-bar-stat cs-bar-optional"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></div>
+		<!-- Values that change only here: a tap opens the box "statPanel" with the field -->
+		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "Walking_Speed" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></button>
+		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "Proficiency_Bonus" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></span><span id = "bar_proficiency">–</span></button>
+		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "inspiration" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></button>
+		<button type = "button" class = "cs-bar-more" id = "barMore" aria-expanded = "false" aria-controls = "statPanel" data-i18n = "more"><?= e(t('more')) ?></button>
 	</div>
 	<p class = "cs-picture-error" id = "pictureError" role = "alert"></p>
 	<!-- Identity panel: name, species, level, class, subclass, background (opens with the name in the bar) -->
@@ -314,6 +330,28 @@ $errors = [];
 		</div>
 		<button type = "button" class = "cs-identity-done" id = "identityDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
 	</div>
+	<!-- Box for the values in the bar: speed, proficiency bonus, inspiration (opens with a tap on a value or on "More") -->
+	<div class = "cs-stat-panel" id = "statPanel" role = "dialog" aria-label = "<?= e(t('bar_values')) ?>" data-i18n-aria = "bar_values" hidden>
+		<div class = "cs-field" data-stat = "Walking_Speed">
+			<label for = "Walking_Speed" data-i18n = "walking_speed"><?= e(t('walking_speed')) ?></label>
+			<input type = "number" name = "Walking_Speed" id = "Walking_Speed" inputmode = "numeric">
+		</div>
+		<div class = "cs-field" data-stat = "Proficiency_Bonus">
+			<label for = "Proficiency_Bonus" data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></label>
+			<input type = "number" name = "Proficiency_Bonus" id = "Proficiency_Bonus" inputmode = "numeric">
+		</div>
+		<div class = "cs-field" data-stat = "inspiration">
+			<label for = "inspiration" data-i18n = "inspiration"><?= e(t('inspiration')) ?></label>
+			<select id = "inspiration" name = "inspiration">
+				<option id = "empty" class = "Dropdown_Entry" value = "">–</option>
+				<option id = "D4" class = "Dropdown_Entry" value = "D4">D4</option>
+				<option id = "D6" class = "Dropdown_Entry" value = "D6">D6</option>
+				<option id = "D8" class = "Dropdown_Entry" value = "D8">D8</option>
+				<option id = "D12" class = "Dropdown_Entry" value = "D12">D12</option>
+			</select>
+		</div>
+		<button type = "button" class = "cs-identity-done" id = "statDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
+	</div>
 </header>
 <div class = "cs-page" id = "character_basics">
 
@@ -332,7 +370,7 @@ $errors = [];
 		<div class = "cs-side">
 			<div class = "cs-two">
 				<section class = "cs-card" aria-labelledby = "cs-hp-title">
-					<h2 id = "cs-hp-title" data-i18n = "combat_values"><?= e(t('combat_values')) ?></h2>
+					<h2 id = "cs-hp-title" data-i18n = "hit_points"><?= e(t('hit_points')) ?></h2>
 					<div class = "cs-hp">
 						<div class = "cs-field">
 							<label for = "currentHitpoints" data-i18n = "hp_current"><?= e(t('hp_current')) ?></label>
@@ -347,30 +385,6 @@ $errors = [];
 							<input name = "tempHitpoints" id = "tempHitpoints" inputmode = "numeric">
 						</div>
 					</div>
-					<div class = "cs-combat">
-						<div class = "cs-field">
-							<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
-							<input name = "armorClass" id = "armorClass" inputmode = "numeric">
-						</div>
-						<div class = "cs-field">
-							<label for = "Walking_Speed" data-i18n = "walking_speed"><?= e(t('walking_speed')) ?></label>
-							<input type = "number" name = "Walking_Speed" id = "Walking_Speed" inputmode = "numeric">
-						</div>
-						<div class = "cs-field">
-							<label for = "Proficiency_Bonus" data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></label>
-							<input type = "number" name = "Proficiency_Bonus" id = "Proficiency_Bonus" inputmode = "numeric">
-						</div>
-						<div class = "cs-field">
-							<label for = "inspiration" data-i18n = "inspiration"><?= e(t('inspiration')) ?></label>
-							<select id = "inspiration" name = "inspiration">
-								<option id = "empty" class = "Dropdown_Entry" value = "">–</option>
-								<option id = "D4" class = "Dropdown_Entry" value = "D4">D4</option>
-								<option id = "D6" class = "Dropdown_Entry" value = "D6">D6</option>
-								<option id = "D8" class = "Dropdown_Entry" value = "D8">D8</option>
-								<option id = "D12" class = "Dropdown_Entry" value = "D12">D12</option>
-							</select>
-						</div>
-					</div>
 					<div class = "cs-row">
 						<span class = "cs-mini" data-i18n = "hit_dice"><?= e(t('hit_dice')) ?></span>
 						<label name = "hitDice" id = "hitDice" style = "flex: 1; font-weight: 700;"></label>
@@ -381,6 +395,10 @@ $errors = [];
 
 				<section class = "cs-card" aria-labelledby = "cs-armor-title">
 					<h2 id = "cs-armor-title" data-i18n = "armor"><?= e(t('armor')) ?></h2>
+					<div class = "cs-field">
+						<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
+						<input name = "armorClass" id = "armorClass" inputmode = "numeric">
+					</div>
 					<div class = "cs-field">
 						<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
 						<select class = "class_dropdown" name = "armor" id = "armor"></select>
@@ -901,6 +919,7 @@ document.getElementById("Level").addEventListener("change", function () {
 		document.getElementById("bar_hp").textContent = (barText("currentHitpoints") || "–") + " / " + (barText("maxHitpoints") || "–");
 		document.getElementById("bar_ac").textContent = barText("armorClass") || "–";
 		document.getElementById("bar_speed").textContent = barText("Walking_Speed") || "–";
+		document.getElementById("bar_proficiency").textContent = barText("Proficiency_Bonus") || "–";
 		document.getElementById("bar_inspiration").textContent = barText("inspiration") || "–";
 	}
 
@@ -950,6 +969,42 @@ document.getElementById("Level").addEventListener("change", function () {
 	document.addEventListener("pointerdown", function (event) {
 		if (!identityPanel.hidden && !identityPanel.contains(event.target) && !identityButton.contains(event.target)) {
 			setIdentityPanel(false, false);
+		}
+	});
+
+
+//BAR VALUES: speed, proficiency bonus and inspiration change only in the box "statPanel"
+	const statPanel = document.getElementById("statPanel");
+	const statOpeners = [...document.querySelectorAll(".cs-bar-edit"), document.getElementById("barMore")];
+	let statOpener = null;
+
+	// opener = the button that opens the box (null closes it); a value button shows one field, "More" shows all fields
+	function setStatPanel(opener, returnFocus) {
+		const last = statOpener;
+		statOpener = opener;
+		statPanel.hidden = !opener;
+		statOpeners.forEach(b => b.setAttribute("aria-expanded", b === opener ? "true" : "false"));
+		if (opener) {
+			const field = opener.dataset.field || "";
+			statPanel.querySelectorAll("[data-stat]").forEach(f => { f.hidden = field !== "" && f.dataset.stat !== field; });
+			// Put the box under the button, inside the window
+			const r = opener.getBoundingClientRect();
+			const width = statPanel.offsetWidth;
+			const maxLeft = document.documentElement.clientWidth - width - 8;
+			statPanel.style.left = Math.max(8, Math.min(r.left + r.width / 2 - width / 2, maxLeft)) + "px";
+			statPanel.querySelector("[data-stat]:not([hidden]) input, [data-stat]:not([hidden]) select").focus();
+		} else if (returnFocus && last) {
+			last.focus();
+		}
+	}
+	statOpeners.forEach(b => b.addEventListener("click", () => setStatPanel(statOpener === b ? null : b, true)));
+	document.getElementById("statDone").addEventListener("click", () => setStatPanel(null, true));
+	statPanel.addEventListener("keydown", function (event) {
+		if (event.key === "Escape") setStatPanel(null, true);
+	});
+	document.addEventListener("pointerdown", function (event) {
+		if (statOpener && !statPanel.contains(event.target) && !statOpeners.some(b => b.contains(event.target))) {
+			setStatPanel(null, false);
 		}
 	});
 

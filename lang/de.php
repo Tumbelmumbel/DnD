@@ -37,7 +37,8 @@ return [
     'background'          => 'Hintergrund',
 
     // Kampfwerte
-    'combat_values'       => 'Kampfwerte',
+    'more'                => 'Mehr',
+    'bar_values'          => 'Werte in der Leiste',
     'walking_speed'       => 'Bewegungsrate',
     'proficiency_bonus'   => 'Übungsbonus',
 
