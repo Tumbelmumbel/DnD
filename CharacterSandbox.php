@@ -110,7 +110,7 @@ $errors = [];
 .cs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
 .cs-hp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cs-hp input { text-align: center; }
-.cs-stat-panel.cs-hp-panel { width: 340px; }
+.cs-stat-panel.cs-hp-panel, .cs-stat-panel.cs-armor-panel { width: 340px; }
 .cs-hp-panel .cs-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--cs-border); padding-top: 8px; }
 .cs-hp-panel .cs-row input { width: 64px; flex: 0 0 64px; text-align: center; }
 .cs-hp-panel .cs-field > label, .cs-hp-panel .cs-mini { font-weight: 700; white-space: nowrap; }
@@ -235,7 +235,7 @@ $errors = [];
 	margin-top: 6px; padding: 12px; border-radius: 12px; background: #FFFDF6; color: var(--text); border: 1px solid var(--cs-border);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28); display: flex; flex-direction: column; gap: 8px; }
 .cs-stat-panel[hidden], .cs-stat-panel [hidden] { display: none; }
-.cs-stat-panel input, .cs-stat-panel select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 0 10px;
+.cs-stat-panel input:not([type=checkbox]), .cs-stat-panel select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 0 10px;
 	border: 1px solid var(--cs-border); border-radius: 8px; background: #FFFFFF; color: var(--text); font: inherit;
 	font-size: var(--font-text); font-weight: 600; }
 @media (max-width: 640px) {
@@ -290,7 +290,7 @@ $errors = [];
 			</button>
 			<button type = "button" class = "cs-hp-plus" id = "hpPlus" aria-label = "<?= e(t('gain_hp')) ?>" data-i18n-aria = "gain_hp">+</button>
 		</div>
-		<div class = "cs-bar-stat"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac">–</span></div>
+		<button type = "button" class = "cs-bar-stat cs-bar-edit" id = "armorButton" aria-expanded = "false" aria-controls = "armorPanel"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac">–</span></button>
 		<div class = "cs-bar-stat"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative">–</span></div>
 		<!-- Values that change only here: a tap opens the box "statPanel" with the field -->
 		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "Walking_Speed" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></button>
@@ -387,6 +387,29 @@ $errors = [];
 		</div>
 		<button type = "button" class = "cs-identity-done" id = "hpDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
 	</div>
+	<!-- Armor menu: armor class, armor, shield, armor proficiency (opens with "Armor class" in the bar) -->
+	<div class = "cs-stat-panel cs-armor-panel" id = "armorPanel" role = "dialog" aria-label = "<?= e(t('armor')) ?>" data-i18n-aria = "armor" hidden>
+		<div class = "cs-field">
+			<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
+			<input name = "armorClass" id = "armorClass" inputmode = "numeric">
+		</div>
+		<div class = "cs-field">
+			<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
+			<select class = "class_dropdown" name = "armor" id = "armor"></select>
+		</div>
+		<div class = "cs-field">
+			<label for = "shield" data-i18n = "shield"><?= e(t('shield')) ?></label>
+			<select class = "class_dropdown" name = "shield" id = "shield"></select>
+		</div>
+		<span class = "cs-toggles-title" id = "cs-armor-prof-title" data-i18n = "armor_proficiency"><?= e(t('armor_proficiency')) ?></span>
+		<div class = "cs-toggles" role = "group" aria-labelledby = "cs-armor-prof-title">
+			<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span data-i18n = "light_armor"><?= e(t('light_armor')) ?></span></label>
+			<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span data-i18n = "medium_armor"><?= e(t('medium_armor')) ?></span></label>
+			<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span data-i18n = "heavy_armor"><?= e(t('heavy_armor')) ?></span></label>
+			<label class = "cs-check"><input type = "checkbox" name = "shieldProficiency" id = "shieldProficiency"><span data-i18n = "shield"><?= e(t('shield')) ?></span></label>
+		</div>
+		<button type = "button" class = "cs-identity-done" id = "armorDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
+	</div>
 </header>
 <div class = "cs-page" id = "character_basics">
 
@@ -403,29 +426,6 @@ $errors = [];
 	<div class = "cs-main">
 		<!-- Left column (landscape) -->
 		<div class = "cs-side">
-			<section class = "cs-card" aria-labelledby = "cs-armor-title">
-				<h2 id = "cs-armor-title" data-i18n = "armor"><?= e(t('armor')) ?></h2>
-				<div class = "cs-field">
-					<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
-					<input name = "armorClass" id = "armorClass" inputmode = "numeric">
-				</div>
-				<div class = "cs-field">
-					<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
-					<select class = "class_dropdown" name = "armor" id = "armor"></select>
-				</div>
-				<div class = "cs-field">
-					<label for = "shield" data-i18n = "shield"><?= e(t('shield')) ?></label>
-					<select class = "class_dropdown" name = "shield" id = "shield"></select>
-				</div>
-				<span class = "cs-toggles-title" id = "cs-armor-prof-title" data-i18n = "armor_proficiency"><?= e(t('armor_proficiency')) ?></span>
-				<div class = "cs-toggles" role = "group" aria-labelledby = "cs-armor-prof-title">
-					<label class = "cs-check"><input type = "checkbox" name = "lightArmorProficiency" id = "lightArmorProficiency"><span data-i18n = "light_armor"><?= e(t('light_armor')) ?></span></label>
-					<label class = "cs-check"><input type = "checkbox" name = "mediumArmorProficiency" id = "mediumArmorProficiency"><span data-i18n = "medium_armor"><?= e(t('medium_armor')) ?></span></label>
-					<label class = "cs-check"><input type = "checkbox" name = "heavyArmorProficiency" id = "heavyArmorProficiency"><span data-i18n = "heavy_armor"><?= e(t('heavy_armor')) ?></span></label>
-					<label class = "cs-check"><input type = "checkbox" name = "shieldProficiency" id = "shieldProficiency"><span data-i18n = "shield"><?= e(t('shield')) ?></span></label>
-				</div>
-			</section>
-
 			<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
 				<h2 id = "cs-defense-title" data-i18n = "defense_and_conditions"><?= e(t('defense_and_conditions')) ?></h2>
 				<ul class = "cs-chips" id = "defenseChips" aria-labelledby = "cs-defense-title"></ul>
@@ -1056,31 +1056,32 @@ document.getElementById("Level").addEventListener("change", function () {
 	});
 
 
-//HIT POINT MENU: a tap on the middle of the hit point dial opens the fields; Done, Esc or a tap outside closes them
-	const hpButton = document.getElementById("hpButton");
-	const hpPanel = document.getElementById("hpPanel");
-
-	function setHpPanel(open, returnFocus) {
-		hpPanel.hidden = !open;
-		hpButton.setAttribute("aria-expanded", open ? "true" : "false");
-		if (open) {
-			placeUnder(hpPanel, hpButton);
-			document.getElementById("currentHitpoints").focus();
-		} else {
-			limitHitpoints();
-			if (returnFocus) hpButton.focus();
+//MENUS IN THE BAR: hit points and armor. A tap on the value opens the fields; Done, Esc, a tap outside or a second tap closes them
+	function barMenu(button, panel, doneId, firstFieldId, onClose) {
+		function setOpen(open, returnFocus) {
+			panel.hidden = !open;
+			button.setAttribute("aria-expanded", open ? "true" : "false");
+			if (open) {
+				placeUnder(panel, button);
+				document.getElementById(firstFieldId).focus();
+			} else {
+				if (onClose) onClose();
+				if (returnFocus) button.focus();
+			}
 		}
+		button.addEventListener("click", () => setOpen(panel.hidden, true));
+		document.getElementById(doneId).addEventListener("click", () => setOpen(false, true));
+		panel.addEventListener("keydown", function (event) {
+			if (event.key === "Escape") setOpen(false, true);
+		});
+		document.addEventListener("pointerdown", function (event) {
+			if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target)) {
+				setOpen(false, false);
+			}
+		});
 	}
-	hpButton.addEventListener("click", () => setHpPanel(hpPanel.hidden, true));
-	document.getElementById("hpDone").addEventListener("click", () => setHpPanel(false, true));
-	hpPanel.addEventListener("keydown", function (event) {
-		if (event.key === "Escape") setHpPanel(false, true);
-	});
-	document.addEventListener("pointerdown", function (event) {
-		if (!hpPanel.hidden && !hpPanel.contains(event.target) && !hpButton.contains(event.target)) {
-			setHpPanel(false, false);
-		}
-	});
+	barMenu(document.getElementById("hpButton"), document.getElementById("hpPanel"), "hpDone", "currentHitpoints", limitHitpoints);
+	barMenu(document.getElementById("armorButton"), document.getElementById("armorPanel"), "armorDone", "armorClass", null);
 
 //LANGUAGE MENU (footer): change the texts without a reload; entered values stay
 	window.onLanguageChanged = function (data) {
