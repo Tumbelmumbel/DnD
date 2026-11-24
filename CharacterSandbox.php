@@ -134,6 +134,23 @@ $errors = [];
 .cs-mod { width: 56px; height: 56px; flex: 0 0 56px; border-radius: 28px; background: var(--cs-accent); color: #FFFFFF;
 	display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; }
 .cs-save { font-weight: 700; border-bottom: 1px solid var(--cs-line); min-height: 48px; }
+.cs-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-chips:empty { display: none; }
+.cs-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 4px 0 14px; border: 1px solid var(--cs-border);
+	border-radius: 20px; background: var(--cs-field); font-weight: 600; }
+.cs-chip-remove { width: 36px; height: 36px; border: 0; border-radius: 18px; background: transparent; font-size: 20px; line-height: 1;
+	color: #C62828; cursor: pointer; }
+.cs-chip-remove:hover { background: #F6DADA; }
+.cs-chips-empty, .cs-chip-message { margin: 0; font-size: 14px; color: #5C5442; }
+.cs-chip-message:empty { display: none; }
+.cs-chip-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-chip-add, .cs-chip-confirm { min-height: 44px; padding: 0 16px; border-radius: 22px; font: inherit; font-weight: 600; cursor: pointer; }
+.cs-chip-add { border: 2px solid #2E7D32; background: var(--cs-field); color: #2E7D32; }
+.cs-chip-add[aria-expanded="true"] { background: #2E7D32; color: #FFFFFF; }
+.cs-chip-confirm { border: 0; background: var(--cs-accent); color: #FFFFFF; }
+.cs-chip-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cs-chip-form[hidden] { display: none; }
+.cs-chip-form select { flex: 1 1 120px; min-width: 0; }
 .cs-line { display: flex; align-items: center; gap: 8px; }
 .cs-line select { flex: 1; }
 
@@ -374,45 +391,40 @@ $errors = [];
 				</section>
 			</div>
 
-			<div class = "cs-two">
-				<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
-					<div class = "cs-card-head">
-						<h2 id = "cs-defense-title" data-i18n = "defense"><?= e(t('defense')) ?></h2>
-						<button type = "button" class = "button add" id = "addDamageImmunity" aria-label = "<?= e(t('add_defense_line')) ?>" data-i18n-aria = "add_defense_line">+</button>
-					</div>
-					<div class = "cs-line" id = "defense_line0">
-						<select class = "class_dropdown" name = "damageInfluence" data-lookup = "damage_influence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
-							<option class = "Dropdown_Entry"></option>
-							<?php foreach ($damageInfluences as $damageInfluence): ?>
-								<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
-							<?php endforeach; ?>
-						</select>
-						<select class = "class_dropdown" name = "damageType" data-lookup = "damagetype" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
-							<option class = "Dropdown_Entry"></option>
-							<?php foreach ($damageTypes as $damageType): ?>
-								<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
-							<?php endforeach; ?>
-						</select>
-						<button type = "button" class = "button delete defense" aria-label = "<?= e(t('remove_line')) ?>" data-i18n-aria = "remove_line">-</button>
-					</div>
-				</section>
-
-				<section class = "cs-card" id = "Condition" aria-labelledby = "cs-condition-title">
-					<div class = "cs-card-head">
-						<h2 id = "cs-condition-title" data-i18n = "conditions"><?= e(t('conditions')) ?></h2>
-						<button type = "button" class = "button add" id = "addCondition" aria-label = "<?= e(t('add_condition')) ?>" data-i18n-aria = "add_condition">+</button>
-					</div>
-					<div class = "cs-line" id = "condition_line0">
-						<select class = "class_dropdown" name = "conditions" data-lookup = "condition" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
-							<option class = "Dropdown_Entry"></option>
-							<?php foreach ($conditions as $condition): ?>
-								<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
-							<?php endforeach; ?>
-						</select>
-						<button type = "button" class = "button delete condition" aria-label = "<?= e(t('remove_condition')) ?>" data-i18n-aria = "remove_condition">-</button>
-					</div>
-				</section>
-			</div>
+			<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
+				<h2 id = "cs-defense-title" data-i18n = "defense_and_conditions"><?= e(t('defense_and_conditions')) ?></h2>
+				<ul class = "cs-chips" id = "defenseChips" aria-labelledby = "cs-defense-title"></ul>
+				<p class = "cs-chips-empty" id = "defenseEmpty" data-i18n = "defense.none"><?= e(t('defense.none')) ?></p>
+				<div class = "cs-chip-buttons">
+					<button type = "button" class = "cs-chip-add" id = "addDamageImmunity" aria-expanded = "false" aria-controls = "defenseForm">+ <span data-i18n = "defense"><?= e(t('defense')) ?></span></button>
+					<button type = "button" class = "cs-chip-add" id = "addCondition" aria-expanded = "false" aria-controls = "conditionForm">+ <span data-i18n = "condition"><?= e(t('condition')) ?></span></button>
+				</div>
+				<div class = "cs-chip-form" id = "defenseForm" hidden>
+					<select class = "class_dropdown" id = "defenseInfluence" name = "damageInfluence" data-lookup = "damage_influence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
+						<option class = "Dropdown_Entry" value = ""></option>
+						<?php foreach ($damageInfluences as $damageInfluence): ?>
+							<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
+						<?php endforeach; ?>
+					</select>
+					<select class = "class_dropdown" id = "defenseDamageType" name = "damageType" data-lookup = "damagetype" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
+						<option class = "Dropdown_Entry" value = ""></option>
+						<?php foreach ($damageTypes as $damageType): ?>
+							<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
+						<?php endforeach; ?>
+					</select>
+					<button type = "button" class = "cs-chip-confirm" id = "defenseAdd" data-i18n = "add"><?= e(t('add')) ?></button>
+				</div>
+				<div class = "cs-chip-form" id = "conditionForm" hidden>
+					<select class = "class_dropdown" id = "conditionSelect" name = "conditions" data-lookup = "condition" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
+						<option class = "Dropdown_Entry" value = ""></option>
+						<?php foreach ($conditions as $condition): ?>
+							<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
+						<?php endforeach; ?>
+					</select>
+					<button type = "button" class = "cs-chip-confirm" id = "conditionAdd" data-i18n = "add"><?= e(t('add')) ?></button>
+				</div>
+				<p class = "cs-chip-message" id = "defenseMessage" aria-live = "polite"></p>
+			</section>
 		</div>
 
 		<!-- Abilities (order from Abilities.sort_order; ids use the codes) -->
@@ -508,35 +520,109 @@ for (const [ability, skills] of Object.entries(abilities)) {
   for (const skill of skills) state[`${skill}_Proficiency`] = 0;
 }
 
-document.getElementById("addDamageImmunity").addEventListener("click", () => {
-	const container = document.getElementById("Defense")
-	const lineitem = document.getElementById("defense_line0");
-	const newLineItem = lineitem.cloneNode(true);
-	newLineItem.removeAttribute ('id');
-	container.appendChild(newLineItem);
-});
+//DEFENSE AND CONDITIONS: each entry is a chip; the chip stores only codes
+const defenseChips = document.getElementById("defenseChips");
+const defenseMessage = document.getElementById("defenseMessage");
+const chipForms = {
+	defense: { button: document.getElementById("addDamageImmunity"), form: document.getElementById("defenseForm") },
+	condition: { button: document.getElementById("addCondition"), form: document.getElementById("conditionForm") }
+};
 
+// Name of a code in a list (the lists get the new names after a change of the language)
+function optionName(selectId, code) {
+	const option = [...document.getElementById(selectId).options].find(o => o.value === code);
+	return option ? option.textContent : code;
+}
 
-document.getElementById("Defense").addEventListener("click", function(e) {
-	const button = e.target.closest(".button.delete.defense");
-	if (button && e.target.parentElement.id != "defense_line0"){
-		e.target.parentElement.remove();
+function chipText(chip) {
+	if (chip.dataset.kind === "defense") {
+		return optionName("defenseInfluence", chip.dataset.influence) + ": " + optionName("defenseDamageType", chip.dataset.damagetype);
+	}
+	return optionName("conditionSelect", chip.dataset.condition);
+}
+
+// Write the names of all chips again (after an add or a change of the language)
+function renderChipNames() {
+	defenseChips.querySelectorAll(".cs-chip").forEach(chip => {
+		const text = chipText(chip);
+		chip.querySelector(".cs-chip-text").textContent = text;
+		chip.querySelector(".cs-chip-remove").setAttribute("aria-label", tr("remove_entry").replace("{name}", text));
+	});
+	document.getElementById("defenseEmpty").hidden = defenseChips.children.length > 0;
+}
+
+function openChipForm(kind) {
+	for (const [key, part] of Object.entries(chipForms)) {
+		const open = key === kind && part.form.hidden;
+		part.form.hidden = !open;
+		part.button.setAttribute("aria-expanded", open ? "true" : "false");
+		if (open) part.form.querySelector("select").focus();
+	}
+	defenseMessage.textContent = "";
+}
+
+function addChip(data, key) {
+	if (defenseChips.querySelector(`[data-key="${CSS.escape(key)}"]`)) {
+		defenseMessage.textContent = tr("defense.duplicate");
+		return false;
+	}
+	const chip = document.createElement("li");
+	chip.className = "cs-chip";
+	chip.dataset.key = key;
+	Object.assign(chip.dataset, data);
+	const text = document.createElement("span");
+	text.className = "cs-chip-text";
+	const remove = document.createElement("button");
+	remove.type = "button";
+	remove.className = "cs-chip-remove";
+	remove.textContent = "×";
+	chip.append(text, remove);
+	defenseChips.appendChild(chip);
+	defenseMessage.textContent = "";
+	renderChipNames();
+	return true;
+}
+
+chipForms.defense.button.addEventListener("click", () => openChipForm("defense"));
+chipForms.condition.button.addEventListener("click", () => openChipForm("condition"));
+
+document.getElementById("defenseAdd").addEventListener("click", () => {
+	const influence = document.getElementById("defenseInfluence");
+	const damageType = document.getElementById("defenseDamageType");
+	if (!influence.value || !damageType.value) {
+		defenseMessage.textContent = tr("defense.choose_both");
+		return;
+	}
+	if (addChip({ kind: "defense", influence: influence.value, damagetype: damageType.value },
+		"defense:" + influence.value + ":" + damageType.value)) {
+		influence.value = "";
+		damageType.value = "";
+		openChipForm(null);
+		chipForms.defense.button.focus();
 	}
 });
 
-document.getElementById("addCondition").addEventListener("click", () => {
-	const container = document.getElementById("Condition")
-	const lineitem = document.getElementById("condition_line0");
-	const newLineItem = lineitem.cloneNode(true);
-	newLineItem.removeAttribute ('id');
-	container.appendChild(newLineItem);
+document.getElementById("conditionAdd").addEventListener("click", () => {
+	const condition = document.getElementById("conditionSelect");
+	if (!condition.value) {
+		defenseMessage.textContent = tr("defense.choose_condition");
+		return;
+	}
+	if (addChip({ kind: "condition", condition: condition.value }, "condition:" + condition.value)) {
+		condition.value = "";
+		openChipForm(null);
+		chipForms.condition.button.focus();
+	}
 });
 
-document.getElementById("Condition").addEventListener("click", function(e) {
-	const button = e.target.closest(".button.delete.condition");
-	if (button && e.target.parentElement.id != "condition_line0"){
-		e.target.parentElement.remove();
-	}
+defenseChips.addEventListener("click", e => {
+	const remove = e.target.closest(".cs-chip-remove");
+	if (!remove) return;
+	const chip = remove.closest(".cs-chip");
+	const next = chip.nextElementSibling || chip.previousElementSibling;
+	chip.remove();
+	renderChipNames();
+	(next ? next.querySelector(".cs-chip-remove") : chipForms.defense.button).focus();
 });
 
 // --- Helpers ---
@@ -895,6 +981,7 @@ document.getElementById("Level").addEventListener("change", function () {
 				document.querySelectorAll("select[data-lookup]").forEach(select =>
 					renameOptions(select, (content.lookup || {})[select.dataset.lookup] || {}));
 				renameOptions(talentDropdown, content.talents || {});
+				renderChipNames();
 				updateBar();
 			})
 			.catch(err => console.error("Error:", err));

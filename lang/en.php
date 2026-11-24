@@ -57,14 +57,16 @@ return [
 
     // Defense and conditions
     'defense'             => 'Defense',
-    'add_defense_line'    => 'Add a defense line',
     'influence'           => 'Influence',
     'damage_type'         => 'Damage type',
-    'remove_line'         => 'Remove this line',
+    'defense_and_conditions' => 'Defense and conditions',
+    'defense.none'        => 'No defenses or conditions.',
+    'defense.duplicate'   => 'This entry is already in the list.',
+    'defense.choose_both' => 'Select an influence and a damage type.',
+    'defense.choose_condition' => 'Select a condition.',
+    'remove_entry'        => 'Remove {name}',
     'conditions'          => 'Conditions',
     'condition'           => 'Condition',
-    'add_condition'       => 'Add a condition',
-    'remove_condition'    => 'Remove this condition',
 
     // Abilities
     'abilities'           => 'Abilities',
