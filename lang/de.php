@@ -49,6 +49,7 @@ return [
     'used'                => 'Verbraucht',
     'armor'               => 'Rüstung',
     'shield'              => 'Schild',
+    'armor_proficiency'   => 'Rüstungsübung',
     'light_armor'         => 'Leichte Rüstung',
     'medium_armor'        => 'Mittelschwere Rüstung',
     'heavy_armor'         => 'Schwere Rüstung',

@@ -50,6 +50,7 @@ return [
     'used'                => 'Used',
     'armor'               => 'Armor',
     'shield'              => 'Shield',
+    'armor_proficiency'   => 'Armor proficiency',
     'light_armor'         => 'Light armor',
     'medium_armor'        => 'Medium armor',
     'heavy_armor'         => 'Heavy armor',
