@@ -13,7 +13,7 @@
 <style>
 .lang-footer { display: flex; justify-content: flex-end; align-items: center; gap: 8px;
 	box-sizing: border-box; width: 100%; max-width: 1240px; margin: 24px auto 0; padding: 12px 16px 20px;
-	font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #4A4431; clear: both; }
+	font-family: Arial, Helvetica, sans-serif; font-size: var(--font-text, 14px); color: #4A4431; clear: both; }
 .lang-footer label { font-weight: 700; }
 .lang-footer select { min-height: 44px; padding: 0 10px; border: 1px solid #A99E78; border-radius: 8px;
 	background: #FFFDF6; color: #4A4431; font: inherit; cursor: pointer; }
