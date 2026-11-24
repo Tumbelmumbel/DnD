@@ -56,14 +56,16 @@ return [
 
     // Verteidigung und Zustände
     'defense'             => 'Verteidigung',
-    'add_defense_line'    => 'Verteidigungszeile hinzufügen',
     'influence'           => 'Einfluss',
     'damage_type'         => 'Schadensart',
-    'remove_line'         => 'Diese Zeile entfernen',
+    'defense_and_conditions' => 'Verteidigung und Zustände',
+    'defense.none'        => 'Keine Verteidigungen oder Zustände.',
+    'defense.duplicate'   => 'Dieser Eintrag ist schon in der Liste.',
+    'defense.choose_both' => 'Wähle einen Einfluss und eine Schadensart.',
+    'defense.choose_condition' => 'Wähle einen Zustand.',
+    'remove_entry'        => '{name} entfernen',
     'conditions'          => 'Zustände',
     'condition'           => 'Zustand',
-    'add_condition'       => 'Zustand hinzufügen',
-    'remove_condition'    => 'Diesen Zustand entfernen',
 
     // Attribute
     'abilities'           => 'Attribute',
