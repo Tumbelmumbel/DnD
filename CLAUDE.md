@@ -69,7 +69,7 @@ This applies to the **pull request description** and the **commit message**.
 - Use this structure in the pull request:
   1. **Changes** – what changed, file by file.
   2. **Reason** – why the change is necessary.
-  3. **Before you merge** – manual steps (for example: "Run the migration").
+  3. **Before you merge** – the steps before the merge (for example: "The owner gives the backup of `dbs15432866` to Claude. Claude runs the migration.").
   4. **Test** – the list of test steps for the browser test (see "Test steps in the pull request"),
      and the results on the test server (step 4 of "Working method").
 
@@ -211,8 +211,8 @@ Use these steps for every change. Do not skip a step.
 
 **Claude does not merge automatically when:**
 
-- the section "Before you merge" of the pull request has a manual step that is not done
-  (for example: a migration that the owner must run). Claude merges only after the step is done.
+- a step in the section "Before you merge" is not done (for example: the owner has not given
+  the backup of `dbs15432866`, or the migration did not run). Claude merges only after all steps are done.
 - the owner wrote "do not merge" on the pull request, or the pull request is a draft.
 - the review agent did not answer, or the answer has no `VERDICT` line.
   Then Claude tells the owner.
