@@ -11,6 +11,8 @@ Test site: https://rudolph.cologne (IONOS shared hosting).
 
 - **Language:** PHP 8 (no framework), plain HTML/CSS/JavaScript
 - **Database:** MySQL on IONOS (`dbs15432866`), accessed with PDO
+- **Test database:** MySQL on IONOS (`dbs16383239`), on its own server (`db5021993148`).
+  Only for migration tests. The website never uses it.
 - **Mail:** PHPMailer 7.0.2 over IONOS SMTP (in `libs/PHPMailer`, third-party code: do not change it)
 - **Owner:** Tumbelmumbel (solo developer)
 
@@ -67,19 +69,30 @@ This applies to the **pull request description** and the **commit message**.
 - Use this structure in the pull request:
   1. **Changes** – what changed, file by file.
   2. **Reason** – why the change is necessary.
-  3. **Before you merge** – manual steps (for example: "Run the migration").
+  3. **Before you merge** – the steps before the merge (for example: "The owner gives the backup of `dbs15432866` to Claude. Claude runs the migration.").
   4. **Test** – the list of test steps for the browser test (see "Test steps in the pull request"),
-     and the results on the test server (step 5 of "Working method").
+     and the results on the test server (step 4 of "Working method").
 
 ## Database changes
 
-- Never change the database without the owner's explicit "yes" for that exact SQL.
+- Never change the database `dbs15432866` without the owner's explicit "yes" for that exact SQL.
+  The owner's **GO** for a plan is this "yes" for exactly the SQL in the plan.
+  If the SQL changes after the GO, Claude asks for a new GO.
+- The GO also permits Claude to change the test database `dbs16383239` for the tests of that plan.
 - Read-only queries (SELECT, SHOW, information_schema) are fine.
 - Every schema change goes into a new file `migration_<short_name>.sql` in the pull request.
 - The pull request description must say: **"Run the migration BEFORE you merge."**
-- Run a migration only after the review agent approves the pull request (step 8 of "Working method").
-- Before a migration runs, make a backup of the database (phpMyAdmin → Export).
-- Test a migration on a test database first, never on `dbs15432866`.
+- Run a migration on `dbs15432866` only after the review agent approves the pull request,
+  and before the merge (step 6 of "Working method").
+- Before a migration runs, the owner makes a backup of `dbs15432866` (phpMyAdmin → Export)
+  and gives the file to Claude.
+- Test each migration on the test database `dbs16383239` first:
+  1. Delete all tables in `dbs16383239`. Import the backup of `dbs15432866`. Remove the lines
+     `CREATE DATABASE` and `USE` from the backup first, so that it goes into `dbs16383239`.
+  2. Run the migration on `dbs16383239`. Check the result (tables, fields, row counts).
+  3. Only then run the migration on `dbs15432866`. Check the result again.
+- Backup files contain user data (email addresses, password hashes).
+  Never put them into the repository. Delete working copies after the import.
 - Code must not use a new column or table before its migration exists.
 - The current schema has no foreign keys and `sql_mode` is empty (lenient mode).
 - Code refers to a lookup value (class, species, skill, condition, ...) only by its `code`, never by its name.
@@ -148,28 +161,30 @@ Use these steps for every change. Do not skip a step.
    Claude does not write code before step 3 is done.
 3. **GO (owner):** the owner answers the questions and reviews the plan.
    Claude starts only after the owner writes **"GO"**.
+   The GO permits the pull request, the changes to the test database `dbs16383239`,
+   and exactly the SQL of the plan on `dbs15432866` (see "Database changes").
    If the plan changes after the GO (for example, new SQL), Claude asks for a new GO.
-4. **Branch, pull request and code (Claude):** Claude makes a new branch from the latest `main`.
+4. **Branch, code and tests (Claude):** Claude makes a new branch from the latest `main`.
    Claude opens a pull request early (it can be a draft). Claude writes the code on this branch.
    Each database change goes into a `migration_<short_name>.sql` file (see "Database changes").
-   Claude does not run the migration on the production database in this step.
-5. **Tests on the test server (Claude):** Claude runs `php -l` on each changed PHP file.
-   Claude tests the change on its own test server (for example the PHP built-in server in its workspace).
-   The test server must never connect to the database `dbs15432866`.
-   It uses a separate test database, or no database.
-   Claude adds the results to the pull request (section "Test", sub-section "Results on the test server").
-6. **Ready for review (Claude):** Claude sets the pull request to "ready" and tells the owner.
-   Then Claude asks the review agent for a review (see "Review and merge").
-7. **Review (review agent):** the review agent checks the code and gives
-   `VERDICT: APPROVE` or `VERDICT: DISAPPROVE`.
-8. **Migration and merge (Claude):** if the verdict is `APPROVE`:
-   - Pull request with a migration: Claude stops and tells the owner. The owner makes a backup
-     of the database and runs the migration (or gives Claude a "yes" for that exact SQL).
-     Claude merges only after the owner confirms that the migration is done.
+   - Claude runs `php -l` on each changed PHP file.
+   - Claude tests the change on its own test server (for example the PHP built-in server in its workspace).
+     The test server never connects to `dbs15432866`. It uses a separate test database, or no database.
+   - Claude tests each migration on the test database `dbs16383239`.
+   - Claude adds the results to the pull request (section "Test", sub-section "Results on the test server").
+   Then Claude sets the pull request to "ready", tells the owner and asks the review agent for a review.
+5. **Review (review agent):** the review agent checks the code and gives
+   `VERDICT: APPROVE` or `VERDICT: DISAPPROVE` (see "Review and merge").
+6. **Migration and merge (Claude):** if the verdict is `APPROVE`:
+   - Pull request with a migration:
+     1. Claude asks the owner for the backup of `dbs15432866`. The owner gives the file to Claude.
+     2. Claude updates `dbs16383239` with the backup and tests the migration there again.
+     3. Claude runs the migration on `dbs15432866` and checks the result.
+     4. Then Claude merges the pull request.
    - Pull request without a migration: Claude merges the pull request.
-9. **Deploy (automatic):** the merge into `main` uploads the files to the webspace (see "Deploy").
-10. **Online test (Claude):** after the deploy, Claude tests the change on https://rudolph.cologne
-    (see "Browser test") and reports the result to the owner.
+7. **Deploy (automatic):** the merge into `main` uploads the files to the webspace (see "Deploy").
+8. **Online test (Claude):** after the deploy, Claude tests the change on https://rudolph.cologne
+   (see "Browser test") and reports the result to the owner.
 
 ### If the online test fails
 
@@ -180,13 +195,14 @@ Use these steps for every change. Do not skip a step.
 
 **Every pull request gets a review by the GitHub review agent** (`.github/workflows/claude.yml`).
 
-1. After Claude opens a pull request, Claude writes this comment on the pull request:
+1. After Claude sets the pull request to "ready", Claude writes this comment on the pull request:
 
    `@claude Please check this pull request. Approve if you find no errors. Disapprove if you find errors.`
 
 2. Claude waits for the answer of the review agent (normally 1 to 5 minutes).
    The answer contains the line `VERDICT: APPROVE` or `VERDICT: DISAPPROVE`.
-3. **`VERDICT: APPROVE`:** Claude merges the pull request (merge commit) and deletes the branch.
+3. **`VERDICT: APPROVE`:** Claude runs the migration first, if the pull request has one (step 6 of "Working method").
+   Then Claude merges the pull request (merge commit) and deletes the branch.
    The merge starts the deploy to the website.
 4. **`VERDICT: DISAPPROVE`:** Claude corrects the errors on the same branch, pushes the change
    and writes the review comment again.
@@ -195,8 +211,8 @@ Use these steps for every change. Do not skip a step.
 
 **Claude does not merge automatically when:**
 
-- the section "Before you merge" of the pull request has a manual step that is not done
-  (for example: a migration that the owner must run). Claude merges only after the step is done.
+- a step in the section "Before you merge" is not done (for example: the owner has not given
+  the backup of `dbs15432866`, or the migration did not run). Claude merges only after all steps are done.
 - the owner wrote "do not merge" on the pull request, or the pull request is a draft.
 - the review agent did not answer, or the answer has no `VERDICT` line.
   Then Claude tells the owner.
