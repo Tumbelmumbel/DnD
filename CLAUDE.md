@@ -173,8 +173,7 @@ Use these steps for every change. Do not skip a step.
 
 ### If the online test fails
 
-- If the website does not work any more (for example, a page shows an error).
-- Claude creates an issue in GIT describing the error it found.
+- If Claude finds an error in the online test it creates an issue in on the github repository describing the error it found.
 - Claude informs the owner about the issue.
 
 ### Review and merge
