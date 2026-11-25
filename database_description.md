@@ -4,7 +4,7 @@ This file describes the database of the DnD character manager.
 It shows all tables and all fields, the data type of each field, and the data that each field stores.
 
 - **Database:** `dbs15432866` (MySQL on IONOS)
-- **Last update:** 2026-11-24
+- **Last update:** 2026-11-26
 - **Foreign keys:** None. The tables do not have links in the database.
 - **SQL mode:** Empty (lenient). MySQL does not stop an incorrect value. It changes the value and gives a warning.
 
@@ -60,6 +60,7 @@ The combination of `name` and `username` identifies a character.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
+| `id` | int unsigned | UNI | No | AUTO_INCREMENT | Number of the character. Other tables refer to the character with this number. |
 | `name` | char(100) | PK | No | | Name of the character. |
 | `username` | char(40) | PK | No | | Username of the owner (`users.username`). |
 | `image_url` | varchar(400) | | No | | URL of the image of the character. The character overview shows this image. |
@@ -275,6 +276,103 @@ This table stores the tags of each item. Each row is one tag of one item. An ite
 |---|---|---|---|---|---|
 | `item_id` | int unsigned | PK | No | | Number of the item (`items.id`). |
 | `tag_code` | varchar(40) | PK, IDX | No | | Code of the tag (`tags.code`). |
+
+### `character_items`
+
+This table stores the inventory of the characters. Each row is one item of one character.
+Two items of the same type (for example two daggers) are two rows. A stack (for example 20 arrows) is one row with a `quantity`.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `id` | int unsigned | PK | No | AUTO_INCREMENT | Number of the inventory row. `character_calculations.character_item_id` refers to this number. |
+| `character_id` | int unsigned | IDX | No | | Number of the character (`Characters.id`). |
+| `item_id` | int unsigned | IDX | No | | Number of the item (`items.id`). |
+| `quantity` | smallint unsigned | | No | `1` | Quantity of the item in this row. |
+| `equipped` | tinyint(1) | | No | `0` | `1` = the character uses the item now (for example wears the armor). `0` = the item is only in the inventory. |
+| `created_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time when the character got the item. |
+
+## Calculations
+
+These tables store the rules that calculate the values of a character (for example armor class or a skill).
+The JavaScript engine of the character sheet does the calculation. The database stores only the rules and the inputs (ability scores, level, inventory), not the results.
+
+**Rule:** each row changes one value (`target`) with one operator. The engine uses the rows in the sequence of `sort_order`.
+
+**Value names (`target`, `value_ref`):** the pattern is `<group>.<code>`. Use lowercase letters, digits and `_`, and exactly one dot. Where a database code exists, the part after the dot is this code.
+
+| Group | Example | Code from |
+|---|---|---|
+| `char.` | `char.level`, `char.prof_bonus`, `char.speed` | Fixed list |
+| `ability.` | `ability.dexterity` (score) | `Abilities.code` |
+| `mod.` | `mod.dexterity` (modifier) | `Abilities.code` |
+| `save.` | `save.dexterity` | `Abilities.code` |
+| `skill.` | `skill.sleight_of_hand` | `Skills.code` |
+| `combat.` | `combat.ac`, `combat.initiative` | Fixed list |
+| `hp.` | `hp.max` | Fixed list |
+
+**Operators (`operator`):**
+
+| Operator | Result |
+|---|---|
+| `set` | The value becomes the given value. |
+| `add` | The given value is added. |
+| `sub` | The given value is subtracted. |
+| `mul` | The value is multiplied by the given value. |
+| `div` | The value is divided by the given value. |
+| `min` | The value is at least the given value. |
+| `max` | The value is at most the given value. |
+| `floor` | The value is rounded down. This operator has no given value. |
+
+**Given value:** a row has a number in `value_num` or the name of another value in `value_ref`. The operator `floor` has neither.
+
+**Condition (`condition_json`):** NULL = the rule always applies. Otherwise a JSON object with these checks:
+
+| Check | Example | Result |
+|---|---|---|
+| `EQUIPPED` | `{"EQUIPPED": true}` | True if the source item is equipped. |
+| `HAS_TAG` | `{"HAS_TAG": "heavy_armor"}` | True if the source item has this tag (`tags.code`). |
+| `COMPARE` | `{"COMPARE": ["char.level", ">", 5]}` | True if the comparison is true. |
+| `HAS_DEFENSE` | `{"HAS_DEFENSE": ["resistant", "fire"]}` | True if the character has this defense. The first entry is a code of `Damage_influence` or `condition`. The second entry is a code of `Damagetypes` or `Conditions`. |
+| `all`, `any`, `not` | `{"all": [{...}, {...}]}` | Combine checks: all are true, one is true, the check is false. |
+
+The format of the checks is a proposal. The engine pull request can change it. **(check)**
+
+### `calculation_templates`
+
+This table stores the rules as templates. Each row is one rule.
+Rules with `source_type` `base` apply to each character. The engine reads them directly from this table.
+Rules with `source_type` `item` belong to an item. When a character gets the item, the application copies these rules to `character_calculations`.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `id` | int unsigned | PK | No | AUTO_INCREMENT | Number of the rule. |
+| `source_type` | varchar(20) | IDX | No | | Source of the rule: `base` (each character) or `item`. Later also `species`, `class`. |
+| `item_id` | int unsigned | IDX | Yes | NULL | Number of the item (`items.id`) if `source_type` is `item`. Else NULL. |
+| `sort_order` | smallint unsigned | | No | | Sequence of the rule. Use steps of 100 per stage (100, 200, ...), so that new rules can go between. |
+| `target` | varchar(60) | | No | | Name of the value that the rule changes, for example `combat.ac`. |
+| `operator` | enum | | No | | Operator: `set`, `add`, `sub`, `mul`, `div`, `min`, `max` or `floor`. |
+| `value_num` | decimal(10,2) | | Yes | NULL | Given value as a number, for example `2` or `0.5`. |
+| `value_ref` | varchar(60) | | Yes | NULL | Given value as the name of another value, for example `mod.dexterity`. |
+| `condition_json` | json | | Yes | NULL | Condition of the rule. NULL = the rule always applies. |
+
+### `character_calculations`
+
+This table stores the rules of each character. Each row is one rule of one character.
+The application adds the rules of an item when the character gets the item. It deletes them when the item goes out of the inventory.
+If a template changes later, the copies do not change. A migration must update them.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `id` | int unsigned | PK | No | AUTO_INCREMENT | Number of the rule. |
+| `character_id` | int unsigned | IDX | No | | Number of the character (`Characters.id`). |
+| `source_type` | varchar(20) | | No | | Source of the rule: `item`. Later also `species`, `class`, `manual` (a special rule for this character only). |
+| `character_item_id` | int unsigned | IDX | Yes | NULL | Number of the inventory row (`character_items.id`) if `source_type` is `item`. Else NULL. `EQUIPPED` and `HAS_TAG` check this inventory row. |
+| `sort_order` | smallint unsigned | | No | | Sequence of the rule (see `calculation_templates`). |
+| `target` | varchar(60) | | No | | Name of the value that the rule changes. |
+| `operator` | enum | | No | | Operator (see `calculation_templates`). |
+| `value_num` | decimal(10,2) | | Yes | NULL | Given value as a number. |
+| `value_ref` | varchar(60) | | Yes | NULL | Given value as the name of another value. |
+| `condition_json` | json | | Yes | NULL | Condition of the rule. NULL = the rule always applies. |
 
 ## Translations
 
