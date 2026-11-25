@@ -43,7 +43,7 @@ PHPMailer) only after the owner agrees.
 | `Assets/style.css` | Shared stylesheet for all pages: colors and font sizes as variables in `:root` |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
-| `migration_*.sql` | Database changes, run by hand in phpMyAdmin |
+| `migration_*.sql` | Database changes. Tested on `dbs16383239`, then run on `dbs15432866` after the review approves and before the merge (see "Database changes"). |
 | `index.php` | Start page: sends the visitor to the sign-in page |
 | `.htaccess` | Sets `index.php` as the start page. Blocks downloads of `.env`, logs and other non-public files. Do not remove it. |
 | `.github/workflows/deploy.yml` | Uploads `main` to IONOS over SFTP |
@@ -188,7 +188,7 @@ Use these steps for every change. Do not skip a step.
 
 ### If the online test fails
 
-- If Claude finds an error in the online test it creates an issue in on the github repository describing the error it found.
+- If Claude finds an error in the online test it creates an issue in the GitHub repository describing the error it found.
 - Claude informs the owner about the issue.
 
 ### Review and merge
