@@ -173,10 +173,9 @@ Use these steps for every change. Do not skip a step.
 
 ### If the online test fails
 
-- If the website does not work any more (for example, a page shows an error), Claude reverts the merge.
-  Claude opens a revert pull request, gets the review and merges it. Then Claude tells the owner.
-- A revert does not undo a migration. Claude asks the owner what to do with the database.
-- Then Claude makes the correction with the normal procedure (steps 2 to 10).
+- If the website does not work any more (for example, a page shows an error).
+- Claude creates an issue in GIT describing the error it found.
+- Claude informs the owner about the issue.
 
 ### Review and merge
 
