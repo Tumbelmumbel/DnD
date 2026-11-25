@@ -68,7 +68,8 @@ This applies to the **pull request description** and the **commit message**.
   1. **Changes** – what changed, file by file.
   2. **Reason** – why the change is necessary.
   3. **Before you merge** – manual steps (for example: "Run the migration").
-  4. **Test** – the list of test steps for the browser test (see "Test steps in the pull request").
+  4. **Test** – the list of test steps for the browser test (see "Test steps in the pull request"),
+     and the results on the test server (step 5 of "Working method").
 
 ## Database changes
 
@@ -76,6 +77,9 @@ This applies to the **pull request description** and the **commit message**.
 - Read-only queries (SELECT, SHOW, information_schema) are fine.
 - Every schema change goes into a new file `migration_<short_name>.sql` in the pull request.
 - The pull request description must say: **"Run the migration BEFORE you merge."**
+- Run a migration only after the review agent approves the pull request (step 8 of "Working method").
+- Before a migration runs, make a backup of the database (phpMyAdmin → Export).
+- Test a migration on a test database first, never on `dbs15432866`.
 - Code must not use a new column or table before its migration exists.
 - The current schema has no foreign keys and `sql_mode` is empty (lenient mode).
 - Code refers to a lookup value (class, species, skill, condition, ...) only by its `code`, never by its name.
@@ -133,12 +137,46 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 
 ## Working method
 
-1. **Plan:** describe the change and any SQL. Wait for the owner's approval.
-2. **Build:** on a new branch.
-3. **Pull request:** list what changed, what to test, and any steps before merging.
-4. **Review:** the GitHub review agent reviews every pull request (see below).
-5. **Merge:** if the review agent approves, Claude merges the pull request.
-6. **Browser test:** after the deploy, Claude tests the change on the website (see "Browser test").
+Use these steps for every change. Do not skip a step.
+
+1. **Requirement (owner):** the owner describes the requirement.
+2. **Plan (Claude):** Claude writes a plan. The plan has these parts:
+   - the change, file by file,
+   - each SQL statement for the database (or "No database change"),
+   - the test steps (see "Test steps in the pull request"),
+   - the open questions.
+   Claude does not write code before step 3 is done.
+3. **GO (owner):** the owner answers the questions and reviews the plan.
+   Claude starts only after the owner writes **"GO"**.
+   If the plan changes after the GO (for example, new SQL), Claude asks for a new GO.
+4. **Branch, pull request and code (Claude):** Claude makes a new branch from the latest `main`.
+   Claude opens a pull request early (it can be a draft). Claude writes the code on this branch.
+   Each database change goes into a `migration_<short_name>.sql` file (see "Database changes").
+   Claude does not run the migration on the production database in this step.
+5. **Tests on the test server (Claude):** Claude runs `php -l` on each changed PHP file.
+   Claude tests the change on its own test server (for example the PHP built-in server in its workspace).
+   The test server must never connect to the database `dbs15432866`.
+   It uses a separate test database, or no database.
+   Claude adds the results to the pull request (section "Test", sub-section "Results on the test server").
+6. **Ready for review (Claude):** Claude sets the pull request to "ready" and tells the owner.
+   Then Claude asks the review agent for a review (see "Review and merge").
+7. **Review (review agent):** the review agent checks the code and gives
+   `VERDICT: APPROVE` or `VERDICT: DISAPPROVE`.
+8. **Migration and merge (Claude):** if the verdict is `APPROVE`:
+   - Pull request with a migration: Claude stops and tells the owner. The owner makes a backup
+     of the database and runs the migration (or gives Claude a "yes" for that exact SQL).
+     Claude merges only after the owner confirms that the migration is done.
+   - Pull request without a migration: Claude merges the pull request.
+9. **Deploy (automatic):** the merge into `main` uploads the files to the webspace (see "Deploy").
+10. **Online test (Claude):** after the deploy, Claude tests the change on https://rudolph.cologne
+    (see "Browser test") and reports the result to the owner.
+
+### If the online test fails
+
+- If the website does not work any more (for example, a page shows an error), Claude reverts the merge.
+  Claude opens a revert pull request, gets the review and merges it. Then Claude tells the owner.
+- A revert does not undo a migration. Claude asks the owner what to do with the database.
+- Then Claude makes the correction with the normal procedure (steps 2 to 10).
 
 ### Review and merge
 
