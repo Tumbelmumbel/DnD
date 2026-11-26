@@ -67,11 +67,12 @@ $errors = [];
 		$stmt->execute();
 		$calcRules = array_values(array_filter(array_map('calc_rule_from_row', $stmt->fetchAll(PDO::FETCH_ASSOC))));
 
-		// Items for the inventory (names in the current language, tags, rules) and the names of tags and rarities
+		// Items for the inventory (names in the current language, tags, rules, weapon data) and the names of tags, rarities and damage types
 		$items = item_list($pdo);
 		$itemLookup = [
 			'item_tag'    => lookup_names($pdo)['item_tag'] ?? [],
 			'item_rarity' => lookup_names($pdo)['item_rarity'] ?? [],
+			'damagetype'  => lookup_names($pdo)['damagetype'] ?? [],
 		];
 ?>
 

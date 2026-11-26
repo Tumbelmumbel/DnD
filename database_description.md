@@ -226,6 +226,7 @@ Now there is no page to add items. Items and tags are added with SQL (a migratio
 This table stores the items. Each row is one item.
 
 **Test data:** `migration_test_items.sql` adds five test items with tags, German names and calculation rules: `Shield`, `Chain Mail`, `Scale Mail`, `Ring of Wisdom` and `Necklace of Persuasion`.
+`migration_weapons.sql` adds five test weapons with weapon data, tags and German names, but without calculation rules: `Dagger`, `Longsword`, `Greataxe`, `Shortbow` and `Light Crossbow`.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
@@ -234,6 +235,11 @@ This table stores the items. Each row is one item.
 | `weight_lb` | decimal(8,2) | | Yes | NULL | Weight of the item in pounds (lb), for example `55.00` or `0.25`. NULL: the item has no weight. |
 | `rarity_code` | varchar(20) | IDX | No | `mundane` | Code of the rarity (`item_rarities.code`). `mundane` is an item that is not magical. |
 | `cost_gp` | decimal(10,2) | | Yes | NULL | Cost of the item in gold pieces (gp), with 2 decimals. 1 sp = `0.10`, 1 cp = `0.01`. NULL: the item has no fixed cost. |
+| `damage_dice` | varchar(20) | | Yes | NULL | Damage dice of a weapon, for example `1d8`. NULL: the item is not a weapon. The page shows the dice in the notation of the language (German: `1W8`). |
+| `damage_dice_versatile` | varchar(20) | | Yes | NULL | Damage dice of a versatile weapon when you use it with two hands, for example `1d10`. NULL: the weapon is not versatile. |
+| `damage_type_code` | varchar(40) | | Yes | NULL | Code of the damage type of a weapon (`Damagetypes.code`), for example `slashing`. NULL: the item is not a weapon. |
+| `range_normal_ft` | smallint unsigned | | Yes | NULL | Normal range of a ranged or thrown weapon in feet, for example `80`. NULL: the weapon has no range (melee only). |
+| `range_long_ft` | smallint unsigned | | Yes | NULL | Long range of a ranged or thrown weapon in feet, for example `320`. NULL: the weapon has no range. |
 | `created_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time when the item was added. |
 | `updated_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time of the last change (MySQL sets it). |
 

@@ -359,6 +359,29 @@ document.getElementById("Level").addEventListener("change", function () {
 		return (itemLookup.item_tag || {})[code] || code;
 	}
 
+	// Dice in the notation of the language, for example "1d8" (English) or "1W8" (German)
+	function diceText(dice) {
+		return dice.replace(/d/g, tr("unit.die"));
+	}
+
+	// Distance from feet into the unit of the language (5 ft. = unit.distance_per_5ft)
+	function distanceText(feet) {
+		const value = Math.round(feet / 5 * Number(tr("unit.distance_per_5ft")) * 10) / 10;
+		return value.toLocaleString(document.documentElement.lang);
+	}
+
+	// Weapon line: damage and damage type, two-handed damage, range. Empty for items that are not weapons.
+	function weaponText(item) {
+		if (!item.damage) return "";
+		const parts = [diceText(item.damage) + (item.damage_type ? " " + ((itemLookup.damagetype || {})[item.damage_type] || item.damage_type) : "")];
+		if (item.damage_versatile) parts.push(tr("inventory.two_handed").replace("{dice}", diceText(item.damage_versatile)));
+		if (item.range_normal) {
+			parts.push(tr("inventory.range").replace("{normal}", distanceText(item.range_normal))
+				.replace("{long}", distanceText(item.range_long || item.range_normal)).replace("{unit}", tr("unit.distance")));
+		}
+		return parts.join(" · ");
+	}
+
 	// Number of rows and total weight in the head of the card
 	function updateInventorySummary() {
 		let weight = 0;
@@ -402,6 +425,12 @@ document.getElementById("Level").addEventListener("change", function () {
 			tags.append(tag);
 		}
 		info.append(title, tags);
+		if (weaponText(item)) {
+			const weapon = document.createElement("span");
+			weapon.className = "cs-inventory-weapon";
+			weapon.textContent = weaponText(item);
+			info.append(weapon);
+		}
 
 		const quantity = document.createElement("input");
 		quantity.className = "cs-inventory-qty";
@@ -896,7 +925,8 @@ document.getElementById("Level").addEventListener("change", function () {
 				renameOptions(talentDropdown, content.talents || {});
 				renderChipNames();
 				// Items: new names, tag and rarity names; the search list is sorted by the new names
-				itemLookup = { item_tag: (content.lookup || {}).item_tag || {}, item_rarity: (content.lookup || {}).item_rarity || {} };
+				itemLookup = { item_tag: (content.lookup || {}).item_tag || {}, item_rarity: (content.lookup || {}).item_rarity || {},
+					damagetype: (content.lookup || {}).damagetype || {} };
 				for (const item of itemCatalog) {
 					if (content.items && Object.prototype.hasOwnProperty.call(content.items, item.id)) item.name = content.items[item.id];
 				}
