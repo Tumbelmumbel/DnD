@@ -225,6 +225,8 @@ Now there is no page to add items. Items and tags are added with SQL (a migratio
 
 This table stores the items. Each row is one item.
 
+**Test data:** `migration_test_items.sql` adds five test items with tags, German names and calculation rules: `Shield`, `Chain Mail`, `Scale Mail`, `Ring of Wisdom` and `Necklace of Persuasion`.
+
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
 | `id` | int unsigned | PK | No | AUTO_INCREMENT | Number of the item. Other tables refer to the item with this number, so the name can change. |
