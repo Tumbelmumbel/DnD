@@ -34,7 +34,7 @@ PHPMailer) only after the owner agrees.
 | `characteroverview.php` | List of the user's characters (start page after login) |
 | `CharacterSandbox.php` | Character sheet: PHP and HTML, plus a small script with the data from PHP |
 | `Assets/sandbox.css`, `Assets/sandbox.js` | Styles and logic of the character sheet |
-| `calculation.js` | D&D calculations (modifiers) |
+| `Assets/calc_engine.js` | Calculation engine: calculates the values of the character sheet from the rules in `calculation_templates` (see `database_description.md`, "Calculations") |
 | `i18n.php`, `lang/*.php`, `ajax/i18n.php` | Languages of the interface (see "Languages") |
 | `partials/language_footer.php` | Language menu at the end of every page (bottom right) |
 | `partials/page_head.php` | Shared `<head>` of the account pages (title, viewport, `style.css` with a version number). Set `$pageTitle` before you include it. |
