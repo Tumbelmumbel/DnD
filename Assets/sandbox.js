@@ -67,6 +67,18 @@ function renderChipNames() {
 	document.getElementById("defenseEmpty").hidden = defenseChips.children.length > 0;
 }
 
+// Show a message under a chip list (key from lang/*.php), or clear it (key null).
+// The attribute data-i18n lets applyI18n() write the message again after a change of the language.
+function setChipMessage(element, key) {
+	if (key) {
+		element.dataset.i18n = key;
+		element.textContent = tr(key);
+	} else {
+		delete element.dataset.i18n;
+		element.textContent = "";
+	}
+}
+
 function openChipForm(kind) {
 	for (const [key, part] of Object.entries(chipForms)) {
 		const open = key === kind && part.form.hidden;
@@ -74,12 +86,12 @@ function openChipForm(kind) {
 		part.button.setAttribute("aria-expanded", open ? "true" : "false");
 		if (open) part.form.querySelector("select").focus();
 	}
-	defenseMessage.textContent = "";
+	setChipMessage(defenseMessage, null);
 }
 
 function addChip(data, key) {
 	if (defenseChips.querySelector(`[data-key="${CSS.escape(key)}"]`)) {
-		defenseMessage.textContent = tr("defense.duplicate");
+		setChipMessage(defenseMessage, "defense.duplicate");
 		return false;
 	}
 	const chip = document.createElement("li");
@@ -94,7 +106,7 @@ function addChip(data, key) {
 	remove.textContent = "×";
 	chip.append(text, remove);
 	defenseChips.appendChild(chip);
-	defenseMessage.textContent = "";
+	setChipMessage(defenseMessage, null);
 	renderChipNames();
 	return true;
 }
@@ -106,7 +118,7 @@ document.getElementById("defenseAdd").addEventListener("click", () => {
 	const influence = document.getElementById("defenseInfluence");
 	const damageType = document.getElementById("defenseDamageType");
 	if (!influence.value || !damageType.value) {
-		defenseMessage.textContent = tr("defense.choose_both");
+		setChipMessage(defenseMessage, "defense.choose_both");
 		return;
 	}
 	if (addChip({ kind: "defense", influence: influence.value, damagetype: damageType.value },
@@ -121,7 +133,7 @@ document.getElementById("defenseAdd").addEventListener("click", () => {
 document.getElementById("conditionAdd").addEventListener("click", () => {
 	const condition = document.getElementById("conditionSelect");
 	if (!condition.value) {
-		defenseMessage.textContent = tr("defense.choose_condition");
+		setChipMessage(defenseMessage, "defense.choose_condition");
 		return;
 	}
 	if (addChip({ kind: "condition", condition: condition.value }, "condition:" + condition.value)) {
@@ -177,7 +189,7 @@ function renderWeaponChips() {
 function setWeaponForm(open) {
 	weaponForm.hidden = !open;
 	weaponButton.setAttribute("aria-expanded", open ? "true" : "false");
-	weaponMessage.textContent = "";
+	setChipMessage(weaponMessage, null);
 	if (open) {
 		renderWeaponOptions();
 		weaponSelect.focus();
@@ -187,7 +199,7 @@ function setWeaponForm(open) {
 weaponButton.addEventListener("click", () => {
 	if (weaponItems().length === 0) {
 		setWeaponForm(false);
-		weaponMessage.textContent = tr("weapon.none_available");
+		setChipMessage(weaponMessage, "weapon.none_available");
 		return;
 	}
 	setWeaponForm(weaponForm.hidden);
@@ -197,7 +209,7 @@ document.getElementById("weaponAdd").addEventListener("click", () => {
 	const itemId = weaponSelect.value;
 	if (!itemId) return;
 	if (weaponChips.querySelector(`[data-item-id="${CSS.escape(itemId)}"]`)) {
-		weaponMessage.textContent = tr("defense.duplicate");
+		setChipMessage(weaponMessage, "defense.duplicate");
 		return;
 	}
 	const chip = document.createElement("li");
