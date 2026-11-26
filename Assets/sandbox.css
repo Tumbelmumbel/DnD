@@ -157,10 +157,10 @@
 .cs-bar-hp .cs-hp-minus { background: #C62828; }
 .cs-bar-hp .cs-hp-plus { background: #2E7D32; }
 .cs-bar-stat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
-.cs-bar-stat > span:first-child { white-space: nowrap; font-size: var(--font-text); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.cs-bar-stat > span:first-child { white-space: nowrap; font-size: var(--font-text); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
 .cs-bar-stat > span:last-child { white-space: nowrap; font-size: var(--font-header); font-weight: 700; }
 /* Values in the bar that open the box "statPanel" */
-.cs-bar-edit { border: 0; border-radius: 10px; padding: 4px 8px; background: rgba(255, 253, 246, 0.12); color: inherit; font: inherit; cursor: pointer; }
+.cs-bar-edit { border: 0; border-radius: 10px; padding: 2px 6px; background: rgba(255, 253, 246, 0.12); color: inherit; font: inherit; cursor: pointer; }
 .cs-bar-edit:hover, .cs-bar-edit[aria-expanded="true"], .cs-bar-more:hover, .cs-bar-more[aria-expanded="true"] { background: rgba(255, 253, 246, 0.24); }
 .cs-bar-edit:focus-visible, .cs-bar-more:focus-visible { outline: 3px solid #FFFDF6; outline-offset: 2px; }
 .cs-bar-more { display: none; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: rgba(255, 253, 246, 0.12);
