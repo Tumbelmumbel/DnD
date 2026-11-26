@@ -38,7 +38,7 @@ PHPMailer) only after the owner agrees.
 | `i18n.php`, `lang/*.php`, `ajax/i18n.php` | Languages of the interface (see "Languages") |
 | `partials/language_footer.php` | Language menu at the end of every page (bottom right) |
 | `partials/page_head.php` | Shared `<head>` of the account pages (title, viewport, `style.css` with a version number). Set `$pageTitle` before you include it. |
-| `content_translation.php` | Names and texts of the game content in the current language (`lookup_list()`, `talent_list()`, ...) |
+| `content_translation.php` | Names and texts of the game content in the current language (`lookup_list()`, `talent_list()`, `item_list()`, ...) |
 | `ajax/sandbox_endpoint.php` | JSON endpoint for the character sheet (`getSubclasses`, `getHitDice`, `getComponent`, `getContentNames`) |
 | `Assets/style.css` | Shared stylesheet for all pages: colors and font sizes as variables in `:root` |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |

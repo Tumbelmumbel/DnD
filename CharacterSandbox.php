@@ -65,25 +65,14 @@ $errors = [];
 		$stmt = $pdo->prepare("SELECT id, sort_order, target, operator, value_num, value_ref, condition_json
 			FROM calculation_templates WHERE source_type = 'base' ORDER BY sort_order, id");
 		$stmt->execute();
-		$calcRules = [];
-		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-			$condition = null;
-			if ($row['condition_json'] !== null) {
-				$condition = json_decode((string)$row['condition_json'], true);
-				if (!is_array($condition)) {
-					continue; // a rule with a broken condition does not apply
-				}
-			}
-			$calcRules[] = [
-				'id'         => (int)$row['id'],
-				'sort_order' => (int)$row['sort_order'],
-				'target'     => (string)$row['target'],
-				'operator'   => (string)$row['operator'],
-				'value_num'  => $row['value_num'] === null ? null : (float)$row['value_num'],
-				'value_ref'  => $row['value_ref'] === null ? null : (string)$row['value_ref'],
-				'condition'  => $condition,
-			];
-		}
+		$calcRules = array_values(array_filter(array_map('calc_rule_from_row', $stmt->fetchAll(PDO::FETCH_ASSOC))));
+
+		// Items for the inventory (names in the current language, tags, rules) and the names of tags and rarities
+		$items = item_list($pdo);
+		$itemLookup = [
+			'item_tag'    => lookup_names($pdo)['item_tag'] ?? [],
+			'item_rarity' => lookup_names($pdo)['item_rarity'] ?? [],
+		];
 ?>
 
 <!DOCTYPE html>
@@ -217,19 +206,11 @@ $errors = [];
 		</div>
 		<button type = "button" class = "cs-identity-done" id = "hpDone" data-i18n = "identity.done"><?= e(t('identity.done')) ?></button>
 	</div>
-	<!-- Armor menu: armor class, armor, shield, armor proficiency (opens with "Armor class" in the bar) -->
+	<!-- Armor menu: armor class and armor proficiency (opens with "Armor class" in the bar). Armor and shield come from the inventory. -->
 	<div class = "cs-stat-panel cs-armor-panel" id = "armorPanel" role = "dialog" aria-label = "<?= e(t('armor')) ?>" data-i18n-aria = "armor" hidden>
 		<div class = "cs-field">
 			<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
 			<input name = "armorClass" id = "armorClass" data-calc = "combat.ac" data-calc-format = "plain" readonly>
-		</div>
-		<div class = "cs-field">
-			<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
-			<select class = "class_dropdown" name = "armor" id = "armor"></select>
-		</div>
-		<div class = "cs-field">
-			<label for = "shield" data-i18n = "shield"><?= e(t('shield')) ?></label>
-			<select class = "class_dropdown" name = "shield" id = "shield"></select>
 		</div>
 		<span class = "cs-toggles-title" id = "cs-armor-prof-title" data-i18n = "armor_proficiency"><?= e(t('armor_proficiency')) ?></span>
 		<div class = "cs-toggles" role = "group" aria-labelledby = "cs-armor-prof-title">
@@ -316,6 +297,29 @@ $errors = [];
 		<p class = "cs-chip-message" id = "defenseMessage" aria-live = "polite"></p>
 	</section>
 
+	<!-- Inventory: items of the character. Only equipped items change values (rules with EQUIPPED). -->
+	<section class = "cs-card cs-inventory" id = "Inventory" aria-labelledby = "cs-inventory-title">
+		<div class = "cs-inventory-head">
+			<h2 id = "cs-inventory-title" data-i18n = "inventory"><?= e(t('inventory')) ?></h2>
+			<span class = "cs-inventory-summary" id = "inventorySummary" aria-live = "polite"></span>
+			<button type = "button" class = "cs-inventory-add" id = "inventoryAdd" aria-expanded = "false" aria-controls = "inventoryPicker" data-i18n = "inventory.add"><?= e(t('inventory.add')) ?></button>
+		</div>
+		<div class = "cs-inventory-picker" id = "inventoryPicker" role = "dialog" aria-label = "<?= e(t('inventory.search')) ?>" data-i18n-aria = "inventory.search" hidden>
+			<label for = "inventorySearch" data-i18n = "inventory.search"><?= e(t('inventory.search')) ?></label>
+			<input id = "inventorySearch" autocomplete = "off">
+			<ul class = "cs-inventory-results" id = "inventoryResults"></ul>
+		</div>
+		<div class = "cs-inventory-cols" aria-hidden = "true">
+			<span data-i18n = "inventory.use"><?= e(t('inventory.use')) ?></span>
+			<span data-i18n = "inventory.item"><?= e(t('inventory.item')) ?></span>
+			<span data-i18n = "inventory.quantity"><?= e(t('inventory.quantity')) ?></span>
+			<span data-i18n = "inventory.weight"><?= e(t('inventory.weight')) ?></span>
+			<span></span>
+		</div>
+		<ul class = "cs-inventory-list" id = "inventoryList"></ul>
+		<p class = "cs-chips-empty" id = "inventoryEmpty" data-i18n = "inventory.none"><?= e(t('inventory.none')) ?></p>
+	</section>
+
 	<!-- Talents -->
 	<section class = "cs-card" id = "Talents" aria-labelledby = "cs-talents-title">
 		<h2 id = "cs-talents-title" data-i18n = "talents"><?= e(t('talents')) ?></h2>
@@ -346,5 +350,7 @@ const abilities = <?= json_encode($abilities) ?>;
 const classes = <?= json_encode($classes) ?>;
 const subclasses = <?= json_encode($subclasses) ?>;
 const calcRules = <?= json_encode($calcRules, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+const itemCatalog = <?= json_encode($items, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+let itemLookup = <?= json_encode($itemLookup, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_FORCE_OBJECT) ?>;
 </script>
 <script src="<?= e(asset_url('/Assets/sandbox.js')) ?>"></script>

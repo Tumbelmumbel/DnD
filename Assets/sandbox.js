@@ -31,6 +31,11 @@ let immunitiesCounter = 0;
 const DEFAULT_ABILITY_SCORE = 10;
 const DEFAULT_LEVEL = 1;
 
+// Inventory: [{ uid, itemId, quantity, equipped, rules }]. "rules" is the copy of the item's rules (itemCatalog from PHP).
+// It stays in the browser for now; the save function stores it later in character_items and character_calculations.
+let inventory = [];
+const itemById = new Map(itemCatalog.map(item => [item.id, item]));
+
 //DEFENSE AND CONDITIONS: each entry is a chip; the chip stores only codes
 const defenseChips = document.getElementById("defenseChips");
 const defenseMessage = document.getElementById("defenseMessage");
@@ -147,6 +152,17 @@ function signed(n) {
 	return (n >= 0 ? "+" : "") + n;
 }
 
+// The copied rules of the items in the inventory. The source of each rule is its inventory row (for EQUIPPED and HAS_TAG).
+function inventoryRules() {
+	const rules = [];
+	for (const entry of inventory) {
+		const item = itemById.get(entry.itemId);
+		const source = { equipped: entry.equipped, tags: item ? item.tags : [] };
+		for (const rule of entry.rules) rules.push(Object.assign({}, rule, { source }));
+	}
+	return rules;
+}
+
 // Collect the inputs of the sheet, calculate all values and write them into the fields with data-calc
 function recalc() {
 	const inputs = { "char.level": numberOr("Level", DEFAULT_LEVEL) };
@@ -166,7 +182,7 @@ function recalc() {
 			: `condition:${chip.dataset.condition}`);
 	});
 
-	const values = CalcEngine.calculate(calcRules, inputs, { proficient, defenses });
+	const values = CalcEngine.calculate(calcRules.concat(inventoryRules()), inputs, { proficient, defenses });
 	document.querySelectorAll("[data-calc]").forEach(el => {
 		const value = values[el.dataset.calc];
 		const text = value === undefined ? "–" : (el.dataset.calcFormat === "plain" ? String(value) : signed(value));
@@ -223,6 +239,211 @@ document.getElementById("Level").addEventListener("change", function () {
 			select.appendChild(opt);
 		});
 	}
+
+
+//INVENTORY: + Item opens a search box; a tap on an item adds it as "Carried". Equipped / Carried and × change the list.
+	const inventoryList    = document.getElementById("inventoryList");
+	const inventoryAdd     = document.getElementById("inventoryAdd");
+	const inventoryPicker  = document.getElementById("inventoryPicker");
+	const inventorySearch  = document.getElementById("inventorySearch");
+	const inventoryResults = document.getElementById("inventoryResults");
+	let inventoryUid = 0;
+
+	// A weight in pounds, for example "45 lb" or "0.25 lb"
+	function poundsText(lb) {
+		return `${Math.round(lb * 100) / 100} lb`;
+	}
+
+	// Name of the rarity, only for magic items (not "mundane")
+	function rarityText(item) {
+		return item.rarity && item.rarity !== "mundane" ? ((itemLookup.item_rarity || {})[item.rarity] || item.rarity) : "";
+	}
+
+	function tagText(code) {
+		return (itemLookup.item_tag || {})[code] || code;
+	}
+
+	// Number of rows and total weight in the head of the card
+	function updateInventorySummary() {
+		let weight = 0;
+		for (const entry of inventory) weight += (itemById.get(entry.itemId).weight || 0) * entry.quantity;
+		document.getElementById("inventorySummary").textContent = inventory.length === 0 ? "" :
+			tr("inventory.summary").replace("{n}", inventory.length).replace("{w}", Math.round(weight * 100) / 100);
+	}
+
+	function inventoryRow(entry) {
+		const item = itemById.get(entry.itemId);
+		const row = document.createElement("li");
+		row.className = "cs-inventory-row" + (entry.equipped ? " is-equipped" : "");
+		row.dataset.uid = entry.uid;
+
+		const equip = document.createElement("button");
+		equip.type = "button";
+		equip.className = "cs-inventory-equip";
+		equip.dataset.action = "equip";
+		equip.setAttribute("aria-pressed", entry.equipped ? "true" : "false");
+		equip.textContent = tr(entry.equipped ? "inventory.equipped" : "inventory.carried");
+		equip.setAttribute("aria-label", equip.textContent + ": " + item.name);
+
+		const info = document.createElement("span");
+		info.className = "cs-inventory-name";
+		const title = document.createElement("span");
+		const name = document.createElement("strong");
+		name.textContent = item.name;
+		title.append(name);
+		if (rarityText(item)) {
+			const rarity = document.createElement("span");
+			rarity.className = "cs-inventory-rarity";
+			rarity.textContent = " · " + rarityText(item);
+			title.append(rarity);
+		}
+		const tags = document.createElement("span");
+		tags.className = "cs-inventory-tags";
+		for (const code of item.tags) {
+			const tag = document.createElement("span");
+			tag.className = "cs-inventory-tag";
+			tag.textContent = tagText(code);
+			tags.append(tag);
+		}
+		info.append(title, tags);
+
+		const quantity = document.createElement("input");
+		quantity.className = "cs-inventory-qty";
+		quantity.inputMode = "numeric";
+		quantity.value = String(entry.quantity);
+		quantity.dataset.action = "quantity";
+		quantity.setAttribute("aria-label", tr("inventory.quantity_of").replace("{name}", item.name));
+
+		const weight = document.createElement("span");
+		weight.className = "cs-inventory-weight";
+		weight.textContent = item.weight === null ? "–" : poundsText(item.weight * entry.quantity);
+
+		const remove = document.createElement("button");
+		remove.type = "button";
+		remove.className = "cs-chip-remove";
+		remove.dataset.action = "remove";
+		remove.textContent = "×";
+		remove.setAttribute("aria-label", tr("remove_entry").replace("{name}", item.name));
+
+		row.append(equip, info, quantity, weight, remove);
+		return row;
+	}
+
+	function renderInventory() {
+		inventoryList.replaceChildren(...inventory.map(inventoryRow));
+		document.getElementById("inventoryEmpty").hidden = inventory.length > 0;
+		document.querySelector(".cs-inventory-cols").hidden = inventory.length === 0;
+		updateInventorySummary();
+	}
+
+	// Add an item: a new inventory row with a copy of the item's rules
+	function addItem(itemId) {
+		const item = itemById.get(itemId);
+		if (!item) return;
+		const entry = { uid: ++inventoryUid, itemId, quantity: 1, equipped: false, rules: item.rules.map(rule => Object.assign({}, rule)) };
+		inventory.push(entry);
+		renderInventory();
+		recalc();
+		inventoryList.querySelector(`[data-uid="${entry.uid}"] .cs-inventory-equip`).focus();
+	}
+
+	function entryOf(element) {
+		const row = element.closest(".cs-inventory-row");
+		return row ? inventory.find(entry => String(entry.uid) === row.dataset.uid) : null;
+	}
+
+	inventoryList.addEventListener("click", function (event) {
+		const button = event.target.closest("button[data-action]");
+		const entry = button ? entryOf(button) : null;
+		if (!entry) return;
+		if (button.dataset.action === "equip") {
+			entry.equipped = !entry.equipped;
+			renderInventory();
+			recalc();
+			inventoryList.querySelector(`[data-uid="${entry.uid}"] .cs-inventory-equip`).focus();
+		} else if (button.dataset.action === "remove") {
+			const index = inventory.indexOf(entry);
+			inventory.splice(index, 1); // the copied rules go with the row
+			renderInventory();
+			recalc();
+			const next = inventoryList.querySelectorAll(".cs-chip-remove")[Math.min(index, inventory.length - 1)];
+			(next || inventoryAdd).focus();
+		}
+	});
+
+	// Quantity: 1 or more. While typing only valid numbers count; leaving the field shows the stored number again.
+	inventoryList.addEventListener("input", function (event) {
+		if (event.target.dataset.action !== "quantity") return;
+		const entry = entryOf(event.target);
+		const value = parseInt(event.target.value, 10);
+		if (!entry || Number.isNaN(value) || value < 1) return;
+		entry.quantity = value;
+		const item = itemById.get(entry.itemId);
+		event.target.closest(".cs-inventory-row").querySelector(".cs-inventory-weight").textContent =
+			item.weight === null ? "–" : poundsText(item.weight * value);
+		updateInventorySummary();
+	});
+	inventoryList.addEventListener("change", function (event) {
+		if (event.target.dataset.action !== "quantity") return;
+		const entry = entryOf(event.target);
+		if (entry) event.target.value = String(entry.quantity);
+	});
+
+	// Search box: all items whose name contains the text
+	function renderResults() {
+		const query = inventorySearch.value.trim().toLocaleLowerCase();
+		const found = itemCatalog.filter(item => item.name.toLocaleLowerCase().includes(query));
+		inventoryResults.replaceChildren(...found.map(item => {
+			const li = document.createElement("li");
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "cs-inventory-result";
+			button.dataset.id = item.id;
+			const name = document.createElement("strong");
+			name.textContent = item.name;
+			const info = document.createElement("span");
+			info.textContent = [rarityText(item)].concat(item.tags.map(tagText)).filter(text => text !== "").join(" · ");
+			button.append(name, info);
+			li.append(button);
+			return li;
+		}));
+		if (found.length === 0) {
+			const li = document.createElement("li");
+			li.className = "cs-chips-empty";
+			li.textContent = tr("inventory.no_match");
+			inventoryResults.append(li);
+		}
+	}
+
+	function setPicker(open) {
+		inventoryPicker.hidden = !open;
+		inventoryAdd.setAttribute("aria-expanded", open ? "true" : "false");
+		if (open) {
+			inventorySearch.value = "";
+			renderResults();
+			inventorySearch.focus();
+		}
+	}
+	inventoryAdd.addEventListener("click", () => setPicker(inventoryPicker.hidden));
+	inventorySearch.addEventListener("input", renderResults);
+	inventoryResults.addEventListener("click", function (event) {
+		const button = event.target.closest(".cs-inventory-result");
+		if (!button) return;
+		setPicker(false);
+		addItem(Number(button.dataset.id));
+	});
+	inventoryPicker.addEventListener("keydown", function (event) {
+		if (event.key === "Escape") {
+			setPicker(false);
+			inventoryAdd.focus();
+		}
+	});
+	document.addEventListener("pointerdown", function (event) {
+		if (!inventoryPicker.hidden && !inventoryPicker.contains(event.target) && !inventoryAdd.contains(event.target)) {
+			setPicker(false);
+		}
+	});
+	renderInventory();
 
 
 //TALENTS
@@ -546,6 +767,7 @@ document.getElementById("Level").addEventListener("change", function () {
 		I18N = data.texts;
 		document.documentElement.lang = data.lang;
 		applyI18n();
+		renderInventory();
 		refreshContentNames();
 	};
 
@@ -577,6 +799,14 @@ document.getElementById("Level").addEventListener("change", function () {
 					renameOptions(select, (content.lookup || {})[select.dataset.lookup] || {}));
 				renameOptions(talentDropdown, content.talents || {});
 				renderChipNames();
+				// Items: new names, tag and rarity names; the search list is sorted by the new names
+				itemLookup = { item_tag: (content.lookup || {}).item_tag || {}, item_rarity: (content.lookup || {}).item_rarity || {} };
+				for (const item of itemCatalog) {
+					if (content.items && Object.prototype.hasOwnProperty.call(content.items, item.id)) item.name = content.items[item.id];
+				}
+				itemCatalog.sort((a, b) => a.name.localeCompare(b.name, document.documentElement.lang, { sensitivity: "base" }));
+				renderInventory();
+				if (!inventoryPicker.hidden) renderResults();
 				updateBar();
 			})
 			.catch(err => console.error("Error:", err));

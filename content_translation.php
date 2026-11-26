@@ -86,3 +86,82 @@ function talent_component(PDO $pdo, int $id, ?string $lang = null): ?array {
     $component = $stmt->fetch(PDO::FETCH_ASSOC);
     return $component ?: null;
 }
+
+/**
+ * One row of calculation_templates as a rule for Assets/calc_engine.js, or null.
+ * A rule with a broken condition is null: it does not apply.
+ */
+function calc_rule_from_row(array $row): ?array {
+    $condition = null;
+    if ($row['condition_json'] !== null) {
+        $condition = json_decode((string)$row['condition_json'], true);
+        if (!is_array($condition)) {
+            return null;
+        }
+    }
+    return [
+        'id'         => (int)$row['id'],
+        'sort_order' => (int)$row['sort_order'],
+        'target'     => (string)$row['target'],
+        'operator'   => (string)$row['operator'],
+        'value_num'  => $row['value_num'] === null ? null : (float)$row['value_num'],
+        'value_ref'  => $row['value_ref'] === null ? null : (string)$row['value_ref'],
+        'condition'  => $condition,
+    ];
+}
+
+/** Names of the items in $lang: [id => name]. A missing name falls back to the English name (items.name). */
+function item_names(PDO $pdo, ?string $lang = null): array {
+    $stmt = $pdo->prepare('SELECT i.id, COALESCE(t.name, i.name) AS name
+        FROM items i LEFT JOIN items_translation t ON t.item_id = i.id AND t.lang = :lang');
+    $stmt->execute([':lang' => $lang ?? current_lang()]);
+    $names = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $names[(string)$row['id']] = (string)$row['name'];
+    }
+    return $names;
+}
+
+/**
+ * All items for the inventory, sorted by the name:
+ * [['id', 'name', 'weight', 'rarity', 'tags' => [tag codes], 'rules' => [rules for calc_engine.js]], ...]
+ */
+function item_list(PDO $pdo, ?string $lang = null): array {
+    $names = item_names($pdo, $lang);
+
+    $tags = [];
+    $stmt = $pdo->prepare('SELECT g.item_id, g.tag_code FROM item_tags g
+        LEFT JOIN tags s ON s.code = g.tag_code ORDER BY g.item_id, s.sort_order, g.tag_code');
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $tags[(int)$row['item_id']][] = (string)$row['tag_code'];
+    }
+
+    $rules = [];
+    $stmt = $pdo->prepare("SELECT id, item_id, sort_order, target, operator, value_num, value_ref, condition_json
+        FROM calculation_templates WHERE source_type = 'item' AND item_id IS NOT NULL ORDER BY sort_order, id");
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $rule = calc_rule_from_row($row);
+        if ($rule !== null) {
+            $rules[(int)$row['item_id']][] = $rule;
+        }
+    }
+
+    $list = [];
+    $stmt = $pdo->prepare('SELECT id, weight_lb, rarity_code FROM items');
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $id = (int)$row['id'];
+        $list[] = [
+            'id'     => $id,
+            'name'   => $names[(string)$id] ?? '',
+            'weight' => $row['weight_lb'] === null ? null : (float)$row['weight_lb'],
+            'rarity' => (string)$row['rarity_code'],
+            'tags'   => $tags[$id] ?? [],
+            'rules'  => $rules[$id] ?? [],
+        ];
+    }
+    usort($list, fn(array $a, array $b): int => strcmp(content_sort_key($a['name']), content_sort_key($b['name'])));
+    return $list;
+}

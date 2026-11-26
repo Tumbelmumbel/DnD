@@ -80,7 +80,7 @@ switch ($action) {
         foreach (talent_list($pdo) as $talent) {
             $talents[(string)$talent['id']] = $talent['name'];
         }
-        echo json_encode(['lookup' => lookup_names($pdo), 'talents' => (object)$talents]);
+        echo json_encode(['lookup' => lookup_names($pdo), 'talents' => (object)$talents, 'items' => (object)item_names($pdo)]);
         break;
 
     default:
