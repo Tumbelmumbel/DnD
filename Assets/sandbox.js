@@ -23,20 +23,13 @@ function applyI18n() {
 
 
 // --- State ---
-let state = { Proficiency_Bonus: 0 };
 let class_set = {char_class: "", char_subclass: ""};
 let level;
 let immunitiesCounter = 0;
 
-// Pre-populate state for all abilities, saves, and skills
-// An empty ability score counts as 10 (modifier 0)
+// An empty or wrong ability score counts as 10 (modifier 0); an empty or wrong level counts as 1
 const DEFAULT_ABILITY_SCORE = 10;
-
-for (const [ability, skills] of Object.entries(abilities)) {
-  state[ability] = DEFAULT_ABILITY_SCORE;
-  state[`${ability}_Savingthrow_Proficiency`] = 0;
-  for (const skill of skills) state[`${skill}_Proficiency`] = 0;
-}
+const DEFAULT_LEVEL = 1;
 
 //DEFENSE AND CONDITIONS: each entry is a chip; the chip stores only codes
 const defenseChips = document.getElementById("defenseChips");
@@ -143,57 +136,50 @@ defenseChips.addEventListener("click", e => {
 	(next ? next.querySelector(".cs-chip-remove") : chipForms.defense.button).focus();
 });
 
-// --- Helpers ---
-function updateAbilityUI(abilityName) {
-  const score = state[abilityName];
-
-
-  document.getElementById(`ability_${abilityName}_mod`).textContent =
-    ability_modifier(score);
-
-  document.getElementById(`save_${abilityName}`).textContent =
-    skill_save_modifier(score, state[`${abilityName}_Savingthrow_Proficiency`], state.Proficiency_Bonus);
-
-  for (const skill of abilities[abilityName]) {
-    document.getElementById(`skill_${skill}`).textContent =
-      skill_save_modifier(score, state[`${skill}_Proficiency`], state.Proficiency_Bonus);
-  }
-
-  if (abilityName === "dexterity") {
-    updateInitiative();
-  }
+// --- Calculation (engine: Assets/calc_engine.js, rules: calcRules from CharacterSandbox.php) ---
+function numberOr(id, fallback) {
+	const v = parseInt(document.getElementById(id).value, 10);
+	return Number.isNaN(v) ? fallback : v;
 }
 
-// Initiative = modifier of Dexterity (D&D 5e)
-function updateInitiative() {
-  document.getElementById("bar_initiative").textContent = ability_modifier(state.dexterity);
+// A modifier with its sign: "+2", "+0", "-1"
+function signed(n) {
+	return (n >= 0 ? "+" : "") + n;
 }
 
-// --- Event Listeners ---
-for (const [ability, skills] of Object.entries(abilities)) {
-
-  // Ability score input
-  document.getElementById(`ability_${ability}`).addEventListener("input", function () {
-    state[ability] = this.value.trim() === "" ? DEFAULT_ABILITY_SCORE : this.value;
-    updateAbilityUI(ability);
-  });
-
-  // Saving throw proficiency checkbox
-  document.getElementById(`save_${ability}_prof`).addEventListener("input", function () {
-    state[`${ability}_Savingthrow_Proficiency`] = this.checked ? 1 : 0;
-    updateAbilityUI(ability);
-  });
-
-  // Skill proficiency checkboxes
-	for (const skill of skills) {
-	document.getElementById(`skill_${skill}_prof`).addEventListener("input", function () {
-	  state[`${skill}_Proficiency`] = this.checked ? 1 : 0;
-	  updateAbilityUI(ability);
-	});
+// Collect the inputs of the sheet, calculate all values and write them into the fields with data-calc
+function recalc() {
+	const inputs = { "char.level": numberOr("Level", DEFAULT_LEVEL) };
+	const proficient = new Set();
+	for (const [ability, skills] of Object.entries(abilities)) {
+		inputs[`ability.${ability}`] = numberOr(`ability_${ability}`, DEFAULT_ABILITY_SCORE);
+		if (document.getElementById(`save_${ability}_prof`).checked) proficient.add(`save.${ability}`);
+		for (const skill of skills) {
+			if (document.getElementById(`skill_${skill}_prof`).checked) proficient.add(`skill.${skill}`);
+		}
 	}
+	// Defenses and conditions as "kind:code", for example "resistant:fire" or "condition:poisoned"
+	const defenses = new Set();
+	defenseChips.querySelectorAll(".cs-chip").forEach(chip => {
+		defenses.add(chip.dataset.kind === "defense"
+			? `${chip.dataset.influence}:${chip.dataset.damagetype}`
+			: `condition:${chip.dataset.condition}`);
+	});
+
+	const values = CalcEngine.calculate(calcRules, inputs, { proficient, defenses });
+	document.querySelectorAll("[data-calc]").forEach(el => {
+		const value = values[el.dataset.calc];
+		const text = value === undefined ? "–" : (el.dataset.calcFormat === "plain" ? String(value) : signed(value));
+		if (el.tagName === "INPUT") el.value = text;
+		else el.textContent = text;
+	});
 }
 
-updateInitiative();
+// Calculate again on each change: ability scores, level, proficiency boxes (input/change) and defense chips (list changes)
+document.addEventListener("input", recalc);
+document.addEventListener("change", recalc);
+new MutationObserver(recalc).observe(defenseChips, { childList: true });
+recalc();
 
 document.getElementById("Level").addEventListener("change", function () {
 	class_set.class = document.getElementById("class_dropdown").value;
@@ -238,15 +224,6 @@ document.getElementById("Level").addEventListener("change", function () {
 		});
 	}
 
-//PROFICIENCY BONUS
-	document.getElementById("Proficiency_Bonus").addEventListener("input", function () {
-
-		state.Proficiency_Bonus = this.value;
-		for (const [ability, { skills }] of Object.entries(abilities)) {
-			updateAbilityUI(ability);
-		}
-	});		
-	
 
 //TALENTS
 	// Readable labels for the fields of Game_component_library (in the order they are shown)
@@ -415,9 +392,7 @@ document.getElementById("Level").addEventListener("change", function () {
 		hpShown.classList.toggle("cs-hp-temp", hpTemp > 0);
 		document.getElementById("bar_hp_max").textContent = barText("maxHitpoints") || "–";
 		document.getElementById("bar_hp_note").textContent = hpTemp > 0 ? " " + tr("hp.includes_temp").replace("{n}", hpTemp) : "";
-		document.getElementById("bar_ac").textContent = barText("armorClass") || "–";
 		document.getElementById("bar_speed").textContent = barText("Walking_Speed") || "–";
-		document.getElementById("bar_proficiency").textContent = barText("Proficiency_Bonus") || "–";
 		document.getElementById("bar_inspiration").textContent = barText("inspiration") || "–";
 	}
 

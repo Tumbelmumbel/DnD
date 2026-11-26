@@ -333,9 +333,27 @@ The JavaScript engine of the character sheet does the calculation. The database 
 | `HAS_TAG` | `{"HAS_TAG": "heavy_armor"}` | True if the source item has this tag (`tags.code`). |
 | `COMPARE` | `{"COMPARE": ["char.level", ">", 5]}` | True if the comparison is true. |
 | `HAS_DEFENSE` | `{"HAS_DEFENSE": ["resistant", "fire"]}` | True if the character has this defense. The first entry is a code of `Damage_influence` or `condition`. The second entry is a code of `Damagetypes` or `Conditions`. |
+| `PROFICIENT` | `{"PROFICIENT": "skill.stealth"}` | True if the character is proficient in this saving throw or skill (the box on the sheet is ticked). |
 | `all`, `any`, `not` | `{"all": [{...}, {...}]}` | Combine checks: all are true, one is true, the check is false. |
 
-The format of the checks is a proposal. The engine pull request can change it. **(check)**
+An object with more than one check is true only if all checks are true. An unknown check is false. Then the rule does not apply.
+`COMPARE` uses these comparisons: `>`, `>=`, `<`, `<=`, `=`, `!=`. The right side is a number or the name of a value.
+
+**Calculation:** `Assets/calc_engine.js` calculates the values. A value that does not exist counts as 0. `div` by 0 does not change the value.
+
+**Inputs (no rules):** `ability.<code>` (ability score from the sheet, empty = 10) and `char.level` (level from the sheet, empty = 1).
+
+**Base rules (`source_type` `base`, `migration_base_calculations.sql`):**
+
+| `sort_order` | Value | Rule |
+|---|---|---|
+| 200–204 | `char.prof_bonus` | 2 + floor((level − 1) / 4) |
+| 210–213 | `mod.<ability>` | floor((score − 10) / 2) |
+| 300–301 | `save.<ability>` | Modifier of the ability. Plus `char.prof_bonus` if `PROFICIENT`. |
+| 300–301 | `skill.<skill>` | Modifier of the ability of the skill (`Skills.ability_code`). Plus `char.prof_bonus` if `PROFICIENT`. |
+| 300 | `combat.initiative` | `mod.dexterity` |
+| 400 | `combat.ac_dex` | `mod.dexterity` (the part of Dexterity in the armor class; armor can change it) |
+| 410–412 | `combat.ac` | 10 + `combat.ac_dex` |
 
 ### `calculation_templates`
 

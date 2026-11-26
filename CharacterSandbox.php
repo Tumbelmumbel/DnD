@@ -59,6 +59,31 @@ $errors = [];
 
 		// Talents for the talent menu (only id and name; details come from the endpoint)
 		$talents = talent_list($pdo);
+
+		// Base rules of the calculation (calculation_templates, source_type 'base').
+		// Assets/calc_engine.js uses them for modifiers, saving throws, skills, initiative, armor class and proficiency bonus.
+		$stmt = $pdo->prepare("SELECT id, sort_order, target, operator, value_num, value_ref, condition_json
+			FROM calculation_templates WHERE source_type = 'base' ORDER BY sort_order, id");
+		$stmt->execute();
+		$calcRules = [];
+		foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+			$condition = null;
+			if ($row['condition_json'] !== null) {
+				$condition = json_decode((string)$row['condition_json'], true);
+				if (!is_array($condition)) {
+					continue; // a rule with a broken condition does not apply
+				}
+			}
+			$calcRules[] = [
+				'id'         => (int)$row['id'],
+				'sort_order' => (int)$row['sort_order'],
+				'target'     => (string)$row['target'],
+				'operator'   => (string)$row['operator'],
+				'value_num'  => $row['value_num'] === null ? null : (float)$row['value_num'],
+				'value_ref'  => $row['value_ref'] === null ? null : (string)$row['value_ref'],
+				'condition'  => $condition,
+			];
+		}
 ?>
 
 <!DOCTYPE html>
@@ -95,11 +120,11 @@ $errors = [];
 			</button>
 			<button type = "button" class = "cs-hp-plus" id = "hpPlus" aria-label = "<?= e(t('gain_hp')) ?>" data-i18n-aria = "gain_hp">+</button>
 		</div>
-		<button type = "button" class = "cs-bar-stat cs-bar-edit" id = "armorButton" aria-expanded = "false" aria-controls = "armorPanel"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac">–</span></button>
-		<div class = "cs-bar-stat"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative">–</span></div>
+		<button type = "button" class = "cs-bar-stat cs-bar-edit" id = "armorButton" aria-expanded = "false" aria-controls = "armorPanel"><span data-i18n = "armor_class"><?= e(t('armor_class')) ?></span><span id = "bar_ac" data-calc = "combat.ac" data-calc-format = "plain">–</span></button>
+		<div class = "cs-bar-stat"><span data-i18n = "initiative"><?= e(t('initiative')) ?></span><span id = "bar_initiative" data-calc = "combat.initiative">–</span></div>
 		<!-- Values that change only here: a tap opens the box "statPanel" with the field -->
 		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "Walking_Speed" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "speed"><?= e(t('speed')) ?></span><span id = "bar_speed">–</span></button>
-		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "Proficiency_Bonus" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></span><span id = "bar_proficiency">–</span></button>
+		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "Proficiency_Bonus" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></span><span id = "bar_proficiency" data-calc = "char.prof_bonus">–</span></button>
 		<button type = "button" class = "cs-bar-stat cs-bar-edit cs-bar-optional" data-field = "inspiration" aria-expanded = "false" aria-controls = "statPanel"><span data-i18n = "inspiration"><?= e(t('inspiration')) ?></span><span id = "bar_inspiration">–</span></button>
 		<button type = "button" class = "cs-bar-more" id = "barMore" aria-expanded = "false" aria-controls = "statPanel" data-i18n = "more"><?= e(t('more')) ?></button>
 	</div>
@@ -154,7 +179,7 @@ $errors = [];
 		</div>
 		<div class = "cs-field" data-stat = "Proficiency_Bonus">
 			<label for = "Proficiency_Bonus" data-i18n = "proficiency_bonus"><?= e(t('proficiency_bonus')) ?></label>
-			<input type = "number" name = "Proficiency_Bonus" id = "Proficiency_Bonus" inputmode = "numeric">
+			<input name = "Proficiency_Bonus" id = "Proficiency_Bonus" data-calc = "char.prof_bonus" readonly>
 		</div>
 		<div class = "cs-field" data-stat = "inspiration">
 			<label for = "inspiration" data-i18n = "inspiration"><?= e(t('inspiration')) ?></label>
@@ -196,7 +221,7 @@ $errors = [];
 	<div class = "cs-stat-panel cs-armor-panel" id = "armorPanel" role = "dialog" aria-label = "<?= e(t('armor')) ?>" data-i18n-aria = "armor" hidden>
 		<div class = "cs-field">
 			<label for = "armorClass" data-i18n = "armor_class"><?= e(t('armor_class')) ?></label>
-			<input name = "armorClass" id = "armorClass" inputmode = "numeric">
+			<input name = "armorClass" id = "armorClass" data-calc = "combat.ac" data-calc-format = "plain" readonly>
 		</div>
 		<div class = "cs-field">
 			<label for = "armor" data-i18n = "armor"><?= e(t('armor')) ?></label>
@@ -228,12 +253,12 @@ $errors = [];
 	</dialog>
 
 
-	<!-- Abilities (order from Abilities.sort_order; ids use the codes) -->
+	<!-- Abilities (order from Abilities.sort_order; ids use the codes; data-calc = value of the calculation engine) -->
 	<section class = "cs-abilities" aria-label = "<?= e(t('abilities')) ?>" data-i18n-aria = "abilities">
 		<?php foreach ($abilities as $ability => $skills): ?>
 		<div class = "cs-card cs-ability">
 			<div class = "cs-ability-head">
-				<output class = "cs-mod" name = "ability_<?= e($ability) ?>_mod" id = "ability_<?= e($ability) ?>_mod">0</output>
+				<output class = "cs-mod" name = "ability_<?= e($ability) ?>_mod" id = "ability_<?= e($ability) ?>_mod" data-calc = "mod.<?= e($ability) ?>">0</output>
 				<div class = "cs-field" style = "flex: 1;">
 					<label for = "ability_<?= e($ability) ?>" data-i18n = "ability.<?= e($ability) ?>"><?= e(t('ability.' . $ability, $ability)) ?></label>
 					<input name = "ability_<?= e($ability) ?>" id = "ability_<?= e($ability) ?>" value = "10" inputmode = "numeric" placeholder = "<?= e(t('score')) ?>" data-i18n-placeholder = "score">
@@ -242,13 +267,13 @@ $errors = [];
 			<label class = "cs-check cs-save">
 				<input type = "checkbox" name = "save_<?= e($ability) ?>_prof" id = "save_<?= e($ability) ?>_prof">
 				<span data-i18n = "saving_throw"><?= e(t('saving_throw')) ?></span>
-				<output name = "save_<?= e($ability) ?>" id = "save_<?= e($ability) ?>">0</output>
+				<output name = "save_<?= e($ability) ?>" id = "save_<?= e($ability) ?>" data-calc = "save.<?= e($ability) ?>">0</output>
 			</label>
 			<?php foreach ($skills as $skill): ?>
 			<label class = "cs-check">
 				<input type = "checkbox" name = "skill_<?= e($skill) ?>_prof" id = "skill_<?= e($skill) ?>_prof">
 				<span data-i18n = "skill.<?= e($skill) ?>"><?= e(t('skill.' . $skill, $skill)) ?></span>
-				<output name = "skill_<?= e($skill) ?>" id = "skill_<?= e($skill) ?>">0</output>
+				<output name = "skill_<?= e($skill) ?>" id = "skill_<?= e($skill) ?>" data-calc = "skill.<?= e($skill) ?>">0</output>
 			</label>
 			<?php endforeach; ?>
 		</div>
@@ -310,7 +335,7 @@ $errors = [];
 </div>
 
 <?php require __DIR__ . '/partials/language_footer.php'; ?>
- <script src="<?= e(asset_url('/calculation.js')) ?>"></script>
+ <script src="<?= e(asset_url('/Assets/calc_engine.js')) ?>"></script>
 </body>
 
 <script>
@@ -320,5 +345,6 @@ const CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
 const abilities = <?= json_encode($abilities) ?>;
 const classes = <?= json_encode($classes) ?>;
 const subclasses = <?= json_encode($subclasses) ?>;
+const calcRules = <?= json_encode($calcRules, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 </script>
 <script src="<?= e(asset_url('/Assets/sandbox.js')) ?>"></script>
