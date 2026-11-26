@@ -90,12 +90,11 @@
 .cs-chip-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cs-chip-form[hidden] { display: none; }
 .cs-chip-form select { flex: 1 1 120px; min-width: 0; }
-/* Defense and conditions as a strip: title | chips | buttons in one row; the forms and the message under it */
-.cs-strip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; }
-.cs-strip > h2 { grid-column: 1; grid-row: 1; white-space: nowrap; }
-.cs-strip > .cs-chips, .cs-strip > .cs-chips-empty { grid-column: 2; grid-row: 1; }
-.cs-strip > .cs-chip-buttons { grid-column: 3; grid-row: 1; }
-.cs-strip > .cs-chip-form, .cs-strip > .cs-chip-message { grid-column: 1 / -1; }
+/* Three cards under the abilities: weapon proficiency, defense and conditions, passive skills (same columns as the abilities) */
+.cs-strips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.cs-passive { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; border-bottom: 1px solid var(--cs-line); }
+.cs-passive:last-child { border-bottom: 0; }
+.cs-passive output { font-size: var(--font-header); font-weight: 700; }
 .cs-line { display: flex; align-items: center; gap: 8px; }
 .cs-line select { flex: 1; }
 
@@ -183,7 +182,7 @@
 @media (min-width: 1000px) {
 	.cs-identity { grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.2fr); }
 	.cs-identity .cs-name { grid-column: auto; }
-	.cs-abilities { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+	.cs-abilities, .cs-strips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 /* Phone: one column */
 @media (max-width: 640px) {
@@ -192,9 +191,7 @@
 	.cs-identity-panel .cs-identity { grid-template-columns: minmax(0, 1fr); }
 	.cs-identity-panel { left: 8px; width: calc(100% - 16px); }
 	.cs-identity .cs-name { grid-column: auto; }
-	.cs-abilities { grid-template-columns: minmax(0, 1fr); }
-	.cs-strip { grid-template-columns: minmax(0, 1fr); }
-	.cs-strip > * { grid-column: auto !important; grid-row: auto !important; }
+	.cs-abilities, .cs-strips { grid-template-columns: minmax(0, 1fr); }
 }
 /* Inventory (card under Defense and conditions). Equipped rows are light blue. */
 .cs-inventory { position: relative; }
