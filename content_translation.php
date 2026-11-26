@@ -149,7 +149,8 @@ function item_list(PDO $pdo, ?string $lang = null): array {
     }
 
     $list = [];
-    $stmt = $pdo->prepare('SELECT id, weight_lb, rarity_code FROM items');
+    $stmt = $pdo->prepare('SELECT id, weight_lb, rarity_code, damage_dice, damage_dice_versatile, damage_type_code,
+        range_normal_ft, range_long_ft FROM items');
     $stmt->execute();
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $id = (int)$row['id'];
@@ -158,6 +159,12 @@ function item_list(PDO $pdo, ?string $lang = null): array {
             'name'   => $names[(string)$id] ?? '',
             'weight' => $row['weight_lb'] === null ? null : (float)$row['weight_lb'],
             'rarity' => (string)$row['rarity_code'],
+            // Weapon data (NULL for items that are not weapons); dice as stored, for example '1d8'
+            'damage'           => $row['damage_dice'] === null ? null : (string)$row['damage_dice'],
+            'damage_versatile' => $row['damage_dice_versatile'] === null ? null : (string)$row['damage_dice_versatile'],
+            'damage_type'      => $row['damage_type_code'] === null ? null : (string)$row['damage_type_code'],
+            'range_normal'     => $row['range_normal_ft'] === null ? null : (int)$row['range_normal_ft'],
+            'range_long'       => $row['range_long_ft'] === null ? null : (int)$row['range_long_ft'],
             'tags'   => $tags[$id] ?? [],
             'rules'  => $rules[$id] ?? [],
         ];
