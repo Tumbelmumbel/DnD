@@ -80,6 +80,12 @@ return [
     'inventory.weight'    => 'Weight',
     'inventory.equipped'  => 'Equipped',
     'inventory.carried'   => 'Carried',
+    'weapon_proficiency'  => 'Weapon proficiency',
+    'simple_weapons'      => 'Simple weapons',
+    'martial_weapons'     => 'Martial weapons',
+    'weapon'              => 'Weapon',
+    'weapon.none_available' => 'No weapons available.',
+    'passive_skills'      => 'Passive skills',
     'conditions'          => 'Conditions',
     'condition'           => 'Condition',
 

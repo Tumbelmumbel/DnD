@@ -141,6 +141,90 @@ defenseChips.addEventListener("click", e => {
 	(next ? next.querySelector(".cs-chip-remove") : chipForms.defense.button).focus();
 });
 
+//WEAPON PROFICIENCY: toggles for simple and martial weapons, and chips for specific weapons.
+// A chip stores the item number (items with the tag "weapon"); the name comes from itemCatalog in the current language.
+const weaponChips   = document.getElementById("weaponChips");
+const weaponForm    = document.getElementById("weaponForm");
+const weaponSelect  = document.getElementById("weaponSelect");
+const weaponButton  = document.getElementById("addWeapon");
+const weaponMessage = document.getElementById("weaponMessage");
+
+function weaponItems() {
+	return itemCatalog.filter(item => item.tags.includes("weapon"));
+}
+
+// The list of weapons (sorted like itemCatalog); the selection stays after a change of the language
+function renderWeaponOptions() {
+	const selected = weaponSelect.value;
+	weaponSelect.replaceChildren(...weaponItems().map(item => {
+		const option = document.createElement("option");
+		option.value = String(item.id);
+		option.textContent = item.name;
+		return option;
+	}));
+	if (selected) weaponSelect.value = selected;
+}
+
+function renderWeaponChips() {
+	weaponChips.querySelectorAll(".cs-chip").forEach(chip => {
+		const item = itemById.get(Number(chip.dataset.itemId));
+		const name = item ? item.name : chip.dataset.itemId;
+		chip.querySelector(".cs-chip-text").textContent = name;
+		chip.querySelector(".cs-chip-remove").setAttribute("aria-label", tr("remove_entry").replace("{name}", name));
+	});
+}
+
+function setWeaponForm(open) {
+	weaponForm.hidden = !open;
+	weaponButton.setAttribute("aria-expanded", open ? "true" : "false");
+	weaponMessage.textContent = "";
+	if (open) {
+		renderWeaponOptions();
+		weaponSelect.focus();
+	}
+}
+
+weaponButton.addEventListener("click", () => {
+	if (weaponItems().length === 0) {
+		setWeaponForm(false);
+		weaponMessage.textContent = tr("weapon.none_available");
+		return;
+	}
+	setWeaponForm(weaponForm.hidden);
+});
+
+document.getElementById("weaponAdd").addEventListener("click", () => {
+	const itemId = weaponSelect.value;
+	if (!itemId) return;
+	if (weaponChips.querySelector(`[data-item-id="${CSS.escape(itemId)}"]`)) {
+		weaponMessage.textContent = tr("defense.duplicate");
+		return;
+	}
+	const chip = document.createElement("li");
+	chip.className = "cs-chip";
+	chip.dataset.itemId = itemId;
+	const text = document.createElement("span");
+	text.className = "cs-chip-text";
+	const remove = document.createElement("button");
+	remove.type = "button";
+	remove.className = "cs-chip-remove";
+	remove.textContent = "×";
+	chip.append(text, remove);
+	weaponChips.appendChild(chip);
+	renderWeaponChips();
+	setWeaponForm(false);
+	weaponButton.focus();
+});
+
+weaponChips.addEventListener("click", e => {
+	const remove = e.target.closest(".cs-chip-remove");
+	if (!remove) return;
+	const chip = remove.closest(".cs-chip");
+	const next = chip.nextElementSibling || chip.previousElementSibling;
+	chip.remove();
+	(next ? next.querySelector(".cs-chip-remove") : weaponButton).focus();
+});
+
 // --- Calculation (engine: Assets/calc_engine.js, rules: calcRules from CharacterSandbox.php) ---
 function numberOr(id, fallback) {
 	const v = parseInt(document.getElementById(id).value, 10);
@@ -807,6 +891,8 @@ document.getElementById("Level").addEventListener("change", function () {
 				itemCatalog.sort((a, b) => a.name.localeCompare(b.name, document.documentElement.lang, { sensitivity: "base" }));
 				renderInventory();
 				if (!inventoryPicker.hidden) renderResults();
+				renderWeaponOptions();
+				renderWeaponChips();
 				updateBar();
 			})
 			.catch(err => console.error("Error:", err));

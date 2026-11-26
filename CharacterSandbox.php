@@ -261,41 +261,73 @@ $errors = [];
 		<?php endforeach; ?>
 	</section>
 
-	<!-- Defense and conditions: one strip over the full width -->
-	<section class = "cs-card cs-strip" id = "Defense" aria-labelledby = "cs-defense-title">
-		<h2 id = "cs-defense-title" data-i18n = "defense_and_conditions"><?= e(t('defense_and_conditions')) ?></h2>
-		<ul class = "cs-chips" id = "defenseChips" aria-labelledby = "cs-defense-title"></ul>
-		<p class = "cs-chips-empty" id = "defenseEmpty" data-i18n = "defense.none"><?= e(t('defense.none')) ?></p>
-		<div class = "cs-chip-buttons">
-			<button type = "button" class = "cs-chip-add" id = "addDamageImmunity" aria-expanded = "false" aria-controls = "defenseForm">+ <span data-i18n = "defense"><?= e(t('defense')) ?></span></button>
-			<button type = "button" class = "cs-chip-add" id = "addCondition" aria-expanded = "false" aria-controls = "conditionForm">+ <span data-i18n = "condition"><?= e(t('condition')) ?></span></button>
-		</div>
-		<div class = "cs-chip-form" id = "defenseForm" hidden>
-			<select class = "class_dropdown" id = "defenseInfluence" name = "damageInfluence" data-lookup = "damage_influence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
-				<option class = "Dropdown_Entry" value = ""></option>
-				<?php foreach ($damageInfluences as $damageInfluence): ?>
-					<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
-				<?php endforeach; ?>
-			</select>
-			<select class = "class_dropdown" id = "defenseDamageType" name = "damageType" data-lookup = "damagetype" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
-				<option class = "Dropdown_Entry" value = ""></option>
-				<?php foreach ($damageTypes as $damageType): ?>
-					<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
-				<?php endforeach; ?>
-			</select>
-			<button type = "button" class = "cs-chip-confirm" id = "defenseAdd" data-i18n = "add"><?= e(t('add')) ?></button>
-		</div>
-		<div class = "cs-chip-form" id = "conditionForm" hidden>
-			<select class = "class_dropdown" id = "conditionSelect" name = "conditions" data-lookup = "condition" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
-				<option class = "Dropdown_Entry" value = ""></option>
-				<?php foreach ($conditions as $condition): ?>
-					<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
-				<?php endforeach; ?>
-			</select>
-			<button type = "button" class = "cs-chip-confirm" id = "conditionAdd" data-i18n = "add"><?= e(t('add')) ?></button>
-		</div>
-		<p class = "cs-chip-message" id = "defenseMessage" aria-live = "polite"></p>
-	</section>
+	<!-- Three cards under the abilities (same columns as the abilities): weapon proficiency, defense and conditions, passive skills -->
+	<div class = "cs-strips">
+		<!-- Weapon proficiency (left): simple and martial weapons, and specific weapons (items with the tag "weapon", stored by item number) -->
+		<section class = "cs-card" id = "WeaponProficiency" aria-labelledby = "cs-weapon-prof-title">
+			<h2 id = "cs-weapon-prof-title" data-i18n = "weapon_proficiency"><?= e(t('weapon_proficiency')) ?></h2>
+			<div class = "cs-toggles" role = "group" aria-labelledby = "cs-weapon-prof-title">
+				<label class = "cs-check"><input type = "checkbox" name = "simpleWeaponProficiency" id = "simpleWeaponProficiency"><span data-i18n = "simple_weapons"><?= e(t('simple_weapons')) ?></span></label>
+				<label class = "cs-check"><input type = "checkbox" name = "martialWeaponProficiency" id = "martialWeaponProficiency"><span data-i18n = "martial_weapons"><?= e(t('martial_weapons')) ?></span></label>
+			</div>
+			<ul class = "cs-chips" id = "weaponChips" aria-labelledby = "cs-weapon-prof-title"></ul>
+			<div class = "cs-chip-buttons">
+				<button type = "button" class = "cs-chip-add" id = "addWeapon" aria-expanded = "false" aria-controls = "weaponForm">+ <span data-i18n = "weapon"><?= e(t('weapon')) ?></span></button>
+			</div>
+			<div class = "cs-chip-form" id = "weaponForm" hidden>
+				<select class = "class_dropdown" id = "weaponSelect" name = "weaponSelect" aria-label = "<?= e(t('weapon')) ?>" data-i18n-aria = "weapon"></select>
+				<button type = "button" class = "cs-chip-confirm" id = "weaponAdd" data-i18n = "add"><?= e(t('add')) ?></button>
+			</div>
+			<p class = "cs-chip-message" id = "weaponMessage" aria-live = "polite"></p>
+		</section>
+
+		<!-- Defense and conditions (middle) -->
+		<section class = "cs-card" id = "Defense" aria-labelledby = "cs-defense-title">
+			<h2 id = "cs-defense-title" data-i18n = "defense_and_conditions"><?= e(t('defense_and_conditions')) ?></h2>
+			<ul class = "cs-chips" id = "defenseChips" aria-labelledby = "cs-defense-title"></ul>
+			<p class = "cs-chips-empty" id = "defenseEmpty" data-i18n = "defense.none"><?= e(t('defense.none')) ?></p>
+			<div class = "cs-chip-buttons">
+				<button type = "button" class = "cs-chip-add" id = "addDamageImmunity" aria-expanded = "false" aria-controls = "defenseForm">+ <span data-i18n = "defense"><?= e(t('defense')) ?></span></button>
+				<button type = "button" class = "cs-chip-add" id = "addCondition" aria-expanded = "false" aria-controls = "conditionForm">+ <span data-i18n = "condition"><?= e(t('condition')) ?></span></button>
+			</div>
+			<div class = "cs-chip-form" id = "defenseForm" hidden>
+				<select class = "class_dropdown" id = "defenseInfluence" name = "damageInfluence" data-lookup = "damage_influence" aria-label = "<?= e(t('influence')) ?>" data-i18n-aria = "influence">
+					<option class = "Dropdown_Entry" value = ""></option>
+					<?php foreach ($damageInfluences as $damageInfluence): ?>
+						<option class = "Dropdown_Entry" value = "<?= e($damageInfluence['code']) ?>"><?= e($damageInfluence['name']) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<select class = "class_dropdown" id = "defenseDamageType" name = "damageType" data-lookup = "damagetype" aria-label = "<?= e(t('damage_type')) ?>" data-i18n-aria = "damage_type">
+					<option class = "Dropdown_Entry" value = ""></option>
+					<?php foreach ($damageTypes as $damageType): ?>
+						<option class = "Dropdown_Entry" value = "<?= e($damageType['code']) ?>"><?= e($damageType['name']) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<button type = "button" class = "cs-chip-confirm" id = "defenseAdd" data-i18n = "add"><?= e(t('add')) ?></button>
+			</div>
+			<div class = "cs-chip-form" id = "conditionForm" hidden>
+				<select class = "class_dropdown" id = "conditionSelect" name = "conditions" data-lookup = "condition" aria-label = "<?= e(t('condition')) ?>" data-i18n-aria = "condition">
+					<option class = "Dropdown_Entry" value = ""></option>
+					<?php foreach ($conditions as $condition): ?>
+						<option class = "Dropdown_Entry" value = "<?= e($condition['code']) ?>"><?= e($condition['name']) ?></option>
+					<?php endforeach; ?>
+				</select>
+				<button type = "button" class = "cs-chip-confirm" id = "conditionAdd" data-i18n = "add"><?= e(t('add')) ?></button>
+			</div>
+			<p class = "cs-chip-message" id = "defenseMessage" aria-live = "polite"></p>
+		</section>
+
+		<!-- Passive skills (right): 10 + skill, calculated by the engine (rules 500-501) -->
+		<section class = "cs-card" id = "PassiveSkills" aria-labelledby = "cs-passive-title">
+			<h2 id = "cs-passive-title" data-i18n = "passive_skills"><?= e(t('passive_skills')) ?></h2>
+			<?php foreach (['perception', 'insight', 'investigation'] as $passive): ?>
+			<div class = "cs-passive">
+				<span data-i18n = "skill.<?= e($passive) ?>"><?= e(t('skill.' . $passive, $passive)) ?></span>
+				<output id = "passive_<?= e($passive) ?>" data-calc = "passive.<?= e($passive) ?>" data-calc-format = "plain">10</output>
+			</div>
+			<?php endforeach; ?>
+		</section>
+	</div>
 
 	<!-- Inventory: items of the character. Only equipped items change values (rules with EQUIPPED). -->
 	<section class = "cs-card cs-inventory" id = "Inventory" aria-labelledby = "cs-inventory-title">

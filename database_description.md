@@ -311,6 +311,7 @@ The JavaScript engine of the character sheet does the calculation. The database 
 | `skill.` | `skill.sleight_of_hand` | `Skills.code` |
 | `combat.` | `combat.ac`, `combat.initiative` | Fixed list |
 | `hp.` | `hp.max` | Fixed list |
+| `passive.` | `passive.perception` | `Skills.code` |
 
 **Operators (`operator`):**
 
@@ -356,6 +357,7 @@ An object with more than one check is true only if all checks are true. An unkno
 | 300 | `combat.initiative` | `mod.dexterity` |
 | 400 | `combat.ac_dex` | `mod.dexterity` (the part of Dexterity in the armor class; armor can change it) |
 | 410–412 | `combat.ac` | 10 + `combat.ac_dex` |
+| 500–501 | `passive.perception`, `passive.insight`, `passive.investigation` | 10 + the skill (`skill.perception`, `skill.insight`, `skill.investigation`). `migration_passive_skills.sql`. |
 
 ### `calculation_templates`
 

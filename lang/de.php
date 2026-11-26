@@ -79,6 +79,12 @@ return [
     'inventory.weight'    => 'Gewicht',
     'inventory.equipped'  => 'Ausgerüstet',
     'inventory.carried'   => 'Mitgeführt',
+    'weapon_proficiency'  => 'Waffenübung',
+    'simple_weapons'      => 'Einfache Waffen',
+    'martial_weapons'     => 'Kriegswaffen',
+    'weapon'              => 'Waffe',
+    'weapon.none_available' => 'Keine Waffen verfügbar.',
+    'passive_skills'      => 'Passive Fertigkeiten',
     'conditions'          => 'Zustände',
     'condition'           => 'Zustand',
 
