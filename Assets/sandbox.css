@@ -233,5 +233,5 @@
 	.cs-page input.cs-inventory-qty { grid-column: 2; grid-row: 2; justify-self: start; }
 	.cs-inventory-weight { grid-column: 2; grid-row: 2; justify-self: end; }
 	.cs-inventory-row .cs-chip-remove { grid-column: 3; grid-row: 1 / 3; }
-	.cs-inventory-picker { left: 12px; right: 12px; width: auto; max-width: none; }
+	.cs-inventory-picker { position: static; width: auto; max-width: none; }
 }
