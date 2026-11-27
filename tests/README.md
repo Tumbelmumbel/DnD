@@ -5,7 +5,7 @@ The files in `tests/` are not uploaded to the website (see `deploy.yml`).
 
 | Folder | What it tests | Tool |
 |---|---|---|
-| `baseline/` | `baseline.sql`: the database for the tests. Structure of all tables and the data of the game tables. **No user data.** | MySQL 8.0 |
+| `baseline/` | `baseline.sql`: the database for the tests. Structure of all tables and the data of the game tables. **No user data.** After each deploy, the job `baseline-refresh` (deploy.yml) builds it again from the live database and opens a pull request if it changed. | MySQL 8.0 |
 | `engine/` | The calculation engine `Assets/calc_engine.js` with the real rules from the baseline. | Node.js, built-in test runner (no npm) |
 | `browser/` | The pages in a headless browser: sign-in, character sheet, both languages, phone width, no JavaScript errors. | Python, Playwright, pytest |
 | `migrations/` | A self-test for `migrate.php`. The workflow copies it next to `migrate.php` for one run. | MySQL 8.0 |

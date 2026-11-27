@@ -106,6 +106,8 @@ jobs:
     # Runs for every category.
     # - A Test Agent commit (author github-actions[bot], signed by GitHub, subject "Test Agent:")
     #   may change only tests/browser/.
+    # - A baseline commit (author github-actions[bot], signed by GitHub, subject "Baseline refresh:")
+    #   may change only tests/baseline/baseline.sql.
     # - Any other commit may not change tests/ (only tests/README.md). Old and new names of
     #   a moved file count, so a move out of tests/ is also a change.
     # - A merge commit may bring into tests/ only the state of the base branch.
@@ -164,6 +166,9 @@ jobs:
             if [ "$login" = "github-actions[bot]" ] && [ "$verified" = "true" ] && [[ "$subject" == "Test Agent:"* ]]; then
               bad=$(echo "$files" | grep -v '^tests/browser/' || true)
               [ -n "$bad" ] && { echo "Test Agent commit $sha changes files outside tests/browser/:"; echo "$bad"; fail=1; }
+            elif [ "$login" = "github-actions[bot]" ] && [ "$verified" = "true" ] && [[ "$subject" == "Baseline refresh:"* ]]; then
+              bad=$(echo "$files" | grep -v '^tests/baseline/baseline\.sql$' || true)
+              [ -n "$bad" ] && { echo "Baseline commit $sha changes other files:"; echo "$bad"; fail=1; }
             else
               bad=$(echo "$files" | grep '^tests/' | grep -v '^tests/README\.md$' || true)
               if [ -n "$bad" ] && [ "$owner_ok" != "true" ]; then
