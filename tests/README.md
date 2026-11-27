@@ -29,9 +29,9 @@ The workflow `.github/workflows/claude-test.yml` starts the Test Agent. Start: a
 - It reads only the PR section "Requirement and behavior", `CLAUDE.md`, `database_description.md`, `tests/` and the running page.
 - It does not see the code diff. The code runs in `/tmp/app` for the PHP server only.
 - It writes only in `tests/browser/`.
-- The workflow has two jobs. The job `agent` runs the code and the agent with read permissions only. The job `commit` runs no code of the pull request: it takes only `tests/browser/` as data, creates the commit through the GitHub API and starts the workflow "Tests" again.
+- The workflow has two jobs. The job `agent` runs the code (as the separate system user `appsrv`, in `/tmp/app`) and the agent, with read permissions only. The job `commit` runs no code of the pull request: it takes only `tests/browser/` as data, creates the commit through the GitHub API and starts the workflow "Tests" again.
 - It writes its report as a comment on the pull request.
-- It never weakens, skips or deletes a test to make it pass.
+- It never weakens, skips or deletes a test to make it pass. The workflow never deletes an existing test file, and it lists changed existing test files in the report.
 - If the Dev Agent thinks that a test is wrong: one round of discussion in PR comments, then the owner decides.
 
 ## Run the tests on your own computer

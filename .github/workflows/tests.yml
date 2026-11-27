@@ -60,6 +60,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number || inputs.pr }}
         run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            # A manual start must test exactly the head of this pull request
+            head_sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.sha)
+            head_ref=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.ref)
+            [ "$head_sha" = "$GITHUB_SHA" ] && [ "$head_ref" = "$GITHUB_REF_NAME" ] \
+              || { echo "The started branch is not the head of pull request $PR."; exit 1; }
+          fi
           BASE_REF=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .base.ref)
           LABELS=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q '[.labels[].name] | join(",")')
           # Strictest first: code > infra > tests > claude-md > docs
@@ -96,29 +103,64 @@ jobs:
           gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --add-label "category: $CATEGORY"
 
   test-scope:
-    # Runs for every category. Merge commits are not checked (they bring changes from main).
-    # Test Agent commits are recognized by the author github-actions[bot] AND a valid GitHub signature.
+    # Runs for every category.
+    # - A Test Agent commit (author github-actions[bot], signed by GitHub, subject "Test Agent:")
+    #   may change only tests/browser/.
+    # - Any other commit may not change tests/ (only tests/README.md). Old and new names of
+    #   a moved file count, so a move out of tests/ is also a change.
+    # - A merge commit may bring into tests/ only the state of the base branch.
+    # The label owner-test-change (owner only) allows changes in tests/ once.
     runs-on: ubuntu-latest
     steps:
-      - name: Dev Agent does not change tests/, Test Agent changes only tests/browser/
+      - name: Find the head of the pull request
+        id: head
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number || inputs.pr }}
         run: |
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" > /tmp/pr.json
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            [ "$(jq -r .head.sha /tmp/pr.json)" = "$GITHUB_SHA" ] && [ "$(jq -r .head.ref /tmp/pr.json)" = "$GITHUB_REF_NAME" ] \
+              || { echo "The started branch is not the head of pull request $PR."; exit 1; }
+          fi
+          echo "sha=$(jq -r .head.sha /tmp/pr.json)" >> "$GITHUB_OUTPUT"
+          echo "base=$(jq -r .base.ref /tmp/pr.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.head.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check who changed the tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          BASE: ${{ steps.head.outputs.base }}
+        run: |
           R="$GITHUB_REPOSITORY"
-          labels=$(gh api "repos/$R/pulls/$PR" -q '[.labels[].name] | join(",")')
+          labels=$(jq -r '[.labels[].name] | join(",")' /tmp/pr.json)
           owner_ok=false
           case ",$labels," in *,owner-test-change,*) owner_ok=true; echo "Label owner-test-change: the owner allows changes in tests/." ;; esac
+          git fetch -q origin "$BASE"
           fail=0
           for sha in $(gh api "repos/$R/pulls/$PR/commits" --paginate -q '.[].sha'); do
-            parents=$(gh api "repos/$R/commits/$sha" -q '.parents | length')
-            [ "$parents" -gt 1 ] && continue
+            parents=$(git rev-list --parents -n 1 "$sha" | wc -w)
+            if [ "$parents" -gt 2 ]; then
+              # Merge commit: each file in tests/ that it changes must have the state of the base branch
+              for f in $(git diff --no-renames --name-only "$sha^1" "$sha" -- tests/); do
+                a=$(git rev-parse -q --verify "$sha:$f" || echo none)
+                b=$(git rev-parse -q --verify "origin/$BASE:$f" || echo none)
+                if [ "$a" != "$b" ] && [ "$owner_ok" != "true" ]; then
+                  echo "Merge commit $sha changes $f differently from $BASE."; fail=1
+                fi
+              done
+              continue
+            fi
+            files=$(git diff-tree --no-commit-id -r --no-renames --name-only "$sha")
             login=$(gh api "repos/$R/commits/$sha" -q '.author.login // ""')
             verified=$(gh api "repos/$R/commits/$sha" -q '.commit.verification.verified')
-            subject=$(gh api "repos/$R/commits/$sha" -q '.commit.message | split("\n")[0]')
-            files=$(gh api "repos/$R/commits/$sha" -q '.files[].filename')
-            # A Test Agent commit: created by the workflow through the GitHub API, so GitHub signed it.
-            # A local commit with the same name and email has no valid signature.
+            subject=$(git log -1 --format=%s "$sha")
             if [ "$login" = "github-actions[bot]" ] && [ "$verified" = "true" ] && [[ "$subject" == "Test Agent:"* ]]; then
               bad=$(echo "$files" | grep -v '^tests/browser/' || true)
               [ -n "$bad" ] && { echo "Test Agent commit $sha changes files outside tests/browser/:"; echo "$bad"; fail=1; }
@@ -261,7 +303,7 @@ jobs:
           curl -sf -o /dev/null http://127.0.0.1:8000/login.php
       - name: Install Playwright (only in this job)
         run: |
-          pip install playwright pytest
+          pip install playwright==1.63.0 pytest==9.1.1
           python -m playwright install --with-deps chromium
       - name: Browser tests (headless)
         run: pytest tests/browser -v

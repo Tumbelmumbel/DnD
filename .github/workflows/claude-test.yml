@@ -6,7 +6,8 @@
 # The Test Agent writes browser tests from the REQUIREMENT, not from the code:
 # - It reads only the PR section "Requirement and behavior", CLAUDE.md,
 #   database_description.md, the folder tests/ and the running page.
-# - It never sees the code diff. The code runs in /tmp/app for the PHP server only.
+# - It never sees the code diff. The code runs in /tmp/app as the separate user "appsrv"
+#   for the PHP server only; the agent cannot read /tmp/app.
 #   Its working folder contains only tests/, CLAUDE.md and database_description.md.
 # - It writes only in tests/browser/.
 # - Each run is a new session on a new machine. It has no memory of earlier runs.
@@ -73,6 +74,8 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" > /tmp/pr.json
           [ "$(jq -r .state /tmp/pr.json)" = "open" ] || { echo "The pull request is not open."; exit 1; }
           [ "$(jq -r .head.repo.full_name /tmp/pr.json)" = "$GITHUB_REPOSITORY" ] || { echo "Pull requests from forks are not supported."; exit 1; }
+          [ "$(jq -r .base.ref /tmp/pr.json)" = "main" ] || { echo "Only pull requests into main are supported."; exit 1; }
+          [ "$(jq -r .head.ref /tmp/pr.json)" != "main" ] || { echo "The branch of the pull request must not be main."; exit 1; }
           echo "ref=$(jq -r .head.ref /tmp/pr.json)" >> "$GITHUB_OUTPUT"
           echo "sha=$(jq -r .head.sha /tmp/pr.json)" >> "$GITHUB_OUTPUT"
           # The requirement: the PR section "Requirement and behavior" (up to the next "## " heading)
@@ -96,22 +99,31 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Start the application in /tmp/app (test database, PHP server)
+      - name: Start the application in /tmp/app as the separate user "appsrv"
+        # The code of the pull request runs as its own system user. It cannot write the
+        # working folder and cannot read the processes (and their environment) of the runner.
+        # The runner (and so the agent) cannot read /tmp/app.
         run: |
-          cp -a . /tmp/app
-          rm -rf /tmp/app/.git
-          cd /tmp/app
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin appsrv
           mysql --protocol=tcp -h 127.0.0.1 -uroot -proot_password -e "SET GLOBAL sql_mode = ''"
           mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < tests/baseline/baseline.sql
-          printf 'APP_ENV=test\nBASE_URL=%s\nDB_HOST=%s\nDB_NAME=%s\nDB_USER=%s\nDB_PASS=%s\n' "$TEST_BASE_URL" "$DB_HOST" "$DB_NAME" "$DB_USER" "$DB_PASS" > .env
-          php migrate.php
-          php -S 127.0.0.1:8000 -t /tmp/app > /tmp/php-server.log 2>&1 &
+          sudo mkdir /tmp/app
+          sudo cp -a . /tmp/app/
+          sudo rm -rf /tmp/app/.git
+          printf 'APP_ENV=test\nBASE_URL=%s\nDB_HOST=%s\nDB_NAME=%s\nDB_USER=%s\nDB_PASS=%s\n' "$TEST_BASE_URL" "$DB_HOST" "$DB_NAME" "$DB_USER" "$DB_PASS" | sudo tee /tmp/app/.env > /dev/null
+          sudo chown -R appsrv:appsrv /tmp/app
+          sudo chmod 700 /tmp/app
+          sudo -u appsrv php /tmp/app/migrate.php
+          sudo -u appsrv nohup php -S 127.0.0.1:8000 -t /tmp/app > /dev/null 2>&1 &
           sleep 1
           curl -sf -o /dev/null "$TEST_BASE_URL/login.php"
+          ls /tmp/app > /dev/null 2>&1 && { echo "The runner can read /tmp/app."; exit 1; } || echo "The runner cannot read /tmp/app (OK)."
+          sudo -u appsrv test -w "$GITHUB_WORKSPACE/tests/browser" && { echo "appsrv can write the working folder."; exit 1; } || echo "appsrv cannot write the working folder (OK)."
+
 
       - name: Install Playwright
         run: |
-          pip install playwright pytest
+          pip install playwright==1.63.0 pytest==9.1.1
           python -m playwright install --with-deps chromium
 
       - name: Keep only tests/, CLAUDE.md and database_description.md in the working folder
@@ -126,11 +138,11 @@ jobs:
           # The read-only token of this job, so the action does not get its own token with write access
           github_token: ${{ github.token }}
           settings: |
-            {"permissions": {"deny": ["Read(//tmp/app/**)", "Read(/tmp/app/**)", "Read(.git/**)", "Read(//tmp/php-server.log)", "Read(//tmp/pr.json)"]}}
+            {"permissions": {"deny": ["Read(//tmp/app/**)", "Read(.git/**)", "Read(//tmp/pr.json)"]}}
           claude_args: |
             --max-turns 60
             --allowedTools "Read,Glob,Grep,Write(tests/browser/**),Edit(tests/browser/**),Bash(python -m pytest:*),Bash(pytest:*)"
-            --disallowedTools "WebFetch,WebSearch,NotebookEdit,Bash(git:*),Bash(gh:*),Bash(curl:*),Bash(cat:*)"
+            --disallowedTools "WebFetch,WebSearch,NotebookEdit,Bash(git:*),Bash(gh:*),Bash(curl:*)"
           prompt: |
             You are the TEST AGENT of this repository. Write in English ASD-STE100.
 
@@ -159,6 +171,7 @@ jobs:
       - name: Hand over tests/browser/ (data only)
         if: always()
         run: |
+          sudo pkill -u appsrv || true
           mkdir -p /tmp/handover
           cp -r tests/browser /tmp/handover/browser
           rm -rf /tmp/handover/browser/__pycache__ /tmp/handover/browser/screenshots /tmp/handover/browser/.pytest_cache
@@ -217,6 +230,9 @@ jobs:
           rp = os.path.join(root, ".agent_report.md")
           if os.path.isfile(rp) and not os.path.islink(rp):
               report = open(rp, encoding="utf-8", errors="replace").read()[:60000]
+          # The report is data: no verdict lines, no mentions
+          lines = [l for l in report.splitlines() if "verdict" not in l.lower()]
+          report = "\n".join(lines).replace("@", "@\u200b")
           open("/tmp/agent_report.md", "w").write(report)
 
           if os.environ["AGENT_RESULT"] != "success" or not branch or not os.path.isdir(root):
@@ -249,15 +265,23 @@ jobs:
           def git_blob_sha(data):
               return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
-          tree = []
+          tree, changed_existing = [], []
           for path, data in sorted(new.items()):
               if old.get(path) == git_blob_sha(data):
                   continue
+              if path in old:
+                  changed_existing.append(path)
               blob = api(f"repos/{repo}/git/blobs",
                          data={"content": base64.b64encode(data).decode(), "encoding": "base64"})["sha"]
               tree.append({"path": path, "mode": "100644", "type": "blob", "sha": blob})
-          for path in sorted(set(old) - set(new)):
-              tree.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
+          # The Test Agent never deletes a test: a missing file is not deleted, only reported
+          missing = sorted(set(old) - set(new))
+          notes = []
+          if changed_existing:
+              notes.append("Changed existing test files (check the reason in the report): " + ", ".join(changed_existing))
+          if missing:
+              notes.append("Files missing after the run (NOT deleted): " + ", ".join(missing))
+          open("/tmp/agent_notes.md", "w").write("\n".join("- " + n for n in notes))
 
           if not tree:
               out.write("changed=false\n")
@@ -286,6 +310,7 @@ jobs:
             echo
             if [ "$CHANGED" = "true" ]; then echo "New tests are committed. The workflow \"Tests\" runs again."; else echo "No new test files were committed."; fi
             [ "$AGENT_RESULT" = "success" ] || echo "The agent job ended with: $AGENT_RESULT. See the log of the workflow run."
+            [ -s /tmp/agent_notes.md ] && { echo; cat /tmp/agent_notes.md; }
             echo
             cat /tmp/agent_report.md 2>/dev/null || echo "No report."
           } > /tmp/comment.md
