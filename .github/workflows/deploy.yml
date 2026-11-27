@@ -2,11 +2,17 @@
 #
 # Runs on every push to main (for example after you merge a pull request),
 # and you can also start it by hand under "Actions" -> "Deploy to IONOS" -> "Run workflow".
+# It uploads only the branch main. A start for another branch stops at once.
+#
+# The job uses the GitHub environment "production". Settings -> Environments -> production:
+#   - "Deployment branches and tags": only main.
+#   - The SFTP secrets are environment secrets of "production" (not repository secrets),
+#     so no other branch and no other workflow can read them.
 #
 # UPLOAD ONLY: files on the server that are not in Git (.env, libs/PHPMailer,
 # php-errors.log, ...) are never deleted.
 #
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
+# Required secrets of the environment "production":
 #   SFTP_HOST        e.g. access-5012345678.webspace-host.com
 #   SFTP_USER        your SFTP user name
 #   SFTP_PASSWORD    your SFTP password
@@ -28,7 +34,12 @@ concurrency:
 
 jobs:
   deploy:
+    # Only the branch main goes to the website
+    if: github.ref == 'refs/heads/main'
+    environment: production
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check out code
         uses: actions/checkout@v5
