@@ -6,3 +6,8 @@
 # Logs
 php-errors.log
 *.log
+
+# Test output
+tests/browser/screenshots/
+__pycache__/
+.pytest_cache/

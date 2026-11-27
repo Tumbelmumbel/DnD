@@ -58,6 +58,7 @@ jobs:
           mirror --reverse --verbose --parallel=4 \
             --exclude-glob .git/ \
             --exclude-glob .github/ \
+            --exclude-glob tests/ \
             --exclude-glob .gitignore \
             --exclude-glob .env \
             --exclude-glob .env.* \

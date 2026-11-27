@@ -182,6 +182,7 @@ button, input, select, textarea { font-family: inherit; font-size: var(--font-te
 	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 	gap: 18px;
 	padding: 30px;
+	width: 100%; /* full width also inside a centered column (phones) */
 	max-width: 1200px;
 	margin: 0 auto; /* Center the whole tile area */
 }

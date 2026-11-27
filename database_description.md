@@ -4,7 +4,7 @@ This file describes the database of the DnD character manager.
 It shows all tables and all fields, the data type of each field, and the data that each field stores.
 
 - **Database:** `dbs15432866` (MySQL on IONOS)
-- **Last update:** 2026-11-26
+- **Last update:** 2026-11-27
 - **Foreign keys:** None. The tables do not have links in the database.
 - **SQL mode:** Empty (lenient). MySQL does not stop an incorrect value. It changes the value and gives a warning.
 
@@ -89,6 +89,20 @@ The application deletes the rows that are older than 24 hours.
 
 Limits: sign-in 10 failed attempts per IP address and 5 per email address in 15 minutes.
 Registration, new verification link and password reset: 5 per IP address and 3 per email address in one hour.
+
+## Technical tables
+
+### `schema_migrations`
+
+This table lists the migration files that already ran on the database. `migrate.php` reads it and runs only the new files.
+The table exists in the test baseline (`tests/baseline/baseline.sql`). It goes into the live database with a later pull request (deploy over SSH).
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `filename` | varchar(190) | PK | No | | Name of the migration file, for example `migration_weapons.sql`. |
+| `applied_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time when the migration ran. |
+
+Names of new migration files: `migration_YYYYMMDD_<short_name>.sql`. Then the name order is also the time order.
 
 ## Game data (lookup tables)
 
