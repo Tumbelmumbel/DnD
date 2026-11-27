@@ -97,6 +97,7 @@ jobs:
 
   test-scope:
     # Runs for every category. Merge commits are not checked (they bring changes from main).
+    # Test Agent commits are recognized by the author github-actions[bot] AND a valid GitHub signature.
     runs-on: ubuntu-latest
     steps:
       - name: Dev Agent does not change tests/, Test Agent changes only tests/browser/
@@ -113,9 +114,12 @@ jobs:
             parents=$(gh api "repos/$R/commits/$sha" -q '.parents | length')
             [ "$parents" -gt 1 ] && continue
             login=$(gh api "repos/$R/commits/$sha" -q '.author.login // ""')
+            verified=$(gh api "repos/$R/commits/$sha" -q '.commit.verification.verified')
             subject=$(gh api "repos/$R/commits/$sha" -q '.commit.message | split("\n")[0]')
             files=$(gh api "repos/$R/commits/$sha" -q '.files[].filename')
-            if [ "$login" = "github-actions[bot]" ] && [[ "$subject" == "Test Agent:"* ]]; then
+            # A Test Agent commit: created by the workflow through the GitHub API, so GitHub signed it.
+            # A local commit with the same name and email has no valid signature.
+            if [ "$login" = "github-actions[bot]" ] && [ "$verified" = "true" ] && [[ "$subject" == "Test Agent:"* ]]; then
               bad=$(echo "$files" | grep -v '^tests/browser/' || true)
               [ -n "$bad" ] && { echo "Test Agent commit $sha changes files outside tests/browser/:"; echo "$bad"; fail=1; }
             else

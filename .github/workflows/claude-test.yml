@@ -52,7 +52,6 @@ jobs:
           --health-interval=5s --health-timeout=5s --health-retries=20
     env:
       PR: ${{ github.event.issue.number }}
-      GH_TOKEN: ${{ github.token }}
       DB_HOST: 127.0.0.1
       DB_PORT: "3306"
       DB_NAME: dnd_test
@@ -62,18 +61,22 @@ jobs:
     steps:
       - name: Find the branch of the pull request
         id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
         run: |
           state=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .state)
           head_repo=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.repo.full_name)
           [ "$state" = "open" ] || { echo "The pull request is not open."; exit 1; }
           [ "$head_repo" = "$GITHUB_REPOSITORY" ] || { echo "Pull requests from forks are not supported."; exit 1; }
           echo "ref=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.ref)" >> "$GITHUB_OUTPUT"
-          gh api "repos/$GITHUB_REPOSITORY/issues/comments/${{ github.event.comment.id }}/reactions" -f content=eyes > /dev/null
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content=eyes > /dev/null
 
-      - name: Check out the branch
+      - name: Check out the branch (the token is not stored in .git/config)
         uses: actions/checkout@v6
         with:
           ref: ${{ steps.pr.outputs.ref }}
+          persist-credentials: false
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -104,6 +107,8 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Give the agent only the requirement and the test files
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # The requirement: the PR section "Requirement and behavior" (up to the next "## " heading)
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .body \
@@ -148,32 +153,79 @@ jobs:
             - the result of the last pytest run (passed / failed, with the reason),
             - the parts of the requirement that you could not test, and why.
 
-      - name: Commit the new tests (only tests/browser/)
+      - name: Commit the new tests (only tests/browser/) through the GitHub API
+        # GitHub signs a commit that the API creates ("Verified"). The job test-scope
+        # accepts only such commits as commits of the Test Agent.
         id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.pr.outputs.ref }}
         run: |
           report=tests/browser/.agent_report.md
           [ -f "$report" ] && cp "$report" /tmp/agent_report.md || echo "The Test Agent wrote no report." > /tmp/agent_report.md
           rm -f "$report"
-          git add -A tests/browser
-          other=$(git status --porcelain | grep -v ' tests/browser/' || true)
+          other=$(git status --porcelain --untracked-files=all | grep -v ' tests/browser/' || true)
           if [ -n "$other" ]; then echo "Changes outside tests/browser/ are not committed:"; echo "$other"; fi
+          git add -A tests/browser
           if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -m "Test Agent: add browser tests for the requirement" -m "Written by the Claude Test Agent (workflow claude-test.yml)."
-          git push origin "HEAD:${{ steps.pr.outputs.ref }}"
+          python3 - <<'PY'
+          import json, os, subprocess
+
+          repo, branch = os.environ["GITHUB_REPOSITORY"], os.environ["BRANCH"]
+
+          def api(*args, data=None):
+              cmd = ["gh", "api", *args]
+              if data is not None:
+                  cmd += ["--input", "-"]
+              out = subprocess.run(cmd, input=json.dumps(data) if data is not None else None,
+                                   capture_output=True, text=True, check=True).stdout
+              return json.loads(out) if out.strip() else {}
+
+          head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+          remote = api(f"repos/{repo}/git/ref/heads/{branch}")["object"]["sha"]
+          if remote != head:
+              raise SystemExit("The branch changed during the run. No commit.")
+          changes = subprocess.run(["git", "diff", "--cached", "--no-renames", "--name-status"],
+                                   capture_output=True, text=True, check=True).stdout.splitlines()
+          tree = []
+          for line in changes:
+              status, path = line.split("\t", 1)
+              if not path.startswith("tests/browser/"):
+                  raise SystemExit("Only tests/browser/ is allowed: " + path)
+              if status == "D":
+                  tree.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
+              else:
+                  import base64
+                  content = base64.b64encode(open(path, "rb").read()).decode()
+                  blob = api(f"repos/{repo}/git/blobs", data={"content": content, "encoding": "base64"})["sha"]
+                  tree.append({"path": path, "mode": "100644", "type": "blob", "sha": blob})
+          base_tree = api(f"repos/{repo}/git/commits/{head}")["tree"]["sha"]
+          new_tree = api(f"repos/{repo}/git/trees", data={"base_tree": base_tree, "tree": tree})["sha"]
+          commit = api(f"repos/{repo}/git/commits", data={
+              "message": "Test Agent: add browser tests for the requirement\n\nWritten by the Claude Test Agent (workflow claude-test.yml).",
+              "tree": new_tree, "parents": [head]})["sha"]
+          api("-X", "PATCH", f"repos/{repo}/git/refs/heads/{branch}", data={"sha": commit})
+          print("Commit", commit)
+          PY
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Start the workflow "Tests" for the new commit
         if: steps.commit.outputs.changed == 'true'
-        run: gh workflow run tests.yml --ref "${{ steps.pr.outputs.ref }}" -f pr="$PR"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.pr.outputs.ref }}
+        run: gh workflow run tests.yml --ref "$BRANCH" -f pr="$PR"
 
       - name: Write the report on the pull request
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANGED: ${{ steps.commit.outputs.changed }}
         run: |
           {
             echo "### Test Agent report"
             echo
-            if [ "${{ steps.commit.outputs.changed }}" = "true" ]; then echo "New tests are committed. The workflow \"Tests\" runs again."; else echo "No new test files."; fi
+            if [ "$CHANGED" = "true" ]; then echo "New tests are committed. The workflow \"Tests\" runs again."; else echo "No new test files."; fi
             echo
             cat /tmp/agent_report.md 2>/dev/null || echo "The run stopped before the report. See the log of the workflow run."
           } > /tmp/comment.md

@@ -14,7 +14,7 @@ The files in `tests/` are not uploaded to the website (see `deploy.yml`).
 
 1. **categorize** finds the category of the pull request from the changed files and sets the label `category: ...`.
    Only the categories `code`, `infra` and `tests` run the tests. The label `full-check` (owner only) forces all tests.
-2. **test-scope** checks who changed the tests. A commit of the Test Agent may change only `tests/browser/`.
+2. **test-scope** checks who changed the tests. A commit of the Test Agent (author `github-actions[bot]`, signed by GitHub) may change only `tests/browser/`.
    Any other commit may not change `tests/` (only `tests/README.md`). The label `owner-test-change` (owner only) allows it once.
 3. **php-lint** runs `php -l` on every PHP file (without `libs/`).
 4. **engine** runs `node --test tests/engine/*.test.js`.
