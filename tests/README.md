@@ -28,7 +28,7 @@ The Test Agent writes the click tests from the requirement of each pull request.
 
 | Area | Pull request | Covered |
 |---|---|---|
-| Accounts and language menu: sign-in, protected pages, sign-out, registration rules, neutral messages, language menu | PR 2 (`add-click-tests`) | Requirement items 1 to 7 |
+| Accounts and language menu: sign-in, protected pages, sign-out, registration rules, neutral messages, language menu | #79 (`add-click-tests`) | Requirement items 1 to 7 |
 | Character sheet: values, armor class, inventory, weapons card, German texts, phone width | later pull request | not yet |
 
 Emails (verification, password reset) are not tested: the test system sends no emails.
@@ -64,3 +64,8 @@ TEST_BASE_URL=http://127.0.0.1:8000 DB_USER=<user> DB_PASS=<password> DB_NAME=<t
 - The baseline never contains user data (email addresses, password hashes, characters).
 - A new migration needs no change in the baseline: the workflow runs it with `migrate.php`.
 - Names of new migration files: `migration_YYYYMMDD_<short_name>.sql`.
+
+## Online test after the deploy
+
+The online test is not in this folder: it is part of the deploy (`.github/online-test/`, job `online-test` in `deploy.yml`).
+It checks the live website https://rudolph.cologne with the test account of the owner (secrets `TEST_USER`, `TEST_PASSWORD`).

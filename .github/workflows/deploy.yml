@@ -17,6 +17,8 @@
 #   4. php8.4-cli migrate.php --init (one time), then php8.4-cli migrate.php.
 #   5. Upload all other files. UPLOAD ONLY: files on the server that are not in Git
 #      (.env, libs/PHPMailer, php-errors.log, ...) are never deleted.
+#   6. Job "online-test": checks the live website with the test account of the owner
+#      (.github/online-test/). If it fails, it opens an issue (only a link to the run).
 #
 # Required secrets of the environment "production":
 #   SFTP_HOST             e.g. access-5012345678.webspace-host.com
@@ -24,6 +26,8 @@
 #   SFTP_PASSWORD         your SFTP password
 #   SFTP_REMOTE_DIR       target folder as seen in your SFTP client, e.g. /Rudolph.cologne
 #   SSH_HOST_FINGERPRINT  SHA256 fingerprint of the ED25519 host key, e.g. SHA256:abc...
+#   TEST_USER             email address of the test account on rudolph.cologne
+#   TEST_PASSWORD         password of the test account
 # Optional:
 #   SFTP_PORT             default 22
 
@@ -165,3 +169,44 @@ jobs:
             ./ "$SFTP_REMOTE_DIR"
           bye
           EOF
+
+  online-test:
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          pip install playwright==1.63.0 pytest==9.1.1
+          python -m playwright install --with-deps chromium
+
+      - name: Online test of https://rudolph.cologne
+        env:
+          TEST_USER: ${{ secrets.TEST_USER }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          sleep 20
+          pytest .github/online-test -v
+
+      - name: Open an issue if the online test failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Only a link: the cause can be security-relevant (see CLAUDE.md)
+          gh issue create -R "$GITHUB_REPOSITORY" \
+            --title "Online test failed after the deploy of ${GITHUB_SHA:0:7}" \
+            --body "The online test after the deploy failed. Run: $RUN_URL. The Dev Agent checks the cause and informs the owner."
