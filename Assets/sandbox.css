@@ -259,3 +259,51 @@
 	.cs-weapon-attack { text-align: left; }
 	.cs-weapon-row [data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 400; opacity: 0.8; }
 }
+/* Spells card: values of the class, spell slots and the list of the spells */
+.cs-spells { position: relative; }
+.cs-spells [hidden] { display: none; }
+.cs-spell-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.cs-spell-stat { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px; border: 1px solid var(--cs-line); border-radius: 8px; background: var(--cs-field); }
+.cs-spell-stat span { font-size: 13px; }
+.cs-spell-stat output { font-size: var(--font-header); font-weight: 700; }
+.cs-spell-stat output.is-over { color: #A40000; }
+.cs-spell-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.cs-spell-slot { display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; border: 1px solid var(--cs-border); border-radius: 8px; }
+.cs-spell-slot-title { font-weight: 700; }
+.cs-spell-slot-used { display: flex; align-items: center; gap: 8px; }
+.cs-page .cs-spell-slot-used input { width: 64px; flex: 0 0 64px; text-align: center; }
+.cs-spell-cols, .cs-spell-row { display: grid; grid-template-columns: 90px minmax(0, 1.6fr) 90px minmax(0, 1fr) minmax(0, 1fr) 100px minmax(0, 1fr) 40px;
+	gap: 10px; align-items: center; }
+.cs-spell-cols { min-height: 32px; padding: 0 8px; font-weight: 700; border-bottom: 1px solid var(--cs-line); }
+.cs-spell-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cs-spell-row { min-height: 52px; padding: 6px 8px; border-radius: 8px; }
+.cs-spell-row.is-prepared { background: #E4E7F8; }
+.cs-spell-row.is-unavailable .cs-spell-toggle { opacity: 0.7; }
+.cs-spell-prep { display: flex; justify-content: center; }
+.cs-spell-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.cs-spell-toggle { min-height: 40px; padding: 0 4px; border: 0; background: transparent; color: var(--text); font: inherit;
+	font-size: var(--font-text); font-weight: 700; text-align: left; cursor: pointer; }
+.cs-spell-note { flex-basis: 100%; font-size: 13px; color: #A40000; }
+.cs-spell-details { grid-column: 1 / -1; padding: 8px 10px; border-left: 3px solid var(--cs-accent); background: var(--cs-field); border-radius: 4px; }
+.cs-spell-details dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 0 0 6px; }
+.cs-spell-details dt { font-weight: 700; }
+.cs-spell-details dd { margin: 0; }
+.cs-spell-description { margin: 0 0 6px; white-space: pre-line; }
+.cs-spell-result:disabled, .cs-spells .cs-inventory-result:disabled { opacity: 0.55; cursor: not-allowed; }
+.cs-spell-credit { margin: 0; font-size: 12px; opacity: 0.8; }
+/* Phone: one block for each spell, labels above the values */
+@media (max-width: 640px) {
+	.cs-spell-cols { display: none; }
+	.cs-spell-row { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr) 40px; grid-template-areas: "prep name name remove" ". level time ." ". range duration ." ". comp comp ." "details details details details";
+		row-gap: 6px; border: 1px solid var(--cs-line); }
+	.cs-spell-prep { grid-area: prep; }
+	.cs-spell-name { grid-area: name; }
+	.cs-spell-level { grid-area: level; }
+	.cs-spell-time { grid-area: time; }
+	.cs-spell-range { grid-area: range; }
+	.cs-spell-comp { grid-area: comp; }
+	.cs-spell-duration { grid-area: duration; }
+	.cs-spell-row .cs-chip-remove { grid-area: remove; }
+	.cs-spell-details { grid-area: details; }
+	.cs-spell-row [data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 400; opacity: 0.8; }
+}

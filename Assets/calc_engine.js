@@ -56,6 +56,8 @@
 			// Weapon checks: true only in the calculation of one weapon (context.weapon), see the weapons card
 			case "WEAPON_TAG":        return Boolean(context.weapon && Array.isArray(context.weapon.tags) && context.weapon.tags.includes(arg));
 			case "WEAPON_PROFICIENT": return Boolean(context.weapon && context.weapon.proficient) === Boolean(arg);
+			// Spell check: true if the selected class casts spells with this ability (Abilities.code)
+			case "SPELL_ABILITY":     return context.spellAbility !== "" && context.spellAbility === arg;
 			default:            return false;
 		}
 	}
@@ -70,13 +72,15 @@
 	// rules:   [{ id, sort_order, target, operator, value_num, value_ref, condition, source }]
 	// inputs:  values from the sheet, for example { "ability.dexterity": 14, "char.level": 5 }
 	// context: { proficient: Set of value names, defenses: Set of "kind:code",
-	//            weapon: optional { tags: [tag codes], proficient: true/false } for the values weapon.* of one weapon }
+	//            weapon: optional { tags: [tag codes], proficient: true/false } for the values weapon.* of one weapon,
+	//            spellAbility: optional code of the spell ability of the class, for example "wisdom" }
 	// Result:  an object with all values (inputs and calculated values)
 	function calculate(rules, inputs, context) {
 		const ctx = {
 			proficient: (context && context.proficient) || new Set(),
 			defenses: (context && context.defenses) || new Set(),
-			weapon: (context && context.weapon) || null
+			weapon: (context && context.weapon) || null,
+			spellAbility: (context && typeof context.spellAbility === "string") ? context.spellAbility : ""
 		};
 		const values = Object.assign({}, inputs);
 		const sorted = rules

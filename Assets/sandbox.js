@@ -238,6 +238,474 @@ weaponChips.addEventListener("click", e => {
 	(next ? next.querySelector(".cs-chip-remove") : weaponButton).focus();
 });
 
+//SPELLS: the spells of the character and the spell slots.
+// The class, the subclass and the level select one row of the table Classes (spellcasting from PHP).
+// Limits: cantrips up to "cantrips". Method "known": spells up to "known", and all known spells are prepared.
+// Methods "prepared" and "spellbook": any number of spells, but not more prepared spells than spell.prepared_max (rules 730-732).
+// The spells stay in the browser for now; the save function stores them later.
+const spellAdd      = document.getElementById("spellAdd");
+const spellPicker   = document.getElementById("spellPicker");
+const spellSearch   = document.getElementById("spellSearch");
+const spellResults  = document.getElementById("spellResults");
+const spellList     = document.getElementById("spellList");
+const spellMessage  = document.getElementById("spellMessage");
+const spellSlotsBox = document.getElementById("spellSlots");
+let characterSpells = [];                   // [{ code, prepared }]
+const slotsUsed = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // used spell slots of the levels 1 to 9
+const spellDetails = new Map();             // code -> long texts in the current language
+const openSpells = new Set();               // codes of the spells with open details
+let spellState = { key: null, sc: null, max: 0 };
+
+function spellByCode(code) {
+	return spellCatalog.find(spell => spell.code === code) || null;
+}
+
+// The row of the table Classes for the selected class, subclass and level, or null (no spells)
+function currentSpellcasting() {
+	const classCode = document.getElementById("class_dropdown").value || "";
+	const subclassCode = document.getElementById("subclass_dropdown").value || "";
+	const level = Math.min(20, Math.max(1, numberOr("Level", DEFAULT_LEVEL)));
+	const rows = spellcasting[`${classCode}|${subclassCode}`] || spellcasting[`${classCode}|`];
+	return (rows && rows[level]) || null;
+}
+
+// The highest spell level with slots (0 = no slots)
+function maxSpellLevel(sc) {
+	if (!sc) return 0;
+	let max = 0;
+	sc.slots.forEach((n, i) => { if (n > 0) max = i + 1; });
+	return max;
+}
+
+function canCast(sc) {
+	return Boolean(sc) && (sc.cantrips > 0 || maxSpellLevel(sc) > 0);
+}
+
+// A spell is available if it is on the spell list of the class and the character has slots of its level (cantrips: known cantrips > 0)
+function spellAvailable(spell, sc) {
+	if (!sc || !spell.lists.includes(sc.list)) return false;
+	return spell.level === 0 ? sc.cantrips > 0 : spell.level <= maxSpellLevel(sc);
+}
+
+function spellCounts() {
+	const counts = { cantrips: 0, spells: 0, prepared: 0 };
+	for (const entry of characterSpells) {
+		const spell = spellByCode(entry.code);
+		if (!spell) continue;
+		if (spell.level === 0) counts.cantrips++;
+		else {
+			counts.spells++;
+			if (entry.prepared) counts.prepared++;
+		}
+	}
+	return counts;
+}
+
+// Why a spell cannot be added now (key from lang/*.php), or null
+function spellBlockReason(spell, sc) {
+	if (characterSpells.some(entry => entry.code === spell.code)) return "spells.added";
+	const counts = spellCounts();
+	if (spell.level === 0) return counts.cantrips >= sc.cantrips ? "spells.limit_cantrips" : null;
+	if (sc.method === "known" && counts.spells >= sc.known) return "spells.limit_known";
+	return null;
+}
+
+function spellLevelText(level) {
+	return level === 0 ? tr("spells.cantrip") : tr("spells.level_n").replace("{n}", level);
+}
+
+function spellComponentsText(spell) {
+	return [["v", spell.v], ["s", spell.s], ["m", spell.m]].filter(([, on]) => on).map(([c]) => tr("spells.comp_" + c)).join(", ") || "–";
+}
+
+function setSpellMessage(key, n) {
+	if (key) {
+		spellMessage.textContent = tr(key).replace("{n}", n);
+	} else {
+		spellMessage.textContent = "";
+	}
+}
+
+// Spell slots: one box for each level with slots. "Used" is 0 to the total.
+function renderSpellSlots(sc) {
+	const boxes = [];
+	(sc ? sc.slots : []).forEach((total, i) => {
+		slotsUsed[i] = Math.min(slotsUsed[i], total);
+		if (total <= 0) return;
+		const box = document.createElement("div");
+		box.className = "cs-spell-slot";
+		const title = document.createElement("span");
+		title.className = "cs-spell-slot-title";
+		title.textContent = tr("spells.slot_level").replace("{n}", i + 1);
+		const totalText = document.createElement("span");
+		totalText.className = "cs-spell-slot-total";
+		totalText.textContent = `${tr("spells.slot_total")}: ${total}`;
+		const label = document.createElement("label");
+		label.className = "cs-spell-slot-used";
+		const labelText = document.createElement("span");
+		labelText.textContent = tr("spells.slot_used");
+		const input = document.createElement("input");
+		input.type = "number";
+		input.min = "0";
+		input.max = String(total);
+		input.inputMode = "numeric";
+		input.value = String(slotsUsed[i]);
+		input.dataset.slot = String(i);
+		input.setAttribute("aria-label", tr("spells.slot_used_of").replace("{n}", i + 1));
+		label.append(labelText, input);
+		box.append(title, totalText, label);
+		boxes.push(box);
+	});
+	spellSlotsBox.replaceChildren(...boxes);
+	spellSlotsBox.hidden = boxes.length === 0;
+}
+
+spellSlotsBox.addEventListener("input", function (event) {
+	const input = event.target.closest("input[data-slot]");
+	if (!input) return;
+	const i = Number(input.dataset.slot);
+	const total = Number(input.max);
+	const value = parseInt(input.value, 10);
+	if (Number.isNaN(value)) return; // empty while typing; "change" writes the stored value again
+	slotsUsed[i] = Math.min(total, Math.max(0, value));
+	if (String(slotsUsed[i]) !== input.value) input.value = String(slotsUsed[i]);
+});
+spellSlotsBox.addEventListener("change", function (event) {
+	const input = event.target.closest("input[data-slot]");
+	if (input) input.value = String(slotsUsed[Number(input.dataset.slot)]);
+});
+
+function spellDetailsBody(spell) {
+	const body = document.createElement("div");
+	body.className = "cs-spell-details";
+	body.id = "spell_details_" + spell.code;
+	const details = spellDetails.get(spell.code);
+	if (!details) {
+		body.textContent = tr("spells.loading");
+		return body;
+	}
+	const facts = [[tr("spells.school"), spellSchools[spell.school] || spell.school]];
+	if (details.material) facts.push([tr("spells.material"), details.material]);
+	const dl = document.createElement("dl");
+	for (const [term, text] of facts) {
+		const dt = document.createElement("dt");
+		dt.textContent = term;
+		const dd = document.createElement("dd");
+		dd.textContent = text;
+		dl.append(dt, dd);
+	}
+	const description = document.createElement("p");
+	description.className = "cs-spell-description";
+	description.textContent = details.description;
+	body.append(dl, description);
+	if (details.higher_levels) {
+		const higher = document.createElement("p");
+		higher.className = "cs-spell-description";
+		const strong = document.createElement("strong");
+		strong.textContent = tr("spells.higher_levels") + ". ";
+		higher.append(strong, details.higher_levels);
+		body.append(higher);
+	}
+	return body;
+}
+
+function loadSpellDetails(code) {
+	if (spellDetails.has(code)) return;
+	fetch(`/ajax/sandbox_endpoint.php?action=getSpell&code=${encodeURIComponent(code)}`)
+		.then(r => r.json())
+		.then(details => {
+			if (details.error) {
+				console.error("Error:", details.error);
+				return;
+			}
+			spellDetails.set(code, details);
+			const row = spellList.querySelector(`[data-code="${CSS.escape(code)}"]`);
+			const spell = spellByCode(code);
+			if (row && spell && openSpells.has(code)) row.querySelector(".cs-spell-details").replaceWith(spellDetailsBody(spell));
+		})
+		.catch(err => console.error("Error:", err));
+}
+
+function spellRow(entry, spell, sc) {
+	const row = document.createElement("li");
+	row.className = "cs-spell-row" + (entry.prepared && spell.level > 0 ? " is-prepared" : "");
+	row.dataset.code = spell.code;
+	const available = spellAvailable(spell, sc);
+	if (!available) row.classList.add("is-unavailable");
+
+	// Prepared: cantrips need no preparation; known spells are always prepared
+	const prep = document.createElement("span");
+	prep.className = "cs-spell-prep";
+	if (spell.level > 0) {
+		const box = document.createElement("input");
+		box.type = "checkbox";
+		box.dataset.action = "prepare";
+		if (!sc || sc.method === "known") {
+			box.checked = true;
+			box.disabled = true;
+			box.setAttribute("aria-label", tr("spells.always").replace("{name}", spell.name));
+		} else {
+			box.checked = entry.prepared;
+			box.setAttribute("aria-label", tr("spells.prepare_of").replace("{name}", spell.name));
+		}
+		prep.append(box);
+	} else {
+		prep.textContent = "–";
+	}
+
+	const name = document.createElement("span");
+	name.className = "cs-spell-name";
+	const open = openSpells.has(spell.code);
+	const toggle = document.createElement("button");
+	toggle.type = "button";
+	toggle.className = "cs-spell-toggle";
+	toggle.dataset.action = "details";
+	toggle.setAttribute("aria-expanded", open ? "true" : "false");
+	toggle.setAttribute("aria-controls", "spell_details_" + spell.code);
+	toggle.setAttribute("aria-label", tr("spells.details_of").replace("{name}", spell.name));
+	toggle.textContent = (open ? "▾ " : "▸ ") + spell.name;
+	name.append(toggle);
+	const marks = [];
+	if (spell.ritual) marks.push(tr("spells.ritual"));
+	if (spell.concentration) marks.push(tr("spells.concentration"));
+	for (const text of marks) {
+		const mark = document.createElement("span");
+		mark.className = "cs-inventory-tag";
+		mark.textContent = text;
+		name.append(mark);
+	}
+	if (!available) {
+		const note = document.createElement("span");
+		note.className = "cs-spell-note";
+		note.textContent = tr("spells.unavailable");
+		name.append(note);
+	}
+
+	row.append(prep, name);
+	const cells = [
+		["level", spellLevelText(spell.level), tr("spells.col_level")],
+		["time", spell.casting_time || "–", tr("spells.col_casting_time")],
+		["range", spell.range || "–", tr("spells.col_range")],
+		["comp", spellComponentsText(spell), tr("spells.col_components")],
+		["duration", spell.duration || "–", tr("spells.col_duration")]
+	];
+	for (const [kind, text, label] of cells) {
+		const cell = document.createElement("span");
+		cell.className = "cs-spell-" + kind;
+		cell.dataset.label = label; // label above the value on phones
+		cell.textContent = text;
+		row.append(cell);
+	}
+	const remove = document.createElement("button");
+	remove.type = "button";
+	remove.className = "cs-chip-remove";
+	remove.dataset.action = "remove";
+	remove.textContent = "×";
+	remove.setAttribute("aria-label", tr("remove_entry").replace("{name}", spell.name));
+	row.append(remove);
+
+	const details = spellDetailsBody(spell);
+	details.hidden = !open;
+	row.append(details);
+	return row;
+}
+
+function renderSpellRows() {
+	const sc = spellState.sc;
+	const rows = [];
+	for (const entry of characterSpells) {
+		const spell = spellByCode(entry.code);
+		if (spell) rows.push(spellRow(entry, spell, sc));
+	}
+	spellList.replaceChildren(...rows);
+	document.getElementById("spellsEmpty").hidden = rows.length > 0 || !canCast(sc);
+	document.querySelector(".cs-spell-cols").hidden = rows.length === 0;
+	updateSpellCounters();
+}
+
+// Numbers in the head of the card, and the prepared boxes: a box cannot be ticked at the maximum
+function updateSpellCounters() {
+	const sc = spellState.sc;
+	const counts = spellCounts();
+	const set = (id, count, limit) => {
+		const out = document.getElementById(id);
+		out.textContent = `${count} / ${limit}`;
+		out.classList.toggle("is-over", count > limit);
+	};
+	if (sc) {
+		set("spellCantripCount", counts.cantrips, sc.cantrips);
+		set("spellKnownCount", counts.spells, sc.known);
+		set("spellPreparedCount", counts.prepared, spellState.max);
+	}
+	const full = counts.prepared >= spellState.max;
+	spellList.querySelectorAll("input[data-action='prepare']").forEach(box => {
+		if (!sc || sc.method === "known") return;
+		box.disabled = !box.checked && full;
+	});
+}
+
+// Everything that depends on the class, the subclass and the level
+function renderSpellCard() {
+	const sc = spellState.sc;
+	const casting = canCast(sc);
+	document.getElementById("spellsNoCasting").hidden = casting;
+	document.getElementById("spellStats").hidden = !casting;
+	spellAdd.hidden = !casting;
+	if (!casting) setSpellPicker(false);
+	if (sc) {
+		document.getElementById("spellAbility").textContent = tr("ability." + sc.ability, sc.ability);
+		document.getElementById("spellCantripStat").hidden = sc.cantrips === 0;
+		document.getElementById("spellKnownStat").hidden = sc.method !== "known";
+		document.getElementById("spellPreparedStat").hidden = sc.method === "known";
+	}
+	renderSpellSlots(casting ? sc : null);
+	renderSpellRows();
+	if (!spellPicker.hidden) renderSpellResults();
+}
+
+// Called by recalc() with the values of the engine
+function updateSpells(sc, values) {
+	spellState.sc = sc;
+	spellState.max = sc && sc.method !== "known" ? Math.max(0, values["spell.prepared_max"] || 0) : 0;
+	const key = JSON.stringify(sc);
+	if (key !== spellState.key) {
+		spellState.key = key;
+		renderSpellCard();
+	} else {
+		updateSpellCounters();
+	}
+}
+
+// Search box: the available spells of the class whose name contains the text, by level
+function renderSpellResults() {
+	const sc = spellState.sc;
+	const query = spellSearch.value.trim().toLocaleLowerCase();
+	const found = spellCatalog.filter(spell => spellAvailable(spell, sc) && spell.name.toLocaleLowerCase().includes(query));
+	spellResults.replaceChildren(...found.map(spell => {
+		const li = document.createElement("li");
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "cs-inventory-result";
+		button.dataset.code = spell.code;
+		const reason = spellBlockReason(spell, sc);
+		button.disabled = reason !== null;
+		const name = document.createElement("strong");
+		name.textContent = spell.name;
+		const info = document.createElement("span");
+		info.textContent = [spellLevelText(spell.level), spellSchools[spell.school] || spell.school, reason ? tr(reason) : ""]
+			.filter(text => text !== "").join(" · ");
+		button.append(name, info);
+		li.append(button);
+		return li;
+	}));
+	if (found.length === 0) {
+		const li = document.createElement("li");
+		li.className = "cs-chips-empty";
+		li.textContent = tr("spells.no_match");
+		spellResults.append(li);
+	}
+}
+
+function setSpellPicker(open) {
+	spellPicker.hidden = !open;
+	spellAdd.setAttribute("aria-expanded", open ? "true" : "false");
+	if (open) {
+		spellSearch.value = "";
+		renderSpellResults();
+		spellSearch.focus();
+	}
+}
+
+spellAdd.addEventListener("click", () => setSpellPicker(spellPicker.hidden));
+spellSearch.addEventListener("input", renderSpellResults);
+spellResults.addEventListener("click", function (event) {
+	const button = event.target.closest(".cs-inventory-result");
+	if (!button || button.disabled) return;
+	const spell = spellByCode(button.dataset.code);
+	if (!spell || spellBlockReason(spell, spellState.sc) !== null) return;
+	characterSpells.push({ code: spell.code, prepared: false });
+	characterSpells.sort((a, b) => {
+		const x = spellByCode(a.code), y = spellByCode(b.code);
+		return (x.level - y.level) || x.name.localeCompare(y.name, document.documentElement.lang, { sensitivity: "base" });
+	});
+	setSpellMessage(null);
+	renderSpellRows();
+	renderSpellResults(); // the limits can change
+	spellSearch.focus();
+});
+spellPicker.addEventListener("keydown", function (event) {
+	if (event.key === "Escape") {
+		setSpellPicker(false);
+		spellAdd.focus();
+	}
+});
+document.addEventListener("pointerdown", function (event) {
+	if (!spellPicker.hidden && !spellPicker.contains(event.target) && !spellAdd.contains(event.target)) {
+		setSpellPicker(false);
+	}
+});
+
+spellList.addEventListener("click", function (event) {
+	const button = event.target.closest("button[data-action]");
+	if (!button) return;
+	const row = button.closest(".cs-spell-row");
+	const code = row.dataset.code;
+	if (button.dataset.action === "remove") {
+		const index = characterSpells.findIndex(entry => entry.code === code);
+		characterSpells.splice(index, 1);
+		openSpells.delete(code);
+		setSpellMessage(null);
+		renderSpellRows();
+		if (!spellPicker.hidden) renderSpellResults();
+		const next = spellList.querySelectorAll(".cs-chip-remove")[Math.min(index, characterSpells.length - 1)];
+		(next || spellAdd).focus();
+	} else if (button.dataset.action === "details") {
+		const open = !openSpells.has(code);
+		if (open) openSpells.add(code); else openSpells.delete(code);
+		const spell = spellByCode(code);
+		button.setAttribute("aria-expanded", open ? "true" : "false");
+		button.textContent = (open ? "▾ " : "▸ ") + spell.name;
+		row.querySelector(".cs-spell-details").hidden = !open;
+		if (open) loadSpellDetails(code);
+	}
+});
+
+spellList.addEventListener("change", function (event) {
+	const box = event.target.closest("input[data-action='prepare']");
+	if (!box) return;
+	const entry = characterSpells.find(e => e.code === box.closest(".cs-spell-row").dataset.code);
+	if (!entry) return;
+	if (box.checked && spellCounts().prepared >= spellState.max) {
+		box.checked = false; // the rules do not allow more prepared spells
+		setSpellMessage("spells.limit_prepared", spellState.max);
+		return;
+	}
+	entry.prepared = box.checked;
+	box.closest(".cs-spell-row").classList.toggle("is-prepared", box.checked);
+	setSpellMessage(null);
+	updateSpellCounters();
+});
+
+// After a change of the language: all spells and the open details in the new language
+function refreshSpells() {
+	fetch("/ajax/sandbox_endpoint.php?action=getSpells")
+		.then(r => r.json())
+		.then(data => {
+			if (!data || !Array.isArray(data.spells)) {
+				console.error("Error:", data && data.error);
+				return;
+			}
+			spellCatalog = data.spells;
+			spellSchools = data.schools || {};
+			setSpellMessage(null);
+			spellDetails.clear();
+			spellState.key = null; // draw the card again
+			recalc();
+			openSpells.forEach(loadSpellDetails);
+		})
+		.catch(err => console.error("Error:", err));
+}
+
 // --- Calculation (engine: Assets/calc_engine.js, rules: calcRules from CharacterSandbox.php) ---
 function numberOr(id, fallback) {
 	const v = parseInt(document.getElementById(id).value, 10);
@@ -279,8 +747,12 @@ function recalc() {
 			: `condition:${chip.dataset.condition}`);
 	});
 
+	// Spells: the row of the class (table Classes) gives the spell ability and the level part of the prepared spells
+	const sc = currentSpellcasting();
+	inputs["spell.prepared_base"] = sc ? sc.prepared_base : 0;
+
 	const rules = calcRules.concat(inventoryRules());
-	const values = CalcEngine.calculate(rules, inputs, { proficient, defenses });
+	const values = CalcEngine.calculate(rules, inputs, { proficient, defenses, spellAbility: sc ? sc.ability : "" });
 	document.querySelectorAll("[data-calc]").forEach(el => {
 		const value = values[el.dataset.calc];
 		const text = value === undefined ? "–" : (el.dataset.calcFormat === "plain" ? String(value) : signed(value));
@@ -288,6 +760,7 @@ function recalc() {
 		else el.textContent = text;
 	});
 	renderWeapons(rules, inputs, proficient, defenses);
+	updateSpells(sc, values);
 }
 
 // Calculate again on each change: ability scores, level, proficiency boxes (input/change) and defense chips (list changes)
@@ -295,6 +768,7 @@ document.addEventListener("input", recalc);
 document.addEventListener("change", recalc);
 new MutationObserver(recalc).observe(defenseChips, { childList: true });
 new MutationObserver(recalc).observe(weaponChips, { childList: true }); // weapon proficiency changes the attack rolls
+new MutationObserver(recalc).observe(document.getElementById("subclass_dropdown"), { childList: true }); // the subclass can change the spells
 recalc();
 
 document.getElementById("Level").addEventListener("change", function () {
@@ -991,6 +1465,7 @@ document.getElementById("Level").addEventListener("change", function () {
 		renderInventory();
 		recalc();
 		refreshContentNames();
+		refreshSpells();
 	};
 
 	// Give the entries of a list new names ({value: name}) and sort them; the empty entry stays first.

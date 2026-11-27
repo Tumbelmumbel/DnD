@@ -236,6 +236,7 @@ jobs:
         Abilities Backgrounds calculation_templates Classes Conditions Damagetypes Damage_influence
         Game_component_library Game_component_library_translation items items_translation
         item_rarities item_tags Lookup_translation Skills Species tags schema_migrations
+        spell_schools spells spells_translation spell_classes
     steps:
       - name: Check out code
         uses: actions/checkout@v5

@@ -83,6 +83,23 @@ switch ($action) {
         echo json_encode(['lookup' => lookup_names($pdo), 'talents' => (object)$talents, 'items' => (object)item_names($pdo)]);
         break;
 
+    case 'getSpells':
+
+        // All spells in the current language, without the long texts (after a change of the language)
+        echo json_encode(['spells' => spell_list($pdo), 'schools' => (object)(lookup_names($pdo)['spell_school'] ?? [])]);
+        break;
+
+    case 'getSpell':
+
+        // The long texts of one spell (description, material, at higher levels), by its code
+        $code = $_GET['code'] ?? '';
+        if (!is_string($code) || !preg_match('/^[a-z0-9_]{1,60}$/D', $code)) {
+            echo json_encode(['error' => 'Missing or invalid code parameter']);
+            break;
+        }
+        echo json_encode(spell_details($pdo, $code) ?? ['error' => 'Spell not found']);
+        break;
+
     default:
         echo json_encode(['error' => 'Unknown action']);
 }
