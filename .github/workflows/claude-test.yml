@@ -1,0 +1,180 @@
+# Claude Test Agent on GitHub.
+#
+# Start: a comment on a pull request that begins with "/test-agent".
+# Only comments from the owner's account start it (the repository is public).
+#
+# The Test Agent writes browser tests from the REQUIREMENT, not from the code:
+# - It reads only the PR section "Requirement and behavior", CLAUDE.md,
+#   database_description.md, the folder tests/ and the running page.
+# - It never sees the code diff. The code runs in /tmp/app for the PHP server only.
+#   Its working folder contains only tests/, CLAUDE.md and database_description.md.
+# - It writes only in tests/browser/. The workflow commits only tests/browser/.
+# - Each run is a new session on a new machine. It has no memory of earlier runs.
+#
+# After the commit, the workflow starts the workflow "Tests" again for the new commit.
+#
+# Authentication: Claude subscription token (secret CLAUDE_CODE_OAUTH_TOKEN).
+
+name: Claude test agent
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  test-agent:
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/test-agent') &&
+      github.event.comment.author_association == 'OWNER'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    concurrency:
+      group: test-agent-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: dnd_test
+          MYSQL_USER: dnd_test
+          MYSQL_PASSWORD: dnd_test_password
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot_password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      PR: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ github.token }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_NAME: dnd_test
+      DB_USER: dnd_test
+      DB_PASS: dnd_test_password
+      TEST_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - name: Find the branch of the pull request
+        id: pr
+        run: |
+          state=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .state)
+          head_repo=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.repo.full_name)
+          [ "$state" = "open" ] || { echo "The pull request is not open."; exit 1; }
+          [ "$head_repo" = "$GITHUB_REPOSITORY" ] || { echo "Pull requests from forks are not supported."; exit 1; }
+          echo "ref=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.ref)" >> "$GITHUB_OUTPUT"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/${{ github.event.comment.id }}/reactions" -f content=eyes > /dev/null
+
+      - name: Check out the branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.pr.outputs.ref }}
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql
+          tools: none
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Start the application in /tmp/app (test database, PHP server)
+        run: |
+          cp -a . /tmp/app
+          rm -rf /tmp/app/.git
+          cd /tmp/app
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot_password -e "SET GLOBAL sql_mode = ''"
+          mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < tests/baseline/baseline.sql
+          printf 'APP_ENV=test\nBASE_URL=%s\nDB_HOST=%s\nDB_NAME=%s\nDB_USER=%s\nDB_PASS=%s\n' "$TEST_BASE_URL" "$DB_HOST" "$DB_NAME" "$DB_USER" "$DB_PASS" > .env
+          php migrate.php
+          php -S 127.0.0.1:8000 -t /tmp/app > /tmp/php-server.log 2>&1 &
+          sleep 1
+          curl -sf -o /dev/null "$TEST_BASE_URL/login.php"
+
+      - name: Install Playwright
+        run: |
+          pip install playwright pytest
+          python -m playwright install --with-deps chromium
+
+      - name: Give the agent only the requirement and the test files
+        run: |
+          # The requirement: the PR section "Requirement and behavior" (up to the next "## " heading)
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .body \
+            | awk '/^## Requirement and behavior/{on=1; print; next} on && /^## /{exit} on{print}' > /tmp/requirement.md
+          [ -s /tmp/requirement.md ] || { echo "The PR has no section 'Requirement and behavior'."; exit 1; }
+          # The working folder keeps only tests/, CLAUDE.md and database_description.md
+          git sparse-checkout set --no-cone '/tests/' '/CLAUDE.md' '/database_description.md'
+          ls -a
+
+      - name: Run the Test Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          settings: |
+            {"permissions": {"deny": ["Read(//tmp/app/**)", "Read(/tmp/app/**)", "Read(.git/**)", "Read(//tmp/php-server.log)"]}}
+          claude_args: |
+            --max-turns 60
+            --allowedTools "Read,Glob,Grep,Write(tests/browser/**),Edit(tests/browser/**),Bash(python -m pytest:*),Bash(pytest:*)"
+            --disallowedTools "WebFetch,WebSearch,NotebookEdit,Bash(git:*),Bash(gh:*),Bash(curl:*),Bash(cat:*)"
+          prompt: |
+            You are the TEST AGENT of this repository. Write in English ASD-STE100.
+
+            Your task: write browser tests (Python, Playwright, pytest) for the requirement in /tmp/requirement.md.
+            Read: /tmp/requirement.md, CLAUDE.md, database_description.md and the files in tests/.
+            The application runs at http://127.0.0.1:8000 with a test database. Look at the pages only with tests.
+            Use the fixtures in tests/browser/conftest.py (page, browser, base_url, test_user, sign_in, set_language).
+
+            Rules:
+            1. Test what the requirement says, including its edge cases. Do not test what the code happens to do.
+            2. Also check, where the requirement touches a page: the second language (German),
+               the phone width (390 px, no sideways scrolling) and no JavaScript errors.
+            3. Write files only in tests/browser/. Name new files test_<topic>.py.
+            4. Never weaken, skip or delete an existing test to make it pass.
+               You may change a test only if you misread the requirement. Then write the reason in your report.
+            5. You do not have the code of the application. Do not try to read it.
+            6. Run your tests with: python -m pytest tests/browser -v
+               A failed test can be a real error in the application. Keep the test and report the failure.
+               Only correct a test if the test itself is wrong (for example a wrong selector).
+
+            At the end, write your report to tests/browser/.agent_report.md (it is not committed):
+            - for each test: the requirement it checks,
+            - the result of the last pytest run (passed / failed, with the reason),
+            - the parts of the requirement that you could not test, and why.
+
+      - name: Commit the new tests (only tests/browser/)
+        id: commit
+        run: |
+          report=tests/browser/.agent_report.md
+          [ -f "$report" ] && cp "$report" /tmp/agent_report.md || echo "The Test Agent wrote no report." > /tmp/agent_report.md
+          rm -f "$report"
+          git add -A tests/browser
+          other=$(git status --porcelain | grep -v ' tests/browser/' || true)
+          if [ -n "$other" ]; then echo "Changes outside tests/browser/ are not committed:"; echo "$other"; fi
+          if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Test Agent: add browser tests for the requirement" -m "Written by the Claude Test Agent (workflow claude-test.yml)."
+          git push origin "HEAD:${{ steps.pr.outputs.ref }}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Start the workflow "Tests" for the new commit
+        if: steps.commit.outputs.changed == 'true'
+        run: gh workflow run tests.yml --ref "${{ steps.pr.outputs.ref }}" -f pr="$PR"
+
+      - name: Write the report on the pull request
+        if: always()
+        run: |
+          {
+            echo "### Test Agent report"
+            echo
+            if [ "${{ steps.commit.outputs.changed }}" = "true" ]; then echo "New tests are committed. The workflow \"Tests\" runs again."; else echo "No new test files."; fi
+            echo
+            cat /tmp/agent_report.md 2>/dev/null || echo "The run stopped before the report. See the log of the workflow run."
+          } > /tmp/comment.md
+          gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body-file /tmp/comment.md
