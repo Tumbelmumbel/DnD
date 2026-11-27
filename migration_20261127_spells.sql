@@ -1,6 +1,7 @@
 -- migration_20261127_spells.sql
--- Spells: tables for the spells, the spell data of the classes, the base rules and the test spells.
+-- Spells: tables for the spells, the spell data of the classes and the base rules.
 -- The deploy runs this file with migrate.php after a backup.
+-- The spell rows (SRD 5.1) come in a later migration.
 --
 -- Spell texts: System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC,
 -- https://dnd.wizards.com/resources/systems-reference-document (English and German version).
@@ -115,5 +116,3 @@ INSERT INTO calculation_templates (source_type, sort_order, target, operator, va
   ('base', 730, 'spell.prepared_max', 'set', NULL, 'spell.prepared_base', NULL),
   ('base', 731, 'spell.prepared_max', 'add', NULL, 'spell.mod',        '{"COMPARE": ["spell.prepared_base", ">", 0]}'),
   ('base', 732, 'spell.prepared_max', 'min', 1,    NULL,               '{"COMPARE": ["spell.prepared_base", ">", 0]}');
-
--- 5) Test spells (SRD 5.1)
