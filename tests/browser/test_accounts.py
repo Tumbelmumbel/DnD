@@ -4,12 +4,15 @@ import secrets
 import pytest
 from conftest import set_language, sign_in
 
-NO_VALIDATE = "document.querySelector('form').noValidate = true"
+NO_VALIDATE = (
+    "document.querySelector('form').noValidate = true;"
+    "document.querySelectorAll('input[maxlength]').forEach(i => i.removeAttribute('maxlength'))"
+)
 USERNAME_ERROR = "Username must be 3 to 40 characters"
 
 
 def submit(page, url, fields):
-    """Fill the form and send it. The browser checks are off, so that the server rules are tested."""
+    """Fill the form and send it. The browser checks and the maxlength attribute are off, so that the server rules are tested."""
     page.goto(url)
     page.evaluate(NO_VALIDATE)
     for field, value in fields.items():
