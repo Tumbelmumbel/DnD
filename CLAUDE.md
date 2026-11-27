@@ -52,7 +52,9 @@ PHPMailer) only after the owner agrees.
 | `.github/workflows/tests.yml` | Automatic tests of each pull request, category, `test-scope` and the required check `gate` |
 | `.github/workflows/claude.yml` | Review Agent: answers `@claude` comments of the owner's account (review only) |
 | `.github/workflows/claude-test.yml` | Test Agent: starts with the PR comment `/test-agent` (owner only) |
-| `.github/workflows/deploy.yml` | Deploy of `main`: host key check, backup, migrations, upload |
+| `.github/workflows/deploy.yml` | Deploy of `main`: host key check, backup, migrations, upload; then the jobs `online-test` and `baseline-refresh` |
+| `.github/online-test/test_online.py` | Online test of the live website with the test account (secrets `TEST_USER`, `TEST_PASSWORD`) |
+| `.github/scripts/baseline_pr.py` | Baseline refresh: signed commit on the branch `baseline-refresh`, pull request, start of "Tests" |
 | `.github/workflows/server-check.yml` | Read-only check of the SSH access. The result is encrypted. |
 | `.github/pull_request_template.md` | Sections of each pull request |
 
@@ -166,6 +168,14 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 - Order: (1) check the SSH host key against `SSH_HOST_FINGERPRINT`, (2) backup of the database on the server,
   (3) upload `migrate.php` and the migration files, (4) `php8.4-cli migrate.php --init` and `migrate.php`,
   (5) upload the other files. Each error stops the deploy.
+- After the deploy: (6) job `online-test`: sign-in with the test account, overview, character sheet, phone width,
+  no JavaScript errors. If it fails, it opens an issue with a link only. (7) job `baseline-refresh`: builds
+  `tests/baseline/baseline.sql` from the live database (structure of all tables, data only of the tables in
+  `GAME_TABLES`, no `AUTO_INCREMENT` counters, checks for user data). If it changed, it updates the branch
+  `baseline-refresh` (signed commit of `github-actions[bot]`).
+  - The workflow cannot open the pull request itself (setting "Allow GitHub Actions to create and approve
+    pull requests" is off). Claude opens it by hand, with the title "Baseline refresh from the live database".
+  - **Never add a table with user data to `GAME_TABLES`.** A new game table needs a pull request that adds it there.
 - The upload never deletes files on the server.
 - Not uploaded: `.git/`, `.github/`, `tests/`, `.env*`, `*.log`, `*.sql` (except the migration files), `*.md`.
 - Never use `php` on the server: it is PHP 4. Use `php8.4-cli` (the website uses PHP 8.4).
@@ -292,8 +302,9 @@ A pull request that changes only documentation (for example `*.md`) has the text
 
 **After each merge, Claude does the test steps of the pull request.** Claude does not wait for a request from the owner.
 
-1. Claude waits until the deploy is finished (about 2 minutes after the merge) and checks its log
-   (backup OK, migrations, upload).
+1. Claude waits until the deploy is finished (about 2 to 4 minutes after the merge) and checks its log
+   (backup OK, migrations, upload) and the jobs `online-test` and `baseline-refresh`.
+   If `baseline-refresh` prepared the branch `baseline-refresh`, Claude opens its pull request.
 2. Claude opens https://rudolph.cologne in the **browser of the Claude desktop app** and does the test steps.
    For a step with **(owner)**, Claude asks the owner and waits.
 3. Claude reports the result of each step in the chat ("passed" or "failed").
