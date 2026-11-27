@@ -1,7 +1,11 @@
 # Server check: a READ-ONLY check of the SSH access to the IONOS webspace.
 #
 # Start by hand: Actions -> "Server check" -> "Run workflow" (branch main).
+# Input "public_key": a public RSA key (PEM, in base64 on one line). The Dev Agent gives it.
 # It uses the secrets of the environment "production" (only branch main).
+#
+# The repository is public, so its logs are public too. The workflow therefore writes
+# the result ONLY ENCRYPTED into the log. Only the holder of the private key can read it.
 #
 # It finds the facts for the deploy with backup and migration:
 #   1. SSH host key of the server (fingerprint)
@@ -19,6 +23,10 @@ name: Server check
 
 on:
   workflow_dispatch:
+    inputs:
+      public_key:
+        description: Public RSA key (PEM in base64, one line) for the encrypted result
+        required: true
 
 permissions:
   contents: read
@@ -40,7 +48,13 @@ jobs:
           SFTP_USER: ${{ secrets.SFTP_USER }}
           SSHPASS: ${{ secrets.SFTP_PASSWORD }}
           SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+          PUBLIC_KEY_B64: ${{ inputs.public_key }}
         run: |
+          # The result is never written in clear text to the log
+          umask 077
+          echo "$PUBLIC_KEY_B64" | base64 -d > /tmp/pub.pem 2>/dev/null \
+            && openssl pkey -pubin -in /tmp/pub.pem -noout 2>/dev/null \
+            || { echo "::error::The input public_key is not a valid public key"; exit 1; }
           for v in SFTP_HOST SFTP_USER SSHPASS SFTP_REMOTE_DIR; do
             if [ -z "${!v}" ]; then echo "::error::Secret for $v is missing"; exit 1; fi
           done
@@ -50,12 +64,12 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "$port" "$SFTP_HOST" 2>/dev/null > ~/.ssh/known_hosts
           [ -s ~/.ssh/known_hosts ] || { echo "::error::No host key from the server"; exit 1; }
-          fingerprints=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $1, $2, $4}')
+          { echo "### SSH host key fingerprints"; ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $1, $2, $4}'; echo; } > /tmp/result.txt
 
           # 2)-6) Read-only commands on the server. The remote folder is an argument, not part of the script.
           sshpass -e ssh -p "$port" -o StrictHostKeyChecking=yes -o BatchMode=no \
             -o PubkeyAuthentication=no -o ConnectTimeout=20 \
-            "$SFTP_USER@$SFTP_HOST" "sh -s -- $(printf '%q' "$SFTP_REMOTE_DIR")" > /tmp/result.txt 2>&1 <<'REMOTE' || true
+            "$SFTP_USER@$SFTP_HOST" "sh -s -- $(printf '%q' "$SFTP_REMOTE_DIR")" >> /tmp/result.txt 2>&1 <<'REMOTE' || true
           remote_dir="$1"
           echo "### PHP command line"
           echo "php in PATH: $(command -v php || echo none)"
@@ -108,16 +122,19 @@ jobs:
           fi
           REMOTE
 
-          # Result into the summary. Replace the values of the secrets, to be safe.
+          # Encrypt the result: a random AES key for the data, the AES key with RSA-OAEP
+          ok=yes; grep -q "### PHP command line" /tmp/result.txt || ok=no
+          openssl rand -out /tmp/aes.key 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -pass file:/tmp/aes.key -in /tmp/result.txt -out /tmp/result.enc
+          openssl pkeyutl -encrypt -pubin -inkey /tmp/pub.pem -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
+            -in /tmp/aes.key -out /tmp/aes.key.enc
+          shred -u /tmp/result.txt /tmp/aes.key
+          echo "ENCRYPTED_KEY: $(base64 -w0 /tmp/aes.key.enc)"
+          echo "ENCRYPTED_RESULT: $(base64 -w0 /tmp/result.enc)"
           {
             echo "## Server check (read-only)"
             echo
-            echo "### SSH host key fingerprints"
-            echo '```'
-            echo "$fingerprints"
-            echo '```'
-            echo '```'
-            sed -e "s#$SFTP_REMOTE_DIR#<SFTP_REMOTE_DIR>#g" -e "s#$SFTP_USER#<SFTP_USER>#g" -e "s#$SFTP_HOST#<SFTP_HOST>#g" /tmp/result.txt
-            echo '```'
+            echo "The result is encrypted in the log of this step (lines ENCRYPTED_KEY and ENCRYPTED_RESULT)."
+            echo "The repository is public, so the result is not shown here in clear text."
           } >> "$GITHUB_STEP_SUMMARY"
-          grep -q "### PHP command line" /tmp/result.txt || { echo "::error::The SSH command did not run. See the summary."; exit 1; }
+          [ "$ok" = "yes" ] || { echo "::error::The SSH command did not run completely. The encrypted result has the details."; exit 1; }
