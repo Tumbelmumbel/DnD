@@ -19,6 +19,9 @@
 #      (.env, libs/PHPMailer, php-errors.log, ...) are never deleted.
 #   6. Job "online-test": checks the live website with the test account of the owner
 #      (.github/online-test/). If it fails, it opens an issue (only a link to the run).
+#   7. Job "baseline-refresh": builds tests/baseline/baseline.sql from the live database
+#      (structure of all tables, data ONLY of the game tables in GAME_TABLES, no user data).
+#      If it is different, it updates the branch "baseline-refresh" and opens a pull request.
 #
 # Required secrets of the environment "production":
 #   SFTP_HOST             e.g. access-5012345678.webspace-host.com
@@ -210,3 +213,112 @@ jobs:
           gh issue create -R "$GITHUB_REPOSITORY" \
             --title "Online test failed after the deploy of ${GITHUB_SHA:0:7}" \
             --body "The online test after the deploy failed. Run: $RUN_URL. The Dev Agent checks the cause and informs the owner."
+
+  baseline-refresh:
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      SFTP_HOST: ${{ secrets.SFTP_HOST }}
+      SFTP_PORT: ${{ secrets.SFTP_PORT }}
+      SFTP_USER: ${{ secrets.SFTP_USER }}
+      SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+      SSH_HOST_FINGERPRINT: ${{ secrets.SSH_HOST_FINGERPRINT }}
+      # Allowlist: ONLY these tables go with their data into the public baseline.
+      # Every other table gets its structure only. Never add a table with user data.
+      GAME_TABLES: >-
+        Abilities Backgrounds calculation_templates Classes Conditions Damagetypes Damage_influence
+        Game_component_library Game_component_library_translation items items_translation
+        item_rarities item_tags Lookup_translation Skills Species tags schema_migrations
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Check the SSH host key of the server
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -t ed25519 -p "${SFTP_PORT:-22}" "$SFTP_HOST" 2>/dev/null > /tmp/host_key
+          fp=$(ssh-keygen -lf /tmp/host_key -E sha256 2>/dev/null | awk '{print $2}')
+          [ -n "$fp" ] && [ "$fp" = "$SSH_HOST_FINGERPRINT" ] || { echo "::error::The host key does not match"; exit 1; }
+          mv /tmp/host_key ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+
+      - name: Dump structure and game data (on the server)
+        env:
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          # shellcheck disable=SC2086
+          sshpass -e ssh -p "${SFTP_PORT:-22}" -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
+            -o PubkeyAuthentication=no -o ConnectTimeout=20 "$SFTP_USER@$SFTP_HOST" \
+            "sh -s -- $(printf '%q' "$SFTP_REMOTE_DIR") $GAME_TABLES" > /tmp/dump.sql <<'REMOTE'
+          set -eu
+          umask 077
+          dir="$1"; shift
+          for t in "$@"; do case "$t" in ''|*[!A-Za-z0-9_]*) echo "ERROR: bad table name" >&2; exit 1 ;; esac; done
+          [ -f "$dir/config.php" ] || dir="$HOME/${dir#/}"
+          b="$HOME/db_backups"; mkdir -p "$b" && chmod 700 "$b"
+          cnf="$b/.client_$$.cnf"; s="$b/.struct_$$.sql"; d="$b/.data_$$.sql"
+          trap 'rm -f "$cnf" "$s" "$d"' EXIT
+          db=$(cd "$dir" && php8.4-cli -d display_errors=0 -r '
+            require "config.php";
+            $c = $APP_CONFIG["db"];
+            $q = fn($v) => "\"" . addcslashes((string)$v, "\\\"") . "\"";
+            file_put_contents($argv[1], "[client]\nhost=" . $q($c["host"]) . "\nuser=" . $q($c["user"]) . "\npassword=" . $q($c["pass"]) . "\n");
+            chmod($argv[1], 0600);
+            echo $c["name"];' "$cnf")
+          case "$db" in ''|*[!A-Za-z0-9_]*) echo "ERROR: no valid database name" >&2; exit 1 ;; esac
+          o="--defaults-extra-file=$cnf --single-transaction --no-tablespaces --skip-comments --skip-add-locks --skip-disable-keys"
+          mysqldump $o --no-data "$db" > "$s"
+          mysqldump $o --no-create-info --skip-extended-insert --complete-insert --order-by-primary "$db" "$@" > "$d"
+          cat "$s" "$d"
+          REMOTE
+
+      - name: Build the new baseline and check it
+        run: |
+          allowed=" $GAME_TABLES "
+          {
+            echo "-- Test baseline for the automatic tests (GitHub Actions)."
+            echo "-- Structure of all tables and the data of the game tables."
+            echo "-- It contains NO user data: only the tables in GAME_TABLES (deploy.yml) have data."
+            echo "-- Built automatically from the live database (job baseline-refresh)."
+            echo "-- Never use it on the live database."
+            echo
+            # No AUTO_INCREMENT counters (they show the number of rows, for example of users)
+            sed -E 's/ AUTO_INCREMENT=[0-9]+//' /tmp/dump.sql
+          } > /tmp/new_baseline.sql
+          # Check 1: data only from allowed tables
+          for t in $(grep -oE '^INSERT INTO `[A-Za-z0-9_]+`' /tmp/new_baseline.sql | sort -u | cut -d'`' -f2); do
+            case "$allowed" in *" $t "*) ;; *) echo "::error::Data of a table that is not allowed: $t"; exit 1 ;; esac
+          done
+          # Check 2: no email addresses
+          if grep -qE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' /tmp/new_baseline.sql; then
+            echo "::error::The new baseline contains an email address. No commit."; exit 1
+          fi
+          # Check 3: structure of the user tables is there, and the game data is there
+          for t in users rate_limit Characters schema_migrations calculation_templates; do
+            grep -q "CREATE TABLE \`$t\`" /tmp/new_baseline.sql || { echo "::error::Table $t is missing"; exit 1; }
+          done
+          grep -q '^INSERT INTO `calculation_templates`' /tmp/new_baseline.sql || { echo "::error::No game data"; exit 1; }
+          echo "Tables: $(grep -c '^CREATE TABLE' /tmp/new_baseline.sql), rows: $(grep -c '^INSERT INTO' /tmp/new_baseline.sql)"
+          if cmp -s /tmp/new_baseline.sql tests/baseline/baseline.sql; then
+            echo "The baseline is up to date."; echo "changed=false" >> "$GITHUB_ENV"
+          else
+            echo "The baseline is different."; echo "changed=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Update the branch baseline-refresh and open a pull request
+        if: env.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_BASELINE: /tmp/new_baseline.sql
+        run: python3 .github/scripts/baseline_pr.py
