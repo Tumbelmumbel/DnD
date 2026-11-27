@@ -13,3 +13,8 @@ DirectoryIndex index.php
 <FilesMatch "\.(log|ini|sql|md|example)$">
     Require all denied
 </FilesMatch>
+
+# 3) migrate.php runs only from the command line (deploy). It must never run from the web.
+<Files "migrate.php">
+    Require all denied
+</Files>

@@ -1,0 +1,256 @@
+# Automatic tests for every pull request.
+#
+# 1. categorize: finds the category of the pull request from the changed files
+#    and sets the label "category: ...". Nobody chooses the category by hand.
+#    The owner can only raise it with the label "full-check".
+# 2. php-lint, engine, database, browser: the tests. They run only for the
+#    categories code, infra and tests.
+# 3. gate: always runs. It is green only if all tests of the category passed.
+#    Branch protection requires this one job.
+#
+# The tests use a temporary MySQL 8.0 database with tests/baseline/baseline.sql.
+# They never connect to the live database or to rudolph.cologne.
+
+name: Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DB_HOST: 127.0.0.1
+  DB_PORT: "3306"
+  DB_NAME: dnd_test
+  DB_USER: dnd_test
+  DB_PASS: dnd_test_password
+
+jobs:
+  categorize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    outputs:
+      category: ${{ steps.cat.outputs.category }}
+      run_tests: ${{ steps.cat.outputs.run_tests }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find the category from the changed files
+        id: cat
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          # Strictest first: code > infra > tests > claude-md > docs
+          rank() { case "$1" in code) echo 5;; infra) echo 4;; tests) echo 3;; claude-md) echo 2;; docs) echo 1;; esac; }
+          category=docs
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              tests/*)                             c=tests ;;
+              .github/*|.htaccess|.env.example)    c=infra ;;
+              CLAUDE.md)                           c=claude-md ;;
+              *.md)                                c=docs ;;
+              *)                                   c=code ;;   # php, Assets, lang, partials, migrations, unknown files
+            esac
+            echo "$c  $file"
+            if [ "$(rank "$c")" -gt "$(rank "$category")" ]; then category=$c; fi
+          done < <(git diff --name-only "$BASE_SHA" HEAD)
+          case ",$LABELS," in *,full-check,*) echo "Label full-check: category code"; category=code ;; esac
+          case "$category" in code|infra|tests) run_tests=true ;; *) run_tests=false ;; esac
+          echo "Category: $category, tests: $run_tests"
+          echo "category=$category" >> "$GITHUB_OUTPUT"
+          echo "run_tests=$run_tests" >> "$GITHUB_OUTPUT"
+
+      - name: Set the category label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          CATEGORY: ${{ steps.cat.outputs.category }}
+        run: |
+          for c in code infra tests claude-md docs; do
+            gh label create "category: $c" --color BFD4F2 --description "Set by the Tests workflow" --force -R "$GITHUB_REPOSITORY" >/dev/null
+            if [ "$c" != "$CATEGORY" ]; then gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --remove-label "category: $c" >/dev/null 2>&1 || true; fi
+          done
+          gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --add-label "category: $CATEGORY"
+
+  php-lint:
+    needs: categorize
+    if: needs.categorize.outputs.run_tests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: none
+      - name: php -l on every PHP file (without libs/)
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do
+            php -l "$f" > /dev/null 2>&1 || { php -l "$f"; fail=1; }
+          done < <(find . -name '*.php' -not -path './libs/*' -not -path './.git/*' -print0)
+          [ "$fail" -eq 0 ] && echo "All PHP files OK"
+
+  engine:
+    needs: categorize
+    if: needs.categorize.outputs.run_tests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Engine tests (Node built-in test runner, no npm)
+        run: node --test tests/engine/*.test.js
+
+  database:
+    needs: categorize
+    if: needs.categorize.outputs.run_tests == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: dnd_test
+          MYSQL_USER: dnd_test
+          MYSQL_PASSWORD: dnd_test_password
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot_password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql
+          tools: none
+      - name: Prepare the test database (lenient sql_mode like the live server, then the baseline)
+        run: |
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot_password -e "SET GLOBAL sql_mode = ''"
+          mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < tests/baseline/baseline.sql
+          printf 'APP_ENV=test\nDB_HOST=%s\nDB_NAME=%s\nDB_USER=%s\nDB_PASS=%s\n' "$DB_HOST" "$DB_NAME" "$DB_USER" "$DB_PASS" > .env
+      - name: Run the new migrations
+        run: |
+          php migrate.php --dry-run
+          php migrate.php
+      - name: Check the result
+        run: |
+          q() { mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" --batch --skip-column-names -e "$1"; }
+          files=$(ls migration_*.sql | wc -l)
+          recorded=$(q "SELECT COUNT(*) FROM schema_migrations WHERE filename LIKE 'migration\_%.sql'")
+          echo "Migration files: $files, recorded: $recorded"
+          [ "$files" -eq "$recorded" ]
+          rules=$(q "SELECT COUNT(*) FROM calculation_templates")
+          echo "Rules in calculation_templates: $rules"
+          [ "$rules" -ge 100 ]
+          [ "$(q "SELECT COUNT(*) FROM users")" -eq 0 ]
+          php migrate.php | grep -q 'No new migrations'
+      - name: Self-test of migrate.php
+        run: |
+          q() { mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" --batch --skip-column-names -e "$1"; }
+          cp tests/migrations/migration_00000000_selftest.sql .
+          php migrate.php
+          [ "$(q "SELECT COUNT(*) FROM ci_selftest")" -eq 3 ]
+          [ "$(q "SELECT note FROM ci_selftest WHERE id = 1")" = "first; with -- signs" ]
+          php migrate.php | grep -q 'No new migrations'
+          rm migration_00000000_selftest.sql
+      - name: migrate.php refuses to run from the web
+        run: |
+          php -S 127.0.0.1:8000 -t . > /tmp/server.log 2>&1 &
+          sleep 1
+          code=$(curl -s -o /tmp/body.txt -w '%{http_code}' http://127.0.0.1:8000/migrate.php)
+          echo "HTTP $code"
+          [ "$code" = "404" ] && [ ! -s /tmp/body.txt ]
+
+  browser:
+    needs: categorize
+    if: needs.categorize.outputs.run_tests == 'true'
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: dnd_test
+          MYSQL_USER: dnd_test
+          MYSQL_PASSWORD: dnd_test_password
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot_password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      TEST_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql
+          tools: none
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare the test database and the PHP server
+        run: |
+          mysql --protocol=tcp -h 127.0.0.1 -uroot -proot_password -e "SET GLOBAL sql_mode = ''"
+          mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < tests/baseline/baseline.sql
+          printf 'APP_ENV=test\nBASE_URL=%s\nDB_HOST=%s\nDB_NAME=%s\nDB_USER=%s\nDB_PASS=%s\n' "$TEST_BASE_URL" "$DB_HOST" "$DB_NAME" "$DB_USER" "$DB_PASS" > .env
+          php migrate.php
+          php -S 127.0.0.1:8000 -t . > /tmp/php-server.log 2>&1 &
+          sleep 1
+          curl -sf -o /dev/null http://127.0.0.1:8000/login.php
+      - name: Install Playwright (only in this job)
+        run: |
+          pip install playwright pytest
+          python -m playwright install --with-deps chromium
+      - name: Browser tests (headless)
+        run: pytest tests/browser -v
+      - name: Upload screenshots and the server log (only on failure)
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: browser-test-failure
+          path: |
+            tests/browser/screenshots/
+            /tmp/php-server.log
+          if-no-files-found: ignore
+
+  gate:
+    needs: [categorize, php-lint, engine, database, browser]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All checks of the category passed
+        env:
+          CATEGORY: ${{ needs.categorize.outputs.category }}
+          RUN_TESTS: ${{ needs.categorize.outputs.run_tests }}
+          R_CAT: ${{ needs.categorize.result }}
+          R_LINT: ${{ needs.php-lint.result }}
+          R_ENGINE: ${{ needs.engine.result }}
+          R_DB: ${{ needs.database.result }}
+          R_BROWSER: ${{ needs.browser.result }}
+        run: |
+          echo "Category: $CATEGORY, tests needed: $RUN_TESTS"
+          echo "categorize=$R_CAT php-lint=$R_LINT engine=$R_ENGINE database=$R_DB browser=$R_BROWSER"
+          [ "$R_CAT" = "success" ] || { echo "The category is unknown."; exit 1; }
+          if [ "$RUN_TESTS" = "true" ]; then
+            for r in "$R_LINT" "$R_ENGINE" "$R_DB" "$R_BROWSER"; do
+              [ "$r" = "success" ] || { echo "A test failed or did not run."; exit 1; }
+            done
+          fi
+          echo "Gate passed."
