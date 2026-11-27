@@ -71,18 +71,17 @@ jobs:
             -o PubkeyAuthentication=no -o ConnectTimeout=20 \
             "$SFTP_USER@$SFTP_HOST" "sh -s -- $(printf '%q' "$SFTP_REMOTE_DIR")" >> /tmp/result.txt 2>&1 <<'REMOTE' || true
           remote_dir="$1"
+          # SFTP shows the home folder as "/"; the SSH shell needs the path from the home folder
+          [ -f "$remote_dir/config.php" ] || remote_dir="$HOME/${remote_dir#/}"
           echo "### PHP command line"
           echo "php in PATH: $(command -v php || echo none)"
           php -v 2>/dev/null | head -1 || echo "php -v: not available"
           echo "PHP programs in /usr/bin:"
           ls /usr/bin 2>/dev/null | grep -E '^php[0-9.]*(-cli)?$' | tr '\n' ' '; echo
+          # The website uses PHP 8.4. The deploy uses php8.4-cli, so the check uses it too.
           best=""
-          for v in 8.4 8.3 8.2 8.1 8.0; do
-            for name in "php$v" "php$v-cli" "/usr/bin/php$v" "/usr/bin/php$v-cli"; do
-              if [ -z "$best" ] && command -v "$name" >/dev/null 2>&1; then best="$name"; fi
-            done
-          done
-          echo "newest PHP 8 command: ${best:-none}"
+          command -v php8.4-cli >/dev/null 2>&1 && best=php8.4-cli
+          echo "PHP command of the deploy: ${best:-php8.4-cli not found}"
           [ -n "$best" ] && "$best" -v | head -1
           [ -n "$best" ] && echo "pdo_mysql: $("$best" -m 2>/dev/null | grep -ci '^pdo_mysql$')"
           echo
@@ -100,7 +99,7 @@ jobs:
             [ -f "$remote_dir/config.php" ] && echo "config.php found: yes" || echo "config.php found: no"
             [ -f "$remote_dir/.env" ] && echo ".env found: yes" || echo ".env found: no"
           else
-            echo "SFTP_REMOTE_DIR exists: no (from the home folder)"
+            echo "SFTP_REMOTE_DIR exists: no (also not from the home folder)"
           fi
           echo
           echo "### Disk space"
@@ -118,7 +117,7 @@ jobs:
                   echo "connection failed: " . get_class($e) . " (code " . $e->getCode() . ")\n";
               }'
           else
-            echo "not possible (no PHP 8 command or no config.php)"
+            echo "not possible (no php8.4-cli or no config.php)"
           fi
           REMOTE
 
