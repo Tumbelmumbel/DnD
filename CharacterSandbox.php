@@ -330,6 +330,23 @@ $errors = [];
 		</section>
 	</div>
 
+	<!-- Weapons: the equipped weapons of the inventory. Attack and damage come from the rules 600-620 (one calculation for each weapon). -->
+	<section class = "cs-card cs-weapons" id = "Weapons" aria-labelledby = "cs-weapons-title">
+		<h2 id = "cs-weapons-title" data-i18n = "weapons"><?= e(t('weapons')) ?></h2>
+		<div class = "cs-weapons-cols" aria-hidden = "true" hidden>
+			<span data-i18n = "weapons.drawn"><?= e(t('weapons.drawn')) ?></span>
+			<span data-i18n = "weapon"><?= e(t('weapon')) ?></span>
+			<span data-i18n = "weapons.ability"><?= e(t('weapons.ability')) ?></span>
+			<span data-i18n = "weapons.range"><?= e(t('weapons.range')) ?></span>
+			<span data-i18n = "weapons.attack"><?= e(t('weapons.attack')) ?></span>
+			<span data-i18n = "weapons.damage"><?= e(t('weapons.damage')) ?></span>
+			<span data-i18n = "weapons.damage_type"><?= e(t('weapons.damage_type')) ?></span>
+			<span data-i18n = "weapons.description"><?= e(t('weapons.description')) ?></span>
+		</div>
+		<ul class = "cs-weapons-list" id = "weaponsList"></ul>
+		<p class = "cs-chips-empty" id = "weaponsEmpty" data-i18n = "weapons.none"><?= e(t('weapons.none')) ?></p>
+	</section>
+
 	<!-- Inventory: items of the character. Only equipped items change values (rules with EQUIPPED). -->
 	<section class = "cs-card cs-inventory" id = "Inventory" aria-labelledby = "cs-inventory-title">
 		<div class = "cs-inventory-head">

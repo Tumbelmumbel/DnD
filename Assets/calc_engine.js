@@ -53,6 +53,9 @@
 			case "COMPARE":     return compare(arg, values);
 			case "HAS_DEFENSE": return Array.isArray(arg) && arg.length === 2 && context.defenses.has(arg[0] + ":" + arg[1]);
 			case "PROFICIENT":  return context.proficient.has(arg);
+			// Weapon checks: true only in the calculation of one weapon (context.weapon), see the weapons card
+			case "WEAPON_TAG":        return Boolean(context.weapon && Array.isArray(context.weapon.tags) && context.weapon.tags.includes(arg));
+			case "WEAPON_PROFICIENT": return Boolean(context.weapon && context.weapon.proficient) === Boolean(arg);
 			default:            return false;
 		}
 	}
@@ -66,12 +69,14 @@
 
 	// rules:   [{ id, sort_order, target, operator, value_num, value_ref, condition, source }]
 	// inputs:  values from the sheet, for example { "ability.dexterity": 14, "char.level": 5 }
-	// context: { proficient: Set of value names, defenses: Set of "kind:code" }
+	// context: { proficient: Set of value names, defenses: Set of "kind:code",
+	//            weapon: optional { tags: [tag codes], proficient: true/false } for the values weapon.* of one weapon }
 	// Result:  an object with all values (inputs and calculated values)
 	function calculate(rules, inputs, context) {
 		const ctx = {
 			proficient: (context && context.proficient) || new Set(),
-			defenses: (context && context.defenses) || new Set()
+			defenses: (context && context.defenses) || new Set(),
+			weapon: (context && context.weapon) || null
 		};
 		const values = Object.assign({}, inputs);
 		const sorted = rules
