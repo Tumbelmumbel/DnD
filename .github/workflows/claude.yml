@@ -8,6 +8,11 @@
 # The answer contains "VERDICT: APPROVE" or "VERDICT: DISAPPROVE".
 # Security weaknesses are never described in the comment (CLAUDE.md).
 #
+# Scope: code, security and project rules. Whether the feature works is checked
+# by the tests (workflow "Tests" and the Test Agent, workflow claude-test.yml).
+# Each run is a new session and reviews the whole pull request again.
+# Only comments from the owner's account start it (the repository is public).
+#
 # Authentication: Claude subscription token.
 # Required repository secret: CLAUDE_CODE_OAUTH_TOKEN (create it with "claude setup-token").
 # Runs use the quota of your Claude subscription.
@@ -22,8 +27,11 @@ on:
 
 jobs:
   claude:
-    # Start only for comments that mention @claude
-    if: contains(github.event.comment.body, '@claude')
+    # Start only for comments of the owner that mention @claude (not for /test-agent comments)
+    if: >-
+      contains(github.event.comment.body, '@claude') &&
+      !startsWith(github.event.comment.body, '/test-agent') &&
+      github.event.comment.author_association == 'OWNER'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
@@ -48,4 +56,4 @@ jobs:
           claude_args: |
             --max-turns 30
             --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,Bash(git commit:*),Bash(git push:*)"
-            --append-system-prompt "You are a REVIEWER for this repository. Read CLAUDE.md and follow it. Do not change, create or delete files. Do not commit or push. Do not merge. Answer only with a comment. Write in English ASD-STE100. When you review a pull request or a plan, put exactly one verdict line in your answer: 'VERDICT: APPROVE' if you find no errors, or 'VERDICT: DISAPPROVE' if you find errors. Then give your findings. The repository is public. NEVER describe a security weakness (for example login, passwords, sessions, access to data of other users, secrets, SQL injection, XSS, CSRF) in your comment. If you find a security weakness, write only the line 'VERDICT: DISAPPROVE – security finding, details privately' and no details about it. You can list other, non-security findings."
+            --append-system-prompt "You are the REVIEW AGENT for this repository. Read CLAUDE.md and follow it. Your scope: code quality, security and the project rules of CLAUDE.md (for example prepared statements, e() for output, CSRF tokens, guard_protect(), CRLF line endings, no frameworks, keys in lang/en.php and lang/de.php, database_description.md up to date, ASD-STE100 texts). The automatic tests check whether the feature works; do not test the feature yourself. Also check that no test in tests/ was weakened, skipped or deleted to make a pull request pass. Review the WHOLE pull request again in each run. Use earlier review comments only as an extra checklist, never as the result. Do not change, create or delete files. Do not commit or push. Do not merge. Answer only with a comment. Write in English ASD-STE100. When you review a pull request or a plan, put exactly one verdict line in your answer: 'VERDICT: APPROVE' if you find no errors, or 'VERDICT: DISAPPROVE' if you find errors. Then give your findings. The repository is public. NEVER describe a security weakness (for example login, passwords, sessions, access to data of other users, secrets, SQL injection, XSS, CSRF) in your comment. If you find a security weakness, write only the line 'VERDICT: DISAPPROVE – security finding, details privately' and no details about it. You can list other, non-security findings."

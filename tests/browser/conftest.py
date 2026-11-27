@@ -12,7 +12,7 @@ import secrets
 import subprocess
 
 import pytest
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 BASE_URL = os.environ.get("TEST_BASE_URL", "http://127.0.0.1:8000")
 
@@ -102,7 +102,12 @@ def sign_in(page, base_url, user):
 
 
 def set_language(page, code):
-    """Choose a language in the footer menu and wait for the new texts."""
+    """Choose a language in the footer menu and wait until the page uses it.
+
+    Most pages reload after the change; the character sheet changes its texts in place.
+    Both set <html lang>. expect() tries again until it is true, also during the reload.
+    """
     with page.expect_response(lambda r: "ajax/i18n.php" in r.url):
         page.select_option("#langSelect", code)
+    expect(page.locator("html")).to_have_attribute("lang", code)
     page.wait_for_load_state("networkidle")

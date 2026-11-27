@@ -5,6 +5,7 @@
 #    The owner can only raise it with the label "full-check".
 # 2. php-lint, engine, database, browser: the tests. They run only for the
 #    categories code, infra and tests.
+#    test-scope: the Dev Agent does not change tests/, the Test Agent changes only tests/browser/.
 # 3. gate: always runs. It is green only if all tests of the category passed.
 #    Branch protection requires this one job.
 #
@@ -16,9 +17,15 @@ name: Tests
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  # Started by the Test Agent after its commit (a commit of the workflow token starts no pull_request run)
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Number of the pull request
+        required: true
 
 concurrency:
-  group: tests-${{ github.event.pull_request.number }}
+  group: tests-${{ github.event.pull_request.number || inputs.pr }}
   cancel-in-progress: true
 
 permissions:
@@ -50,9 +57,18 @@ jobs:
       - name: Find the category from the changed files
         id: cat
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
         run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            # A manual start must test exactly the head of this pull request
+            head_sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.sha)
+            head_ref=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .head.ref)
+            [ "$head_sha" = "$GITHUB_SHA" ] && [ "$head_ref" = "$GITHUB_REF_NAME" ] \
+              || { echo "The started branch is not the head of pull request $PR."; exit 1; }
+          fi
+          BASE_REF=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q .base.ref)
+          LABELS=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -q '[.labels[].name] | join(",")')
           # Strictest first: code > infra > tests > claude-md > docs
           rank() { case "$1" in code) echo 5;; infra) echo 4;; tests) echo 3;; claude-md) echo 2;; docs) echo 1;; esac; }
           category=docs
@@ -67,7 +83,7 @@ jobs:
             esac
             echo "$c  $file"
             if [ "$(rank "$c")" -gt "$(rank "$category")" ]; then category=$c; fi
-          done < <(git diff --name-only "$BASE_SHA" HEAD)
+          done < <(git diff --name-only "origin/$BASE_REF...HEAD")
           case ",$LABELS," in *,full-check,*) echo "Label full-check: category code"; category=code ;; esac
           case "$category" in code|infra|tests) run_tests=true ;; *) run_tests=false ;; esac
           echo "Category: $category, tests: $run_tests"
@@ -77,7 +93,7 @@ jobs:
       - name: Set the category label
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
           CATEGORY: ${{ steps.cat.outputs.category }}
         run: |
           for c in code infra tests claude-md docs; do
@@ -85,6 +101,77 @@ jobs:
             if [ "$c" != "$CATEGORY" ]; then gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --remove-label "category: $c" >/dev/null 2>&1 || true; fi
           done
           gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --add-label "category: $CATEGORY"
+
+  test-scope:
+    # Runs for every category.
+    # - A Test Agent commit (author github-actions[bot], signed by GitHub, subject "Test Agent:")
+    #   may change only tests/browser/.
+    # - Any other commit may not change tests/ (only tests/README.md). Old and new names of
+    #   a moved file count, so a move out of tests/ is also a change.
+    # - A merge commit may bring into tests/ only the state of the base branch.
+    # The label owner-test-change (owner only) allows changes in tests/ once.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find the head of the pull request
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" > /tmp/pr.json
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            [ "$(jq -r .head.sha /tmp/pr.json)" = "$GITHUB_SHA" ] && [ "$(jq -r .head.ref /tmp/pr.json)" = "$GITHUB_REF_NAME" ] \
+              || { echo "The started branch is not the head of pull request $PR."; exit 1; }
+          fi
+          echo "sha=$(jq -r .head.sha /tmp/pr.json)" >> "$GITHUB_OUTPUT"
+          echo "base=$(jq -r .base.ref /tmp/pr.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.head.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check who changed the tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+          BASE: ${{ steps.head.outputs.base }}
+        run: |
+          R="$GITHUB_REPOSITORY"
+          labels=$(jq -r '[.labels[].name] | join(",")' /tmp/pr.json)
+          owner_ok=false
+          case ",$labels," in *,owner-test-change,*) owner_ok=true; echo "Label owner-test-change: the owner allows changes in tests/." ;; esac
+          git fetch -q origin "$BASE"
+          fail=0
+          for sha in $(gh api "repos/$R/pulls/$PR/commits" --paginate -q '.[].sha'); do
+            parents=$(git rev-list --parents -n 1 "$sha" | wc -w)
+            if [ "$parents" -gt 2 ]; then
+              # Merge commit: each file in tests/ that it changes must have the state of the base branch
+              for f in $(git diff --no-renames --name-only "$sha^1" "$sha" -- tests/); do
+                a=$(git rev-parse -q --verify "$sha:$f" || echo none)
+                b=$(git rev-parse -q --verify "origin/$BASE:$f" || echo none)
+                if [ "$a" != "$b" ] && [ "$owner_ok" != "true" ]; then
+                  echo "Merge commit $sha changes $f differently from $BASE."; fail=1
+                fi
+              done
+              continue
+            fi
+            files=$(git diff-tree --no-commit-id -r --no-renames --name-only "$sha")
+            login=$(gh api "repos/$R/commits/$sha" -q '.author.login // ""')
+            verified=$(gh api "repos/$R/commits/$sha" -q '.commit.verification.verified')
+            subject=$(git log -1 --format=%s "$sha")
+            if [ "$login" = "github-actions[bot]" ] && [ "$verified" = "true" ] && [[ "$subject" == "Test Agent:"* ]]; then
+              bad=$(echo "$files" | grep -v '^tests/browser/' || true)
+              [ -n "$bad" ] && { echo "Test Agent commit $sha changes files outside tests/browser/:"; echo "$bad"; fail=1; }
+            else
+              bad=$(echo "$files" | grep '^tests/' | grep -v '^tests/README\.md$' || true)
+              if [ -n "$bad" ] && [ "$owner_ok" != "true" ]; then
+                echo "Commit $sha (not by the Test Agent) changes files in tests/:"; echo "$bad"; fail=1
+              fi
+            fi
+          done
+          [ "$fail" -eq 0 ] && echo "Test scope OK"
 
   php-lint:
     needs: categorize
@@ -216,7 +303,7 @@ jobs:
           curl -sf -o /dev/null http://127.0.0.1:8000/login.php
       - name: Install Playwright (only in this job)
         run: |
-          pip install playwright pytest
+          pip install playwright==1.63.0 pytest==9.1.1
           python -m playwright install --with-deps chromium
       - name: Browser tests (headless)
         run: pytest tests/browser -v
@@ -231,7 +318,7 @@ jobs:
           if-no-files-found: ignore
 
   gate:
-    needs: [categorize, php-lint, engine, database, browser]
+    needs: [categorize, test-scope, php-lint, engine, database, browser]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -240,14 +327,16 @@ jobs:
           CATEGORY: ${{ needs.categorize.outputs.category }}
           RUN_TESTS: ${{ needs.categorize.outputs.run_tests }}
           R_CAT: ${{ needs.categorize.result }}
+          R_SCOPE: ${{ needs.test-scope.result }}
           R_LINT: ${{ needs.php-lint.result }}
           R_ENGINE: ${{ needs.engine.result }}
           R_DB: ${{ needs.database.result }}
           R_BROWSER: ${{ needs.browser.result }}
         run: |
           echo "Category: $CATEGORY, tests needed: $RUN_TESTS"
-          echo "categorize=$R_CAT php-lint=$R_LINT engine=$R_ENGINE database=$R_DB browser=$R_BROWSER"
+          echo "categorize=$R_CAT test-scope=$R_SCOPE php-lint=$R_LINT engine=$R_ENGINE database=$R_DB browser=$R_BROWSER"
           [ "$R_CAT" = "success" ] || { echo "The category is unknown."; exit 1; }
+          [ "$R_SCOPE" = "success" ] || { echo "A commit changes test files that it must not change."; exit 1; }
           if [ "$RUN_TESTS" = "true" ]; then
             for r in "$R_LINT" "$R_ENGINE" "$R_DB" "$R_BROWSER"; do
               [ "$r" = "success" ] || { echo "A test failed or did not run."; exit 1; }
