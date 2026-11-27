@@ -1,0 +1,123 @@
+# Server check: a READ-ONLY check of the SSH access to the IONOS webspace.
+#
+# Start by hand: Actions -> "Server check" -> "Run workflow" (branch main).
+# It uses the secrets of the environment "production" (only branch main).
+#
+# It finds the facts for the deploy with backup and migration:
+#   1. SSH host key of the server (fingerprint)
+#   2. PHP command-line versions
+#   3. mysqldump and mysql client
+#   4. folder names in the home folder, and the place of SFTP_REMOTE_DIR
+#   5. free disk space
+#   6. a connection test to the database with the site's own config.php
+#      (it only opens the connection: no query, no data)
+#
+# It never writes, deletes or changes anything on the server.
+# It shows no secrets and no values from .env.
+
+name: Server check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Read-only check over SSH
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+        run: |
+          for v in SFTP_HOST SFTP_USER SSHPASS SFTP_REMOTE_DIR; do
+            if [ -z "${!v}" ]; then echo "::error::Secret for $v is missing"; exit 1; fi
+          done
+          port="${SFTP_PORT:-22}"
+
+          # 1) Host key: read it once, show the fingerprints, then accept only this key
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$port" "$SFTP_HOST" 2>/dev/null > ~/.ssh/known_hosts
+          [ -s ~/.ssh/known_hosts ] || { echo "::error::No host key from the server"; exit 1; }
+          fingerprints=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $1, $2, $4}')
+
+          # 2)-6) Read-only commands on the server. The remote folder is an argument, not part of the script.
+          sshpass -e ssh -p "$port" -o StrictHostKeyChecking=yes -o BatchMode=no \
+            -o PubkeyAuthentication=no -o ConnectTimeout=20 \
+            "$SFTP_USER@$SFTP_HOST" "sh -s -- $(printf '%q' "$SFTP_REMOTE_DIR")" > /tmp/result.txt 2>&1 <<'REMOTE' || true
+          remote_dir="$1"
+          echo "### PHP command line"
+          echo "php in PATH: $(command -v php || echo none)"
+          php -v 2>/dev/null | head -1 || echo "php -v: not available"
+          echo "PHP programs in /usr/bin:"
+          ls /usr/bin 2>/dev/null | grep -E '^php[0-9.]*(-cli)?$' | tr '\n' ' '; echo
+          best=""
+          for v in 8.4 8.3 8.2 8.1 8.0; do
+            for name in "php$v" "php$v-cli" "/usr/bin/php$v" "/usr/bin/php$v-cli"; do
+              if [ -z "$best" ] && command -v "$name" >/dev/null 2>&1; then best="$name"; fi
+            done
+          done
+          echo "newest PHP 8 command: ${best:-none}"
+          [ -n "$best" ] && "$best" -v | head -1
+          [ -n "$best" ] && echo "pdo_mysql: $("$best" -m 2>/dev/null | grep -ci '^pdo_mysql$')"
+          echo
+          echo "### MySQL tools"
+          for t in mysqldump mysql; do
+            if command -v "$t" >/dev/null 2>&1; then echo "$t: $(command -v "$t") - $("$t" --version 2>&1 | head -1)"; else echo "$t: not available"; fi
+          done
+          echo
+          echo "### Folders"
+          echo "home folder entries (names only):"
+          ls -1A ~ 2>/dev/null | head -50 | tr '\n' ' '; echo
+          if [ -d "$remote_dir" ]; then
+            echo "SFTP_REMOTE_DIR exists: yes"
+            ( cd "$remote_dir" && echo "absolute path depth: $(pwd | tr -cd '/' | wc -c)" )
+            [ -f "$remote_dir/config.php" ] && echo "config.php found: yes" || echo "config.php found: no"
+            [ -f "$remote_dir/.env" ] && echo ".env found: yes" || echo ".env found: no"
+          else
+            echo "SFTP_REMOTE_DIR exists: no (from the home folder)"
+          fi
+          echo
+          echo "### Disk space"
+          df -h ~ 2>/dev/null | tail -1 | awk '{print "size " $2 ", used " $3 ", free " $4 ", use " $5}'
+          echo
+          echo "### Database connection test (no query)"
+          if [ -n "$best" ] && [ -f "$remote_dir/config.php" ]; then
+            cd "$remote_dir" && "$best" -d display_errors=0 -r '
+              require "config.php";
+              $d = $APP_CONFIG["db"];
+              try {
+                  new PDO("mysql:host={$d["host"]};dbname={$d["name"]};charset={$d["charset"]}", $d["user"], $d["pass"], $d["options"]);
+                  echo "connection OK\n";
+              } catch (Throwable $e) {
+                  echo "connection failed: " . get_class($e) . " (code " . $e->getCode() . ")\n";
+              }'
+          else
+            echo "not possible (no PHP 8 command or no config.php)"
+          fi
+          REMOTE
+
+          # Result into the summary. Replace the values of the secrets, to be safe.
+          {
+            echo "## Server check (read-only)"
+            echo
+            echo "### SSH host key fingerprints"
+            echo '```'
+            echo "$fingerprints"
+            echo '```'
+            echo '```'
+            sed -e "s#$SFTP_REMOTE_DIR#<SFTP_REMOTE_DIR>#g" -e "s#$SFTP_USER#<SFTP_USER>#g" -e "s#$SFTP_HOST#<SFTP_HOST>#g" /tmp/result.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -q "### PHP command line" /tmp/result.txt || { echo "::error::The SSH command did not run. See the summary."; exit 1; }
