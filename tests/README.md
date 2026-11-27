@@ -22,6 +22,17 @@ The files in `tests/` are not uploaded to the website (see `deploy.yml`).
 6. **browser** starts the PHP built-in server and runs `pytest tests/browser`. On failure, the screenshots and the server log are a download of the run.
 7. **gate** is green only if all tests of the category passed. Branch protection requires this job.
 
+## Click tests
+
+The Test Agent writes the click tests from the requirement of each pull request.
+
+| Area | Pull request | Covered |
+|---|---|---|
+| Accounts and language menu: sign-in, protected pages, sign-out, registration rules, neutral messages, language menu | PR 2 (`add-click-tests`) | Requirement items 1 to 7 |
+| Character sheet: values, armor class, inventory, weapons card, German texts, phone width | later pull request | not yet |
+
+Emails (verification, password reset) are not tested: the test system sends no emails.
+
 ## Test Agent
 
 The workflow `.github/workflows/claude-test.yml` starts the Test Agent. Start: a comment on the pull request that begins with `/test-agent` (owner's account only).
