@@ -34,6 +34,7 @@ const DEFAULT_LEVEL = 1;
 // Inventory: [{ uid, itemId, quantity, equipped, rules }]. "rules" is the copy of the item's rules (itemCatalog from PHP).
 // It stays in the browser for now; the save function stores it later in character_items and character_calculations.
 let inventory = [];
+const drawnWeapons = new Set(); // inventory rows (uid) of the drawn weapons in the weapons card
 const itemById = new Map(itemCatalog.map(item => [item.id, item]));
 
 //DEFENSE AND CONDITIONS: each entry is a chip; the chip stores only codes
@@ -278,19 +279,22 @@ function recalc() {
 			: `condition:${chip.dataset.condition}`);
 	});
 
-	const values = CalcEngine.calculate(calcRules.concat(inventoryRules()), inputs, { proficient, defenses });
+	const rules = calcRules.concat(inventoryRules());
+	const values = CalcEngine.calculate(rules, inputs, { proficient, defenses });
 	document.querySelectorAll("[data-calc]").forEach(el => {
 		const value = values[el.dataset.calc];
 		const text = value === undefined ? "–" : (el.dataset.calcFormat === "plain" ? String(value) : signed(value));
 		if (el.tagName === "INPUT") el.value = text;
 		else el.textContent = text;
 	});
+	renderWeapons(rules, inputs, proficient, defenses);
 }
 
 // Calculate again on each change: ability scores, level, proficiency boxes (input/change) and defense chips (list changes)
 document.addEventListener("input", recalc);
 document.addEventListener("change", recalc);
 new MutationObserver(recalc).observe(defenseChips, { childList: true });
+new MutationObserver(recalc).observe(weaponChips, { childList: true }); // weapon proficiency changes the attack rolls
 recalc();
 
 document.getElementById("Level").addEventListener("change", function () {
@@ -512,6 +516,98 @@ document.getElementById("Level").addEventListener("change", function () {
 		if (event.target.dataset.action !== "quantity") return;
 		const entry = entryOf(event.target);
 		if (entry) event.target.value = String(entry.quantity);
+	});
+
+	//WEAPONS: the equipped weapons of the inventory with attack roll and damage roll.
+	// The engine calculates the values weapon.* (rules 600-620) one time for each weapon, with the weapon as context.
+	// Drawn only marks the weapon in use. It changes no value and has no limit.
+	function weaponProficient(item) {
+		return (item.tags.includes("simple") && document.getElementById("simpleWeaponProficiency").checked)
+			|| (item.tags.includes("martial") && document.getElementById("martialWeaponProficiency").checked)
+			|| Boolean(weaponChips.querySelector(`[data-item-id="${item.id}"]`));
+	}
+
+	// Melee: 5 ft. (10 ft. with the tag "reach"). Thrown weapons also show normal/long range. Ranged weapons: normal/long range.
+	function weaponRange(item) {
+		const unit = tr("unit.distance");
+		const far = item.range_normal ? `${distanceText(item.range_normal)}/${distanceText(item.range_long || item.range_normal)} ${unit}` : "";
+		if (item.tags.includes("ranged")) return far || "–";
+		const near = `${distanceText(item.tags.includes("reach") ? 10 : 5)} ${unit}`;
+		return far ? `${near} · ${far}` : near;
+	}
+
+	// Dice plus the damage bonus, for example "1d8+3"; versatile weapons: "1d8+3 / 1d10+3"
+	function weaponDamage(item, bonus) {
+		const plus = bonus === 0 ? "" : signed(bonus);
+		let text = diceText(item.damage || "") + plus;
+		if (item.damage_versatile) text += " / " + diceText(item.damage_versatile) + plus;
+		return text;
+	}
+
+	function weaponRow(entry, item, values) {
+		const drawn = drawnWeapons.has(entry.uid);
+		const row = document.createElement("li");
+		row.className = "cs-weapon-row" + (drawn ? " is-drawn" : "");
+		row.dataset.uid = entry.uid;
+
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "cs-weapon-drawn";
+		button.setAttribute("aria-pressed", drawn ? "true" : "false");
+		button.setAttribute("aria-label", tr("weapons.drawn") + ": " + item.name);
+		button.textContent = tr(drawn ? "weapons.drawn" : "weapons.draw");
+		row.append(button);
+
+		// The same choice as the rules 600-602: ranged = Dexterity, finesse = the higher modifier, else Strength
+		const usesDex = item.tags.includes("ranged")
+			|| (item.tags.includes("finesse") && (values["mod.dexterity"] || 0) > (values["mod.strength"] || 0));
+		const typeTags = ["weapon", "simple", "martial", "melee", "ranged"]; // shown in other columns
+		const cells = [
+			["name",    item.name, ""],
+			["ability", tr(usesDex ? "ability.dexterity" : "ability.strength"), ""],
+			["range",   weaponRange(item), tr("weapons.range")],
+			["attack",  signed(values["weapon.attack"] || 0), tr("weapons.attack")],
+			["damage",  weaponDamage(item, values["weapon.damage_bonus"] || 0), tr("weapons.damage")],
+			["type",    item.damage_type ? ((itemLookup.damagetype || {})[item.damage_type] || item.damage_type) : "–", ""],
+			["desc",    item.tags.filter(tag => !typeTags.includes(tag)).map(tagText).join(" · ") || "–", ""]
+		];
+		for (const [kind, text, label] of cells) {
+			const cell = document.createElement("span");
+			cell.className = "cs-weapon-" + kind;
+			if (label) cell.dataset.label = label; // label above the value on phones
+			cell.textContent = text;
+			row.append(cell);
+		}
+		return row;
+	}
+
+	function renderWeapons(rules, inputs, proficient, defenses) {
+		const list = document.getElementById("weaponsList");
+		const focused = list.contains(document.activeElement) ? document.activeElement.closest(".cs-weapon-row") : null;
+		const rows = [];
+		for (const entry of inventory) {
+			const item = itemById.get(entry.itemId);
+			if (!entry.equipped || !item || !item.tags.includes("weapon")) continue;
+			const values = CalcEngine.calculate(rules, inputs,
+				{ proficient, defenses, weapon: { tags: item.tags, proficient: weaponProficient(item) } });
+			rows.push(weaponRow(entry, item, values));
+		}
+		list.replaceChildren(...rows);
+		document.getElementById("weaponsEmpty").hidden = rows.length > 0;
+		document.querySelector(".cs-weapons-cols").hidden = rows.length === 0;
+		if (focused) {
+			const button = list.querySelector(`[data-uid="${focused.dataset.uid}"] .cs-weapon-drawn`);
+			if (button) button.focus();
+		}
+	}
+
+	document.getElementById("weaponsList").addEventListener("click", function (event) {
+		const button = event.target.closest(".cs-weapon-drawn");
+		if (!button) return;
+		const uid = Number(button.closest(".cs-weapon-row").dataset.uid);
+		if (drawnWeapons.has(uid)) drawnWeapons.delete(uid);
+		else drawnWeapons.add(uid);
+		recalc();
 	});
 
 	// Search box: all items whose name contains the text
@@ -893,6 +989,7 @@ document.getElementById("Level").addEventListener("change", function () {
 		document.documentElement.lang = data.lang;
 		applyI18n();
 		renderInventory();
+		recalc();
 		refreshContentNames();
 	};
 
@@ -932,6 +1029,7 @@ document.getElementById("Level").addEventListener("change", function () {
 				}
 				itemCatalog.sort((a, b) => a.name.localeCompare(b.name, document.documentElement.lang, { sensitivity: "base" }));
 				renderInventory();
+				recalc(); // weapons card: new names of weapons and damage types
 				if (!inventoryPicker.hidden) renderResults();
 				renderWeaponOptions();
 				renderWeaponChips();

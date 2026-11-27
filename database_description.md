@@ -318,6 +318,7 @@ The JavaScript engine of the character sheet does the calculation. The database 
 | `combat.` | `combat.ac`, `combat.initiative` | Fixed list |
 | `hp.` | `hp.max` | Fixed list |
 | `passive.` | `passive.perception` | `Skills.code` |
+| `weapon.` | `weapon.attack`, `weapon.damage_bonus`, `weapon.ability` | Fixed list. The engine calculates these values one time for each equipped weapon (weapons card). |
 
 **Operators (`operator`):**
 
@@ -343,6 +344,8 @@ The JavaScript engine of the character sheet does the calculation. The database 
 | `COMPARE` | `{"COMPARE": ["char.level", ">", 5]}` | True if the comparison is true. |
 | `HAS_DEFENSE` | `{"HAS_DEFENSE": ["resistant", "fire"]}` | True if the character has this defense. The first entry is a code of `Damage_influence` or `condition`. The second entry is a code of `Damagetypes` or `Conditions`. |
 | `PROFICIENT` | `{"PROFICIENT": "skill.stealth"}` | True if the character is proficient in this saving throw or skill (the box on the sheet is ticked). |
+| `WEAPON_TAG` | `{"WEAPON_TAG": "finesse"}` | True only in the calculation of one weapon, if this weapon has this tag (`tags.code`). |
+| `WEAPON_PROFICIENT` | `{"WEAPON_PROFICIENT": true}` | True only in the calculation of one weapon, if the character is proficient with it: "Simple weapons" or "Martial weapons" is on and the weapon has the tag `simple` or `martial`, or the weapon has a chip in the card "Weapon proficiency". |
 | `all`, `any`, `not` | `{"all": [{...}, {...}]}` | Combine checks: all are true, one is true, the check is false. |
 
 An object with more than one check is true only if all checks are true. An unknown check is false. Then the rule does not apply.
@@ -364,6 +367,9 @@ An object with more than one check is true only if all checks are true. An unkno
 | 400 | `combat.ac_dex` | `mod.dexterity` (the part of Dexterity in the armor class; armor can change it) |
 | 410–412 | `combat.ac` | 10 + `combat.ac_dex` |
 | 500–501 | `passive.perception`, `passive.insight`, `passive.investigation` | 10 + the skill (`skill.perception`, `skill.insight`, `skill.investigation`). `migration_passive_skills.sql`. |
+| 600–602 | `weapon.ability` | `mod.strength`. A weapon with the tag `ranged` uses `mod.dexterity`. A weapon with the tag `finesse` uses at least `mod.dexterity` (the higher modifier). `migration_weapon_rules.sql`. |
+| 610–611 | `weapon.attack` | `weapon.ability`. Plus `char.prof_bonus` if `WEAPON_PROFICIENT`. |
+| 620 | `weapon.damage_bonus` | `weapon.ability` (added to the damage dice). |
 
 ### `calculation_templates`
 
