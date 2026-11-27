@@ -33,7 +33,7 @@ if (!$characters) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="/Assets/style.css">
+<link rel="stylesheet" href="<?= e(asset_url('/Assets/style.css')) ?>">
     <title><?= e(t('overview.title')) ?></title>
 
     <style>
