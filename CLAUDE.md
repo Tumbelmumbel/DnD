@@ -11,8 +11,8 @@ Test site: https://rudolph.cologne (IONOS shared hosting).
 
 - **Language:** PHP 8 (no framework), plain HTML/CSS/JavaScript
 - **Database:** MySQL on IONOS (`dbs15432866`), accessed with PDO
-- **Test database:** MySQL on IONOS (`dbs16383239`), on its own server (`db5021993148`).
-  Only for migration tests. The website never uses it.
+- **Automatic tests:** GitHub Actions with a temporary MySQL 8.0 database (see "Automatic tests").
+  The old test database `dbs16383239` is not used any more.
 - **Mail:** PHPMailer 7.0.2 over IONOS SMTP (in `libs/PHPMailer`, third-party code: do not change it)
 - **Owner:** Tumbelmumbel (solo developer)
 
@@ -43,19 +43,41 @@ PHPMailer) only after the owner agrees.
 | `Assets/style.css` | Shared stylesheet for all pages: colors and font sizes as variables in `:root` |
 | `libs/PHPMailer/` | PHPMailer library (third-party, LGPL) |
 | `database_description.md` | Description of all tables and fields (keep up to date) |
-| `migration_*.sql` | Database changes. Tested on `dbs16383239`, then run on `dbs15432866` after the review approves and before the merge (see "Database changes"). |
+| `migration_YYYYMMDD_<name>.sql` | Database changes. The deploy runs them with `migrate.php` after a backup (see "Database changes"). The 17 old files have names without a date. |
+| `migrate.php` | Runs the new migration files and records them in `schema_migrations`. Command line only (`php8.4-cli`). `--init` created `schema_migrations` one time. |
+| `schema_migrations_init.sql` | One-time start of `schema_migrations` (already done on the live database) |
 | `index.php` | Start page: sends the visitor to the sign-in page |
-| `.htaccess` | Sets `index.php` as the start page. Blocks downloads of `.env`, logs and other non-public files. Do not remove it. |
-| `.github/workflows/deploy.yml` | Uploads `main` to IONOS over SFTP |
-| `.github/workflows/claude.yml` | Claude review agent on GitHub: answers `@claude` comments (review only) |
+| `.htaccess` | Sets `index.php` as the start page. Blocks downloads of `.env`, logs, `migrate.php` and other non-public files. Do not remove it. |
+| `tests/` | Automatic tests (see `tests/README.md`): `baseline/` (test database without user data), `engine/` (Node), `browser/` (Playwright), `migrations/` (self-test of `migrate.php`) |
+| `.github/workflows/tests.yml` | Automatic tests of each pull request, category, `test-scope` and the required check `gate` |
+| `.github/workflows/claude.yml` | Review Agent: answers `@claude` comments of the owner's account (review only) |
+| `.github/workflows/claude-test.yml` | Test Agent: starts with the PR comment `/test-agent` (owner only) |
+| `.github/workflows/deploy.yml` | Deploy of `main`: host key check, backup, migrations, upload |
+| `.github/workflows/server-check.yml` | Read-only check of the SSH access. The result is encrypted. |
+| `.github/pull_request_template.md` | Sections of each pull request |
 
 ## Git workflow
 
 - **Never commit or push directly to `main`.** Every push to `main` deploys to the website.
+  A ruleset protects `main`: pull request required, the check `gate` must be green, no force push.
 - **Each change gets its own new branch**, named after the change (for example `fix-resend-page`).
-- Open a pull request into `main`. The GitHub review agent reviews it (see "Review and merge").
-- Keep each pull request to one topic.
+- Open a pull request into `main`. Keep each pull request to one topic.
 - Before starting new work, update from the latest `main`.
+
+### Categories of pull requests
+
+The workflow `tests.yml` sets the category from the changed files (label `category: ...`). Nobody chooses it.
+
+| Category | Files | Automatic tests | Test Agent | Review Agent |
+|---|---|---|---|---|
+| `code` | PHP, `Assets/`, `lang/`, `partials/`, `migration_*.sql`, unknown files | yes | yes | yes |
+| `infra` | `.github/`, `.htaccess`, `.env.example` | yes | no | yes |
+| `tests` | only `tests/` | yes | no | yes |
+| `claude-md` | `CLAUDE.md` | no | no | no: **the owner reads it** |
+| `docs` | other `*.md` | no | no | no |
+
+- A mixed pull request gets the strictest category.
+- Only the owner can raise the category, with the label `full-check`.
 
 ### Description of changes: ASD-STE100
 
@@ -66,35 +88,33 @@ This applies to the **pull request description** and the **commit message**.
 - One instruction or one topic per sentence.
 - Use the active voice.
 - Use approved STE words and technical names (file names, field names) only.
-- Use this structure in the pull request:
-  1. **Changes** – what changed, file by file.
-  2. **Reason** – why the change is necessary.
-  3. **Before you merge** – the steps before the merge (for example: "The owner gives the backup of `dbs15432866` to Claude. Claude runs the migration.").
-  4. **Test** – the list of test steps for the browser test (see "Test steps in the pull request"),
-     and the results on the test server (step 4 of "Working method").
+- Use this structure in the pull request (see `.github/pull_request_template.md`):
+  1. **Requirement and behavior** – the owner's requirement word for word and the approved plan.
+     The Test Agent reads only this section.
+  2. **Changes** – what changed, file by file.
+  3. **Reason** – why the change is necessary.
+  4. **Before you merge** – the steps before the merge (for example: "The owner adds the secret `X`."), or "No steps."
+  5. **Test** – the list of test steps (see "Test steps in the pull request"),
+     the results on the test server (Claude's workspace) and the results in GitHub Actions.
 
 ## Database changes
 
 - Never change the database `dbs15432866` without the owner's explicit "yes" for that exact SQL.
   The owner's **GO** for a plan is this "yes" for exactly the SQL in the plan.
   If the SQL changes after the GO, Claude asks for a new GO.
-- The GO also permits Claude to change the test database `dbs16383239` for the tests of that plan.
 - Read-only queries (SELECT, SHOW, information_schema) are fine.
-- Every schema change goes into a new file `migration_<short_name>.sql` in the pull request.
-- The pull request description must say: **"Run the migration BEFORE you merge."**
-- Run a migration on `dbs15432866` only after the review agent approves the pull request,
-  and before the merge (step 6 of "Working method").
-- Before a migration runs, the owner makes a backup of `dbs15432866` (phpMyAdmin → Export)
-  and gives the file to Claude.
-- Test each migration on the test database `dbs16383239` first:
-  1. Delete all tables in `dbs16383239`. Import the backup of `dbs15432866`. Remove the lines
-     `CREATE DATABASE` and `USE` from the backup first, so that it goes into `dbs16383239`.
-  2. Run the migration on `dbs16383239`. Check the result (tables, fields, row counts).
-  3. Only then run the migration on `dbs15432866`. Check the result again.
-- Backup files contain user data (email addresses, password hashes).
-  Never put them into the repository. Delete working copies after the import.
+- Every schema change goes into a new file `migration_YYYYMMDD_<short_name>.sql` in the pull request.
+  The name order must be the time order.
+- **The deploy runs the migrations automatically** (see "Deploy"):
+  first a backup on the server, then `php8.4-cli migrate.php`. Nobody runs SQL by hand in phpMyAdmin.
+- Before the merge, the workflow `tests.yml` runs each new migration on a fresh MySQL 8.0 database
+  with `tests/baseline/baseline.sql` (job `database`). The pull request must be green.
+- A migration must work on the live data. If it can fail on existing rows, the plan says how it handles them.
+- Backups are on the server in `~/db_backups/` (14 days). They contain user data:
+  never copy them into the repository or into a GitHub log.
+- `tests/baseline/baseline.sql` never contains user data (email addresses, password hashes, characters).
 - Code must not use a new column or table before its migration exists.
-- The current schema has no foreign keys and `sql_mode` is empty (lenient mode).
+- The current schema has no foreign keys and `sql_mode` is empty (lenient mode). The tests use the same mode.
 - Code refers to a lookup value (class, species, skill, condition, ...) only by its `code`, never by its name.
   The name is only for display.
 
@@ -103,8 +123,7 @@ This applies to the **pull request description** and the **commit message**.
 - This file lists **every table and every field**, with the data type and a description
   of the data it stores. It is the reference for the database structure.
 - **Read it before you write code or SQL that uses the database.**
-- **Every database change must update this file in the same branch**, also changes
-  that the owner makes by hand in phpMyAdmin.
+- **Every database change must update this file in the same branch.**
 - Write the descriptions in ASD-STE100. Change the "Last update" date.
 - Descriptions marked **(check)** are assumptions. Ask the owner before you rely on them.
 
@@ -143,84 +162,110 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
 
 ## Deploy
 
-- Merging into `main` starts the upload automatically (GitHub Actions → "Deploy to IONOS").
+- Merging into `main` starts the workflow "Deploy to IONOS" (environment `production`, only `main`).
+- Order: (1) check the SSH host key against `SSH_HOST_FINGERPRINT`, (2) backup of the database on the server,
+  (3) upload `migrate.php` and the migration files, (4) `php8.4-cli migrate.php --init` and `migrate.php`,
+  (5) upload the other files. Each error stops the deploy.
 - The upload never deletes files on the server.
-- Not uploaded: `.git/`, `.github/`, `.env*`, `*.log`, `*.sql`, `*.md`.
-- Manual upload: Actions → Deploy to IONOS → Run workflow.
+- Not uploaded: `.git/`, `.github/`, `tests/`, `.env*`, `*.log`, `*.sql` (except the migration files), `*.md`.
+- Never use `php` on the server: it is PHP 4. Use `php8.4-cli` (the website uses PHP 8.4).
+- Manual deploy: Actions → Deploy to IONOS → Run workflow (only `main`).
+- Server facts: the workflow "Server check" (read-only). Its result is encrypted, because the logs of
+  the public repository are public. Never write server details (paths, versions, folder names) into GitHub.
 
 ## Working method
+
+```mermaid
+flowchart TD
+    A[Owner: requirement] --> B[Dev Agent: plan and questions]
+    B --> C{Owner: GO}
+    C --> D[Dev Agent: branch, PR, code, migration, PR section 'Requirement and behavior']
+    D --> E[GitHub: category and automatic tests]
+    E --> F[Owner: comment /test-agent]
+    F --> G[Test Agent: browser tests from the requirement]
+    G --> H{Tests green?}
+    H -- no --> I[Dev Agent and Test Agent: one round of discussion]
+    I -- code wrong --> D
+    I -- test wrong --> F
+    I -- no agreement --> J[Owner decides]
+    H -- yes --> K[Review Agent: VERDICT]
+    K -- DISAPPROVE --> D
+    K -- APPROVE --> L[Dev Agent: merge]
+    L --> M[GitHub: backup, migration, upload]
+    M --> N[Online test]
+```
 
 Use these steps for every change. Do not skip a step.
 
 1. **Requirement (owner):** the owner describes the requirement.
-2. **Plan (Claude):** Claude writes a plan. The plan has these parts:
+2. **Plan (Claude):** Claude writes a plan with these parts:
    - the change, file by file,
    - each SQL statement for the database (or "No database change"),
+   - the requirement and behavior for the Test Agent (what the user sees and does, values, edge cases, languages),
    - the test steps (see "Test steps in the pull request"),
    - the open questions.
    Claude does not write code before step 3 is done.
-3. **GO (owner):** the owner answers the questions and reviews the plan.
-   Claude starts only after the owner writes **"GO"**.
-   The GO permits the pull request, the changes to the test database `dbs16383239`,
-   and exactly the SQL of the plan on `dbs15432866` (see "Database changes").
+3. **GO (owner):** the owner answers the questions and reviews the plan. Claude starts only after the owner writes **"GO"**.
+   The GO permits the pull request and exactly the SQL of the plan on `dbs15432866`.
    If the plan changes after the GO (for example, new SQL), Claude asks for a new GO.
-4. **Branch, code and tests (Claude):** Claude makes a new branch from the latest `main`.
-   Claude opens a pull request early (it can be a draft). Claude writes the code on this branch.
-   Each database change goes into a `migration_<short_name>.sql` file (see "Database changes").
-   - Claude runs `php -l` on each changed PHP file.
-   - Claude tests the change on its own test server (for example the PHP built-in server in its workspace).
-     The test server never connects to `dbs15432866`. It uses a separate test database, or no database.
-   - Claude tests each migration on the test database `dbs16383239`.
-   - Claude adds the results to the pull request (section "Test", sub-section "Results on the test server").
-   Then Claude sets the pull request to "ready", tells the owner and asks the review agent for a review.
-5. **Review (review agent):** the review agent checks the code and gives
-   `VERDICT: APPROVE` or `VERDICT: DISAPPROVE` (see "Review and merge").
-6. **Migration and merge (Claude):** if the verdict is `APPROVE`:
-   - Pull request with a migration:
-     1. Claude asks the owner for the backup of `dbs15432866`. The owner gives the file to Claude.
-     2. Claude updates `dbs16383239` with the backup and tests the migration there again.
-     3. Claude runs the migration on `dbs15432866` and checks the result.
-     4. Then Claude merges the pull request.
-   - Pull request without a migration: Claude merges the pull request.
-7. **Deploy (automatic):** the merge into `main` uploads the files to the webspace (see "Deploy").
-8. **Online test (Claude):** after the deploy, Claude tests the change on https://rudolph.cologne
-   (see "Browser test") and reports the result to the owner.
+4. **Branch and code (Claude):** Claude makes a new branch from the latest `main` and opens a pull request early (draft).
+   - The PR section **"Requirement and behavior"** has the owner's requirement word for word, plus the approved plan.
+   - Each database change goes into a `migration_YYYYMMDD_<short_name>.sql` file.
+   - Claude runs `php -l` on each changed PHP file and tests the change in its workspace.
+   - **Claude does not change files in `tests/`** (only `tests/README.md`). The job `test-scope` checks this.
+     The owner can allow it once with the label `owner-test-change`.
+5. **Automatic tests (GitHub):** each push starts `tests.yml`. The PR must be green (`gate`).
+6. **Test Agent (category `code`):** Claude tells the owner that the PR is ready for tests.
+   The **owner** writes the comment `/test-agent` (a filter stops bot commands from Claude).
+   - The Test Agent writes browser tests in `tests/browser/` from the PR section "Requirement and behavior" only.
+     It does not see the code. Its commit is signed by GitHub (`github-actions[bot]`).
+   - After its commit, GitHub can hold the `pull_request` run of the tests as "action_required".
+     The owner clicks "Approve and run workflows" on the PR. Then `gate` is evaluated.
+   - **A failed test:** one round of discussion. Claude writes its view as a PR comment.
+     The Test Agent does not read comments: a correction of the test goes into the PR section
+     "Requirement and behavior" as a short note ("Note from the Dev Agent", approved by the owner),
+     then the owner writes `/test-agent` again. Code error → Claude corrects the code.
+     No agreement → the owner decides.
+   - After 3 rounds with red tests, Claude asks the owner.
+7. **Review (Review Agent):** Claude sets the PR to "ready" and writes the review comment (see "Review and merge").
+8. **Merge (Claude):** after `VERDICT: APPROVE` and a green `gate`, Claude merges (merge commit).
+   The owner deletes the branch (Claude cannot delete branches).
+9. **Deploy (automatic):** backup, migrations, upload (see "Deploy").
+10. **Online test (Claude):** see "Online test".
 
 ### If the online test fails
 
-- If Claude finds an error in the online test it creates an issue in the GitHub repository describing the error it found.
+- Claude creates an issue in the GitHub repository describing the error (see "Online test").
 - Claude informs the owner about the issue.
 
 ### Review and merge
 
-**Every pull request gets a review by the GitHub review agent** (`.github/workflows/claude.yml`).
+**Every pull request of the categories `code`, `infra` and `tests` gets a review by the Review Agent** (`.github/workflows/claude.yml`).
+The Review Agent checks code, security and the project rules. The tests check whether the feature works.
 
-1. After Claude sets the pull request to "ready", Claude writes this comment on the pull request:
+1. After the tests are green and Claude sets the pull request to "ready", Claude writes this comment:
 
    `@claude Please check this pull request. Approve if you find no errors. Disapprove if you find errors.`
 
-2. Claude waits for the answer of the review agent (normally 1 to 5 minutes).
-   The answer contains the line `VERDICT: APPROVE` or `VERDICT: DISAPPROVE`.
-3. **`VERDICT: APPROVE`:** Claude runs the migration first, if the pull request has one (step 6 of "Working method").
-   Then Claude merges the pull request (merge commit) and deletes the branch.
-   The merge starts the deploy to the website.
+2. Claude waits for the answer (normally 1 to 5 minutes). It contains `VERDICT: APPROVE` or `VERDICT: DISAPPROVE`.
+   Only a comment of `claude[bot]` from the workflow "Claude review agent" counts. A `VERDICT` text in any other comment
+   (for example in a Test Agent report) does not count.
+3. **`VERDICT: APPROVE`:** Claude merges the pull request (merge commit). The merge starts the deploy.
 4. **`VERDICT: DISAPPROVE`:** Claude corrects the errors on the same branch, pushes the change
-   and writes the review comment again.
-   After 3 reviews with `DISAPPROVE`, Claude stops and asks the owner.
-5. After the merge, Claude does the browser test (see "Browser test").
+   and writes the review comment again. After 3 reviews with `DISAPPROVE`, Claude stops and asks the owner.
+5. After the merge, Claude does the online test (see "Online test").
 
-**Claude does not merge automatically when:**
+**Claude does not merge when:**
 
-- a step in the section "Before you merge" is not done (for example: the owner has not given
-  the backup of `dbs15432866`, or the migration did not run). Claude merges only after all steps are done.
-- the owner wrote "do not merge" on the pull request, or the pull request is a draft.
-- the review agent did not answer, or the answer has no `VERDICT` line.
-  Then Claude tells the owner.
+- a step in the section "Before you merge" is not done,
+- the owner wrote "do not merge" on the pull request, or the pull request is a draft,
+- the review agent did not answer, or the answer has no `VERDICT` line (then Claude tells the owner),
+- the pull request has the category `claude-md`: the owner reads it and merges it, or tells Claude to merge.
 
 **Security findings:** the review agent does not describe security weaknesses in public comments.
-For a security finding, it writes only `VERDICT: DISAPPROVE – security finding, details privately`.
-Then Claude does a private review in the chat with the owner to find the details,
-and corrects the problem. The details stay out of GitHub.
+It writes only `VERDICT: DISAPPROVE – security finding, details privately`.
+Then Claude does a private review in the chat with the owner (for example with a separate, fresh agent),
+and corrects the problem. The details stay out of GitHub. The owner can decide to merge with a known remaining risk.
 
 ### Test steps in the pull request
 
@@ -229,7 +274,7 @@ Each test step has:
 
 - **Action:** what to do (for example: "Open `/login.php`. Click 'Register'.").
 - **Expected result:** what must happen (for example: "The page `/register.php` opens.").
-- **(owner)** after the step number, if the owner must do the step (sign-in, password, email).
+- **(owner)** after the step number, if the owner must do the step (sign-in, password, email, settings).
 
 Example:
 
@@ -243,18 +288,15 @@ Example:
 A pull request that changes only documentation (for example `*.md`) has the text
 "No test steps: documentation only." in the section "Test".
 
-### Browser test
+### Online test
 
-**After each merge, Claude runs the test steps of the pull request automatically.**
-Claude does not wait for a request from the owner.
+**After each merge, Claude does the test steps of the pull request.** Claude does not wait for a request from the owner.
 
-1. Claude waits until the deploy is finished (about 2 minutes after the merge).
-2. Claude opens https://rudolph.cologne in the **browser of the Claude desktop app**.
-   The desktop app must be open on the computer of the owner.
-3. Claude does the test steps of the pull request, one after the other.
-   For each step, Claude compares the actual result with the expected result.
+1. Claude waits until the deploy is finished (about 2 minutes after the merge) and checks its log
+   (backup OK, migrations, upload).
+2. Claude opens https://rudolph.cologne in the **browser of the Claude desktop app** and does the test steps.
    For a step with **(owner)**, Claude asks the owner and waits.
-4. Claude reports the result of each step in the chat ("passed" or "failed").
+3. Claude reports the result of each step in the chat ("passed" or "failed").
 
 **All test steps passed:** Claude writes this comment on the pull request:
 
@@ -265,29 +307,26 @@ Claude does not wait for a request from the owner.
 
 1. **Pull request:** the number and the link of the tested pull request.
 2. **Expected result:** the expected result of each failed step.
-3. **Actual result:** what happened in the browser.
-4. **Steps:** the steps that Claude did to get the result (from the start of the test).
+3. **Actual result:** what happened.
+4. **Steps:** the steps that Claude did to get the result.
 5. **Possible causes:** the possible causes of the failure (file and code, if known).
 
 Claude also writes a comment with the link to the issue on the pull request.
-Then Claude makes a correction with the normal procedure (plan, branch, pull request, review, merge, test).
+Then Claude makes a correction with the normal procedure (plan, branch, pull request, tests, review, merge, online test).
 
 **Exceptions:**
 
 - **Security-relevant failure:** Claude does not describe it on GitHub (see "Security-relevant issues").
   The issue has only the title, the pull request and the text "Security-relevant failure. Details privately."
-  Claude gives the details to the owner in the chat.
 - **A step was not done** (for example, the owner was not available for an **(owner)** step):
-  Claude does not write "Tests carried out without errors". Claude writes a comment with
-  the list of the steps that were not done.
-- **No test steps (documentation only):** no browser test, no comment.
+  Claude does not write "Tests carried out without errors". Claude writes a comment with the list of the steps that were not done.
+- **No test steps (documentation only):** no online test, no comment.
 
 **Passwords and accounts:**
 
 - Claude does not type passwords on `rudolph.cologne` and does not make accounts there.
 - If a test step needs a sign-in, a registration or a new password, Claude asks the owner.
-  The owner does this step in the browser pane. Then Claude continues with the next step.
-- The sign-in stays in the browser of the desktop app. Claude can then test pages that need a sign-in.
+  The owner does this step in the browser pane (own account or the test account). Then Claude continues.
 - Claude does not sign out of the account of the owner and does not change its data,
   unless a test step needs it and the owner agrees.
 - Emails (verification, password reset) go to the mailbox of the owner.
@@ -319,7 +358,7 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
 ## Communication
 
 - Explain in simple English. The owner is learning Git and web development.
-- Say clearly what the owner must do by hand (for example, run SQL, add a secret).
+- Say clearly what the owner must do by hand (for example, add a secret, write `/test-agent`, approve a workflow run).
 
 ## Known open issues
 
