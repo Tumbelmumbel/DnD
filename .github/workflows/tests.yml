@@ -247,6 +247,22 @@ jobs:
           [ "$rules" -ge 100 ]
           [ "$(q "SELECT COUNT(*) FROM users")" -eq 0 ]
           php migrate.php | grep -q 'No new migrations'
+      - name: Test of migrate.php --init (one-time start of the tracking)
+        run: |
+          q() { mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" --batch --skip-column-names -e "$1"; }
+          # The init file must list exactly the old migration files
+          diff <(grep -o "migration_[a-z_]*\.sql" schema_migrations_init.sql | sort) <(q "SELECT filename FROM schema_migrations" | grep -v '^migration_[0-9]' | sort)
+          q "SELECT filename FROM schema_migrations" > /tmp/recorded.txt
+          q "DROP TABLE schema_migrations"
+          out=$(php migrate.php 2>&1 || true)
+          echo "$out" | grep -q 'does not exist' && echo "Without the table, migrate.php stops (OK)"
+          php migrate.php --init | tee /tmp/init.txt
+          grep -q 'schema_migrations created, 17 rows' /tmp/init.txt
+          php migrate.php --init | grep -q 'changes nothing'
+          # Record again the new migrations of this pull request (they ran in the step before)
+          while read -r f; do q "INSERT IGNORE INTO schema_migrations (filename) VALUES ('$f')"; done < /tmp/recorded.txt
+          php migrate.php | grep -q 'No new migrations'
+
       - name: Self-test of migrate.php
         run: |
           q() { mysql --protocol=tcp -h 127.0.0.1 -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" --batch --skip-column-names -e "$1"; }
