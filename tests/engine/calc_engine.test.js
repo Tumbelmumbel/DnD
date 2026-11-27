@@ -12,23 +12,53 @@ const root = path.join(__dirname, "..", "..");
 const engine = require(path.join(root, "Assets", "calc_engine.js"));
 
 // ---- Read the rows of calculation_templates from the baseline ----
+// Works with both formats: one INSERT with many rows (phpMyAdmin) and one INSERT per row (mysqldump).
 const sql = fs.readFileSync(path.join(root, "tests", "baseline", "baseline.sql"), "utf8");
-const block = sql.split("INSERT INTO `calculation_templates`")[1].split(";\n")[0];
-const rowRe = /\((\d+), '(\w+)', (NULL|\d+), (\d+), '([^']+)', '(\w+)', (NULL|'[-\d.]+'), (NULL|'[^']*'), (NULL|'(?:[^'\\]|\\.)*')\)/g;
+
+/** Split the VALUES part of an INSERT into rows of values (strings, numbers, null). */
+function parseValues(text) {
+	const rows = [];
+	let i = 0, row = null, value = "", inString = false, quoted = false;
+	const finishValue = () => {
+		const raw = value.trim();
+		row.push(quoted ? value : (raw.toUpperCase() === "NULL" ? null : Number(raw)));
+		value = ""; quoted = false;
+	};
+	for (; i < text.length; i++) {
+		const c = text[i];
+		if (inString) {
+			if (c === "\\") { value += text[++i]; }
+			else if (c === "'" && text[i + 1] === "'") { value += "'"; i++; }
+			else if (c === "'") { inString = false; }
+			else { value += c; }
+		} else if (c === "'") { inString = true; quoted = true; value = ""; }
+		else if (c === "(" && row === null) { row = []; value = ""; }
+		else if (c === "," && row !== null) { finishValue(); }
+		else if (c === ")" && row !== null) { finishValue(); rows.push(row); row = null; }
+		else if (row !== null) { value += c; }
+	}
+	return rows;
+}
+
 const allRules = [];
+const insertRe = /INSERT INTO `calculation_templates` \(([^)]*)\) VALUES\s*([\s\S]*?\));\s*$/gm;
 let m;
-while ((m = rowRe.exec(block))) {
-	allRules.push({
-		id: +m[1],
-		source_type: m[2],
-		item_id: m[3] === "NULL" ? null : +m[3],
-		sort_order: +m[4],
-		target: m[5],
-		operator: m[6],
-		value_num: m[7] === "NULL" ? null : +m[7].slice(1, -1),
-		value_ref: m[8] === "NULL" ? null : m[8].slice(1, -1),
-		condition: m[9] === "NULL" ? null : JSON.parse(m[9].slice(1, -1).replace(/\\"/g, '"'))
-	});
+while ((m = insertRe.exec(sql))) {
+	const columns = m[1].split(",").map(c => c.trim().replace(/`/g, ""));
+	for (const values of parseValues(m[2])) {
+		const r = Object.fromEntries(columns.map((c, k) => [c, values[k]]));
+		allRules.push({
+			id: Number(r.id),
+			source_type: r.source_type,
+			item_id: r.item_id === null ? null : Number(r.item_id),
+			sort_order: Number(r.sort_order),
+			target: r.target,
+			operator: r.operator,
+			value_num: r.value_num === null ? null : Number(r.value_num),
+			value_ref: r.value_ref,
+			condition: r.condition_json === null ? null : JSON.parse(r.condition_json)
+		});
+	}
 }
 const baseRules = allRules.filter(r => r.source_type === "base");
 // The rules of one item, with the item as source (like inventoryRules() in sandbox.js)
