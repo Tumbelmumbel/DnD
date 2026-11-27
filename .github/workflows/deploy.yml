@@ -1,4 +1,4 @@
-# Upload the website to the IONOS webspace over SFTP.
+# Deploy the website to the IONOS webspace: backup, migration, upload.
 #
 # Runs on every push to main (for example after you merge a pull request),
 # and you can also start it by hand under "Actions" -> "Deploy to IONOS" -> "Run workflow".
@@ -6,19 +6,26 @@
 #
 # The job uses the GitHub environment "production". Settings -> Environments -> production:
 #   - "Deployment branches and tags": only main.
-#   - The SFTP secrets are environment secrets of "production" (not repository secrets),
+#   - The secrets are environment secrets of "production" (not repository secrets),
 #     so no other branch and no other workflow can read them.
 #
-# UPLOAD ONLY: files on the server that are not in Git (.env, libs/PHPMailer,
-# php-errors.log, ...) are never deleted.
+# Order (each step stops the deploy on an error; nothing after it runs):
+#   1. Check the SSH host key of the server against SSH_HOST_FINGERPRINT.
+#   2. Backup of the database with mysqldump into ~/db_backups/ on the server
+#      (the data never leaves the server). Backups older than 14 days are deleted.
+#   3. Upload migrate.php, schema_migrations_init.sql and the migration_*.sql files.
+#   4. php8.4-cli migrate.php --init (one time), then php8.4-cli migrate.php.
+#   5. Upload all other files. UPLOAD ONLY: files on the server that are not in Git
+#      (.env, libs/PHPMailer, php-errors.log, ...) are never deleted.
 #
 # Required secrets of the environment "production":
-#   SFTP_HOST        e.g. access-5012345678.webspace-host.com
-#   SFTP_USER        your SFTP user name
-#   SFTP_PASSWORD    your SFTP password
-#   SFTP_REMOTE_DIR  target folder as seen in your SFTP client, e.g. /Rudolph.cologne
+#   SFTP_HOST             e.g. access-5012345678.webspace-host.com
+#   SFTP_USER             your SFTP user name
+#   SFTP_PASSWORD         your SFTP password
+#   SFTP_REMOTE_DIR       target folder as seen in your SFTP client, e.g. /Rudolph.cologne
+#   SSH_HOST_FINGERPRINT  SHA256 fingerprint of the ED25519 host key, e.g. SHA256:abc...
 # Optional:
-#   SFTP_PORT        default 22
+#   SFTP_PORT             default 22
 
 name: Deploy to IONOS
 
@@ -27,7 +34,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Never run two uploads at the same time
+# Never run two deploys at the same time
 concurrency:
   group: deploy-ionos
   cancel-in-progress: false
@@ -40,30 +47,109 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      SFTP_HOST: ${{ secrets.SFTP_HOST }}
+      SFTP_PORT: ${{ secrets.SFTP_PORT }}
+      SFTP_USER: ${{ secrets.SFTP_USER }}
+      SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+      SSH_HOST_FINGERPRINT: ${{ secrets.SSH_HOST_FINGERPRINT }}
     steps:
       - name: Check out code
         uses: actions/checkout@v5
 
-      - name: Install lftp
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+      - name: Install lftp and sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp sshpass
 
-      - name: Upload files over SFTP
-        env:
-          SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_PORT: ${{ secrets.SFTP_PORT }}
-          SFTP_USER: ${{ secrets.SFTP_USER }}
-          LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
-          SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+      - name: 1. Check the SSH host key of the server
         run: |
-          for v in SFTP_HOST SFTP_USER LFTP_PASSWORD SFTP_REMOTE_DIR; do
+          for v in SFTP_HOST SFTP_USER SFTP_REMOTE_DIR SSH_HOST_FINGERPRINT; do
             if [ -z "${!v}" ]; then echo "::error::Secret for $v is missing"; exit 1; fi
           done
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -t ed25519 -p "${SFTP_PORT:-22}" "$SFTP_HOST" 2>/dev/null > /tmp/host_key
+          fp=$(ssh-keygen -lf /tmp/host_key -E sha256 2>/dev/null | awk '{print $2}')
+          if [ -z "$fp" ] || [ "$fp" != "$SSH_HOST_FINGERPRINT" ]; then
+            echo "::error::The host key of the server does not match SSH_HOST_FINGERPRINT. Nothing was sent."
+            exit 1
+          fi
+          # From here on, ssh and lftp accept only this key
+          mv /tmp/host_key ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+          echo "Host key OK"
 
+      - name: 2. Backup of the database (on the server)
+        env:
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          sshpass -e ssh -p "${SFTP_PORT:-22}" -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
+            -o PubkeyAuthentication=no -o ConnectTimeout=20 "$SFTP_USER@$SFTP_HOST" \
+            "sh -s -- $(printf '%q' "$SFTP_REMOTE_DIR") $(printf '%q' "$GITHUB_SHA")" <<'REMOTE'
+          set -eu
+          umask 077
+          dir="$1"; sha=$(printf '%.7s' "$2")
+          [ -f "$dir/config.php" ] || dir="$HOME/${dir#/}"
+          [ -f "$dir/config.php" ] || { echo "ERROR: web folder not found"; exit 1; }
+          command -v php8.4-cli > /dev/null || { echo "ERROR: php8.4-cli not found"; exit 1; }
+          b="$HOME/db_backups"
+          mkdir -p "$b" && chmod 700 "$b"
+          [ -f "$b/.htaccess" ] || printf 'Require all denied\n' > "$b/.htaccess"
+          cnf="$b/.client_$$.cnf"; tmp="$b/.dump_$$.sql"
+          trap 'rm -f "$cnf" "$tmp"' EXIT
+          # The site's config.php gives the database settings. They go only into a file with mode 600.
+          db=$(cd "$dir" && php8.4-cli -d display_errors=0 -r '
+            require "config.php";
+            $d = $APP_CONFIG["db"];
+            $q = fn($v) => "\"" . addcslashes((string)$v, "\\\"") . "\"";
+            file_put_contents($argv[1], "[client]\nhost=" . $q($d["host"]) . "\nuser=" . $q($d["user"]) . "\npassword=" . $q($d["pass"]) . "\n");
+            chmod($argv[1], 0600);
+            echo $d["name"];' "$cnf")
+          case "$db" in ''|*[!A-Za-z0-9_]*) echo "ERROR: no valid database name"; exit 1 ;; esac
+          mysqldump --defaults-extra-file="$cnf" --single-transaction --no-tablespaces "$db" > "$tmp" \
+            || { echo "ERROR: mysqldump failed"; exit 1; }
+          grep -q 'CREATE TABLE' "$tmp" || { echo "ERROR: the backup has no tables"; exit 1; }
+          tail -n 1 "$tmp" | grep -q 'Dump completed' || { echo "ERROR: the backup is not complete"; exit 1; }
+          f="$b/${db}_$(date +%Y%m%d-%H%M%S)_${sha}.sql.gz"
+          gzip -9 -c "$tmp" > "$f" && gzip -t "$f" || { echo "ERROR: the backup file is damaged"; rm -f "$f"; exit 1; }
+          echo "Backup OK: $(basename "$f") ($(wc -c < "$f") bytes)"
+          find "$b" -maxdepth 1 -name '*.sql.gz' -type f -mtime +14 -print -delete | sed 's#.*/#Deleted old backup: #'
+          REMOTE
+
+      - name: 3. Upload migrate.php and the migration files
+        env:
+          LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          # The ssh program of lftp accepts only the checked host key (known_hosts)
+          lftp --env-password -u "$SFTP_USER" -p "${SFTP_PORT:-22}" "sftp://$SFTP_HOST" <<EOF
+          set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519"
+          set net:max-retries 2
+          set net:timeout 30
+          mput -O "$SFTP_REMOTE_DIR" migrate.php schema_migrations_init.sql migration_*.sql
+          bye
+          EOF
+
+      - name: 4. Run the migrations (php8.4-cli)
+        env:
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          sshpass -e ssh -p "${SFTP_PORT:-22}" -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
+            -o PubkeyAuthentication=no -o ConnectTimeout=20 "$SFTP_USER@$SFTP_HOST" \
+            "sh -s -- $(printf '%q' "$SFTP_REMOTE_DIR")" <<'REMOTE'
+          set -eu
+          dir="$1"
+          [ -f "$dir/config.php" ] || dir="$HOME/${dir#/}"
+          cd "$dir"
+          php8.4-cli -d display_errors=0 migrate.php --init
+          php8.4-cli -d display_errors=0 migrate.php
+          REMOTE
+
+      - name: 5. Upload all other files over SFTP
+        env:
+          LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: |
           # --env-password reads the password from LFTP_PASSWORD,
           # so special characters in the password are no problem.
           # mirror --reverse WITHOUT --delete = upload only, never delete on the server.
           lftp --env-password -u "$SFTP_USER" -p "${SFTP_PORT:-22}" "sftp://$SFTP_HOST" <<EOF
-          set sftp:auto-confirm yes
+          set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519"
           set net:max-retries 2
           set net:timeout 30
           mirror --reverse --verbose --parallel=4 \

@@ -95,7 +95,7 @@ Registration, new verification link and password reset: 5 per IP address and 3 p
 ### `schema_migrations`
 
 This table lists the migration files that already ran on the database. `migrate.php` reads it and runs only the new files.
-The table exists in the test baseline (`tests/baseline/baseline.sql`). It goes into the live database with a later pull request (deploy over SSH).
+The table exists in the test baseline (`tests/baseline/baseline.sql`) and in the live database. The deploy creates it one time with `php8.4-cli migrate.php --init` (file `schema_migrations_init.sql`). After that, the deploy runs each new migration with `migrate.php`, after an automatic backup.
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|

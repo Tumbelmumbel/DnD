@@ -6,6 +6,7 @@ declare(strict_types=1);
  *
  * Command line only:  php migrate.php            (run the new migrations)
  *                     php migrate.php --dry-run  (only list them)
+ *                     php migrate.php --init     (one time: create schema_migrations)
  *
  * - The table schema_migrations lists the migration files that already ran.
  * - The script runs each new file migration_*.sql in name order and records it.
@@ -13,6 +14,8 @@ declare(strict_types=1);
  *   so a stopped migration must be checked by hand.
  * - If the table schema_migrations does not exist, the script stops.
  *   It never runs all old migrations again.
+ * - --init runs schema_migrations_init.sql only if the table does not exist yet.
+ *   That file creates the table and records the migrations that ran before.
  */
 
 // Never from the web: the page must not exist for a visitor
@@ -24,6 +27,7 @@ if (PHP_SAPI !== 'cli') {
 require_once __DIR__ . '/config.php';
 
 $dryRun = in_array('--dry-run', $argv, true);
+$init   = in_array('--init', $argv, true);
 
 /** Print a line and stop with an error code */
 function migrate_fail(string $message): void {
@@ -91,6 +95,25 @@ try {
 }
 
 $table = $pdo->query("SHOW TABLES LIKE 'schema_migrations'")->fetchColumn();
+
+if ($init) {
+    if ($table !== false) {
+        echo 'schema_migrations exists. --init changes nothing.' . PHP_EOL;
+        exit(0);
+    }
+    $statements = migrate_split_sql((string)file_get_contents(__DIR__ . '/schema_migrations_init.sql'));
+    foreach ($statements as $index => $statement) {
+        try {
+            $pdo->exec($statement);
+        } catch (PDOException $e) {
+            migrate_fail('schema_migrations_init.sql, statement ' . ($index + 1) . ': ' . $e->getMessage());
+        }
+    }
+    $rows = (int)$pdo->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn();
+    echo 'schema_migrations created, ' . $rows . ' rows.' . PHP_EOL;
+    exit(0);
+}
+
 if ($table === false) {
     migrate_fail('The table schema_migrations does not exist. Nothing was changed.');
 }
