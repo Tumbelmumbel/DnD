@@ -51,7 +51,7 @@ PHPMailer) only after the owner agrees.
 | `tests/` | Automatic tests (see `tests/README.md`): `baseline/` (test database without user data), `engine/` (Node), `browser/` (Playwright), `migrations/` (self-test of `migrate.php`) |
 | `.github/workflows/tests.yml` | Automatic tests of each pull request, category, `test-scope` and the required check `gate` |
 | `.github/workflows/claude.yml` | Review Agent: answers `@claude` comments of the owner's account (review only) |
-| `.github/workflows/claude-test.yml` | Test Agent: starts with the PR comment `/test-agent` (owner only) |
+| `.github/workflows/claude-test.yml` | Test Agent (category `code` only): starts automatically at "Ready for review" (max. 3 times) or with the PR comment `/test-agent` (owner only) |
 | `.github/workflows/deploy.yml` | Deploy of `main`: host key check, backup, migrations, upload; then the jobs `online-test` and `baseline-refresh` |
 | `.github/online-test/test_online.py` | Online test of the live website with the test account (secrets `TEST_USER`, `TEST_PASSWORD`) |
 | `.github/scripts/baseline_pr.py` | Baseline refresh: signed commit on the branch `baseline-refresh`, pull request, start of "Tests" |
@@ -180,6 +180,8 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
   - The workflow cannot open the pull request itself (setting "Allow GitHub Actions to create and approve
     pull requests" is off). Claude opens it by hand, with the title "Baseline refresh from the live database".
   - This pull request has the category `tests`: automatic tests and Review Agent, but no Test Agent.
+  - If the new baseline breaks a test: the owner adds the label `full-check` (category `code`). Claude writes the
+    PR section "Requirement and behavior" and sets the PR to "Draft", then to "Ready for review". The Test Agent corrects the tests.
     Its section "Test" has the text "No test steps: test data only." There is no online test.
     Claude merges it after `VERDICT: APPROVE` and a green `gate`.
   - **Never add a table with user data to `GAME_TABLES`.** A new game table needs a pull request that adds it there.
@@ -198,8 +200,8 @@ flowchart TD
     B --> C{Owner: GO}
     C --> D[Dev Agent: branch, PR, code, migration, PR section 'Requirement and behavior']
     D --> E[GitHub: category and automatic tests]
-    E --> F[Owner: comment /test-agent]
-    F --> G[Test Agent: browser tests from the requirement]
+    E --> F[Dev Agent: Ready for review, Test Agent starts]
+    F --> G[Test Agent: decides, changes and adds tests, runs all tests]
     G --> H{Tests green?}
     H -- no --> I[Dev Agent and Test Agent: one round of discussion]
     I -- code wrong --> D
@@ -232,19 +234,26 @@ Use these steps for every change. Do not skip a step.
    - **Claude does not change files in `tests/`** (only `tests/README.md`). The job `test-scope` checks this.
      The owner can allow it once with the label `owner-test-change`.
 5. **Automatic tests (GitHub):** each push starts `tests.yml`. The PR must be green (`gate`).
-6. **Test Agent (category `code`):** Claude tells the owner that the PR is ready for tests.
-   The **owner** writes the comment `/test-agent` (a filter stops bot commands from Claude).
-   - The Test Agent writes browser tests in `tests/browser/` from the PR section "Requirement and behavior" only.
-     It does not see the code. Its commit is signed by GitHub (`github-actions[bot]`).
+6. **Test Agent (category `code` only):** when `gate` is green, Claude sets the PR from "Draft" to "Ready for review".
+   This starts the Test Agent automatically. Claude tells the owner.
+   - The automatic start works only for a PR of the owner from a branch of this repository, with `gate` green,
+     and not more than 3 times for each PR. The owner can always start it with the comment `/test-agent`.
+   - The Test Agent reads the PR section "Requirement and behavior" and all tests in `tests/`. It does not see the code diff.
+     For each part of the requirement it decides: covered, change or new test.
+   - It changes and adds tests in `tests/browser/` and `tests/engine/`. It gives the reason for each change.
+     It deletes a test only if the requirement removes the feature. It never changes a test to match an error of the application.
+   - It runs all tests and writes its report as a PR comment. Its commit is signed by GitHub (`github-actions[bot]`).
    - After its commit, GitHub can hold the `pull_request` run of the tests as "action_required".
      The owner clicks "Approve and run workflows" on the PR. Then `gate` is evaluated.
    - **A failed test:** one round of discussion. Claude writes its view as a PR comment.
      The Test Agent does not read comments: a correction of the test goes into the PR section
-     "Requirement and behavior" as a short note ("Note from the Dev Agent", approved by the owner),
-     then the owner writes `/test-agent` again. Code error → Claude corrects the code.
-     No agreement → the owner decides.
+     "Requirement and behavior" as a short note ("Note from the Dev Agent", approved by the owner).
+     Code error → Claude corrects the code. No agreement → the owner decides.
+     For a new run, Claude sets the PR to "Draft" and then to "Ready for review" again (this counts as an automatic run),
+     or the owner writes `/test-agent`.
    - After 3 rounds with red tests, Claude asks the owner.
-7. **Review (Review Agent):** Claude sets the PR to "ready" and writes the review comment (see "Review and merge").
+7. **Review (Review Agent):** Claude writes the review comment (see "Review and merge").
+   For the categories `infra` and `tests` (no Test Agent), Claude first sets the PR to "Ready for review".
 8. **Merge (Claude):** after `VERDICT: APPROVE` and a green `gate`, Claude merges (merge commit).
    The owner deletes the branch (Claude cannot delete branches).
 9. **Deploy (automatic):** backup, migrations, upload (see "Deploy").
@@ -380,7 +389,7 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
 ## Communication
 
 - Explain in simple English. The owner is learning Git and web development.
-- Say clearly what the owner must do by hand (for example, add a secret, write `/test-agent`, approve a workflow run).
+- Say clearly what the owner must do by hand (for example, add a secret, add a label, approve a workflow run).
 
 ## Known open issues
 
