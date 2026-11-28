@@ -419,8 +419,13 @@ jobs:
         run: |
           {
             echo "### Test Agent report"
-            # Marker for the limit of 3 automatic runs
-            [ "$GITHUB_EVENT_NAME" = "pull_request_target" ] && { echo "<!-- test-agent-auto -->"; echo "Start: automatic (Ready for review)."; } || echo "Start: /test-agent by the owner."
+            # Marker for the limit of 3 automatic runs: only for a run that did not stop in the first step
+            if [ "$GITHUB_EVENT_NAME" = "pull_request_target" ]; then
+              [ -f /tmp/handover/STOP.txt ] || echo "<!-- test-agent-auto -->"
+              echo "Start: automatic (Ready for review)."
+            else
+              echo "Start: /test-agent by the owner."
+            fi
             echo
             if [ "$CHANGED" = "true" ]; then echo "Changed tests are committed. The workflow \"Tests\" runs again."; else echo "No test files were changed."; fi
             [ "$AGENT_RESULT" = "success" ] || echo "The agent job ended with: $AGENT_RESULT. See the log of the workflow run."
