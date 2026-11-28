@@ -181,7 +181,8 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
     pull requests" is off). Claude opens it by hand, with the title "Baseline refresh from the live database".
   - This pull request has the category `tests`: automatic tests and Review Agent, but no Test Agent.
   - If the new baseline breaks a test: the owner adds the label `full-check` (category `code`). Claude writes the
-    PR section "Requirement and behavior" and sets the PR to "Draft", then to "Ready for review". The Test Agent corrects the tests.
+    PR section "Requirement and behavior". The `gate` is red, so the automatic start does not work:
+    the owner writes `/test-agent`. The Test Agent corrects the tests.
     Its section "Test" has the text "No test steps: test data only." There is no online test.
     Claude merges it after `VERDICT: APPROVE` and a green `gate`.
   - **Never add a table with user data to `GAME_TABLES`.** A new game table needs a pull request that adds it there.
