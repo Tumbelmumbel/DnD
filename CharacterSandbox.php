@@ -74,6 +74,11 @@ $errors = [];
 			'item_rarity' => lookup_names($pdo)['item_rarity'] ?? [],
 			'damagetype'  => lookup_names($pdo)['damagetype'] ?? [],
 		];
+
+		// Spells: the spell data of the classes (slots, known and prepared numbers) and all spells in the current language
+		$spellcasting = spellcasting_table($pdo);
+		$spellCatalog = spell_list($pdo);
+		$spellSchools = lookup_names($pdo)['spell_school'] ?? [];
 ?>
 
 <!DOCTYPE html>
@@ -370,6 +375,44 @@ $errors = [];
 		<p class = "cs-chips-empty" id = "inventoryEmpty" data-i18n = "inventory.none"><?= e(t('inventory.none')) ?></p>
 	</section>
 
+	<!-- Spells: the spells of the character and the spell slots. The selected class and level give the numbers (table Classes). -->
+	<section class = "cs-card cs-spells" id = "Spells" aria-labelledby = "cs-spells-title">
+		<div class = "cs-inventory-head">
+			<h2 id = "cs-spells-title" data-i18n = "spells"><?= e(t('spells')) ?></h2>
+			<span class = "cs-inventory-summary"></span>
+			<button type = "button" class = "cs-inventory-add" id = "spellAdd" aria-expanded = "false" aria-controls = "spellPicker" data-i18n = "spells.add"><?= e(t('spells.add')) ?></button>
+		</div>
+		<p class = "cs-chips-empty" id = "spellsNoCasting" data-i18n = "spells.no_casting"><?= e(t('spells.no_casting')) ?></p>
+		<div class = "cs-inventory-picker cs-spell-picker" id = "spellPicker" role = "dialog" aria-label = "<?= e(t('spells.search')) ?>" data-i18n-aria = "spells.search" hidden>
+			<label for = "spellSearch" data-i18n = "spells.search"><?= e(t('spells.search')) ?></label>
+			<input id = "spellSearch" autocomplete = "off">
+			<ul class = "cs-inventory-results" id = "spellResults"></ul>
+		</div>
+		<div class = "cs-spell-stats" id = "spellStats">
+			<div class = "cs-spell-stat"><span data-i18n = "spells.ability"><?= e(t('spells.ability')) ?></span><output id = "spellAbility">–</output></div>
+			<div class = "cs-spell-stat"><span data-i18n = "spells.save_dc"><?= e(t('spells.save_dc')) ?></span><output id = "spellSaveDc" data-calc = "spell.save_dc" data-calc-format = "plain">–</output></div>
+			<div class = "cs-spell-stat"><span data-i18n = "spells.attack"><?= e(t('spells.attack')) ?></span><output id = "spellAttack" data-calc = "spell.attack">–</output></div>
+			<div class = "cs-spell-stat" id = "spellCantripStat"><span data-i18n = "spells.cantrips"><?= e(t('spells.cantrips')) ?></span><output id = "spellCantripCount">–</output></div>
+			<div class = "cs-spell-stat" id = "spellKnownStat"><span data-i18n = "spells.known"><?= e(t('spells.known')) ?></span><output id = "spellKnownCount">–</output></div>
+			<div class = "cs-spell-stat" id = "spellPreparedStat"><span data-i18n = "spells.prepared"><?= e(t('spells.prepared')) ?></span><output id = "spellPreparedCount">–</output></div>
+		</div>
+		<div class = "cs-spell-slots" id = "spellSlots" role = "group" aria-label = "<?= e(t('spells.slots')) ?>" data-i18n-aria = "spells.slots"></div>
+		<p class = "cs-chip-message" id = "spellMessage" aria-live = "polite"></p>
+		<div class = "cs-spell-cols" aria-hidden = "true" hidden>
+			<span data-i18n = "spells.col_prepared"><?= e(t('spells.col_prepared')) ?></span>
+			<span data-i18n = "spells.col_spell"><?= e(t('spells.col_spell')) ?></span>
+			<span data-i18n = "spells.col_level"><?= e(t('spells.col_level')) ?></span>
+			<span data-i18n = "spells.col_casting_time"><?= e(t('spells.col_casting_time')) ?></span>
+			<span data-i18n = "spells.col_range"><?= e(t('spells.col_range')) ?></span>
+			<span data-i18n = "spells.col_components"><?= e(t('spells.col_components')) ?></span>
+			<span data-i18n = "spells.col_duration"><?= e(t('spells.col_duration')) ?></span>
+			<span></span>
+		</div>
+		<ul class = "cs-spell-list" id = "spellList"></ul>
+		<p class = "cs-chips-empty" id = "spellsEmpty" data-i18n = "spells.none"><?= e(t('spells.none')) ?></p>
+		<p class = "cs-spell-credit"><span data-i18n = "spells.credit"><?= e(t('spells.credit')) ?></span> <a href = "https://creativecommons.org/licenses/by/4.0/" rel = "license noopener" target = "_blank">CC BY 4.0</a></p>
+	</section>
+
 	<!-- Talents -->
 	<section class = "cs-card" id = "Talents" aria-labelledby = "cs-talents-title">
 		<h2 id = "cs-talents-title" data-i18n = "talents"><?= e(t('talents')) ?></h2>
@@ -402,5 +445,8 @@ const subclasses = <?= json_encode($subclasses) ?>;
 const calcRules = <?= json_encode($calcRules, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 const itemCatalog = <?= json_encode($items, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 let itemLookup = <?= json_encode($itemLookup, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_FORCE_OBJECT) ?>;
+const spellcasting = <?= json_encode($spellcasting, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+let spellCatalog = <?= json_encode($spellCatalog, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+let spellSchools = <?= json_encode($spellSchools, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_FORCE_OBJECT) ?>;
 </script>
 <script src="<?= e(asset_url('/Assets/sandbox.js')) ?>"></script>

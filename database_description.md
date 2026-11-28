@@ -130,10 +130,11 @@ The primary key is the combination of `class_code`, `subclass_code` and `Level`.
 | `Level` | tinyint | | No | | Character level (1 to 20). |
 | `Proficiency_Bonus` | tinyint | | No | | Proficiency bonus at this level. |
 | `Hit_Dice` | tinyint | | No | | Size of the hit die of the class, for example 8 for a d8. |
-| `Spell_Prep_Method` | text | | No | | How the class gets its spells: `Preparation` (prepares spells) or `Knowledge` (knows a fixed list). |
-| `Spell_Modifier` | text | | No | | Ability for spellcasting, for example `Charisma`. Empty = the class does not cast spells. |
+| `Spell_Prep_Method` | text | | No | | How the class gets its spells (code): `known` (knows a fixed number of spells, all are prepared), `prepared` (prepares spells from the full class list) or `spellbook` (wizard: any number of spells in the spellbook, prepares some of them). Empty = no spells. |
+| `Spell_Modifier` | text | | No | | Code of the ability for spellcasting (`Abilities.code`), for example `charisma`. Empty = the class does not cast spells. |
+| `Spell_List` | varchar(40) | | No | `''` | Code of the spell list of the class (`spell_classes.list_code`), for example `wizard`. Normally the class code. The Eldritch Knight uses `wizard`. Empty = the class does not cast spells. `migration_20261127_spells.sql`. |
 | `Known_Cantrips` | tinyint | | No | | Number of cantrips that the character knows at this level. |
-| `Known_Spells` | tinyint | | No | | Number of spells that the character knows at this level. |
+| `Known_Spells` | tinyint | | No | | Number of spells that the character knows at this level. Only for the method `known`. |
 | `Spells_Level_1` … `Spells_Level_9` | tinyint | | No | | Number of spell slots for spell levels 1 to 9 at this level (9 fields). |
 | `Arcane_Focus` | text | | No | | Item that the class can use as a spellcasting focus, for example `Musical instrument`. |
 | `Ritual_capable` | tinyint(1) | | No | | 1 = the class can cast spells as rituals. 0 = it cannot. |
@@ -141,7 +142,7 @@ The primary key is the combination of `class_code`, `subclass_code` and `Level`.
 | `Rage_Amount` | tinyint | | No | | Number of rages per long rest (barbarian). |
 | `Focus_Points` | tinyint | | No | | Number of focus points at this level (for example monk). **(check)** |
 | `Sneekatack_Amount` | tinyint | | No | | Number of sneak attack dice (rogue). |
-| `Prepared_Spells` | tinyint | | No | | Number of spells that the character can prepare at this level. |
+| `Prepared_Spells` | tinyint | | No | | The part of the number of prepared spells that comes from the level: the level (cleric, druid, wizard), half the level rounded down (paladin) or rounded up (artificer). 0 for the method `known`. The engine adds the modifier of the spell ability (rules 730–732). |
 
 ### `Species`
 
@@ -208,6 +209,7 @@ This table stores how a damage type can have an effect on a character. Each row 
 ### `Game_component_library`
 
 This table stores game components: weapons, spells, class abilities, talents, items, armor and shields. Each row is one component.
+Now the application uses only the talents of this table. The spells are in the table `spells` (see "Spells").
 The field `id` identifies each row.
 
 | Field | Data type | Key | Null | Default | Description |
@@ -313,6 +315,70 @@ Two items of the same type (for example two daggers) are two rows. A stack (for 
 | `equipped` | tinyint(1) | | No | `0` | `1` = the character uses the item now (for example wears the armor). `0` = the item is only in the inventory. |
 | `created_at` | datetime | | No | CURRENT_TIMESTAMP | Date and time when the character got the item. |
 
+## Spells
+
+The spells come from the System Reference Document 5.1 (SRD 5.1) of Wizards of the Coast, in English and in the official German version.
+The SRD 5.1 has the license CC-BY-4.0. The character sheet shows the attribution under the spells card.
+The spells of a character stay in the browser for now (no save function yet).
+
+### `spell_schools`
+
+This table stores the schools of magic. Each row is one school (8 rows). The names are in `Lookup_translation` (type `spell_school`).
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `code` | varchar(20) | PK | No | | Code of the school, for example `evocation`. |
+| `sort_order` | smallint | | No | 0 | Position of the school in lists. |
+
+### `spells`
+
+This table stores the spells. Each row is one spell. The texts are in `spells_translation`.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `code` | varchar(60) | PK | No | | Code of the spell, for example `cure_wounds`. |
+| `level` | tinyint unsigned | IDX | No | | Level of the spell, 0 to 9. 0 = cantrip. |
+| `school_code` | varchar(20) | | No | | Code of the school (`spell_schools.code`). |
+| `comp_v` | tinyint(1) | | No | 0 | 1 = the spell has a verbal component (V). |
+| `comp_s` | tinyint(1) | | No | 0 | 1 = the spell has a somatic component (S; German: G). |
+| `comp_m` | tinyint(1) | | No | 0 | 1 = the spell has a material component (M). The material is in `spells_translation.material`. |
+| `ritual` | tinyint(1) | | No | 0 | 1 = the spell can be cast as a ritual. |
+| `concentration` | tinyint(1) | | No | 0 | 1 = the spell needs concentration. |
+
+### `spells_translation`
+
+This table stores the texts of the spells. Each row is the texts of one spell in one language.
+Each spell has an English row. A field with NULL, or a missing language, uses the English row.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `spell_code` | varchar(60) | PK | No | | Code of the spell (`spells.code`). |
+| `lang` | varchar(5) | PK | No | | Language code, for example `en` or `de`. |
+| `name` | varchar(150) | | No | | Name of the spell in this language. |
+| `casting_time` | varchar(150) | | Yes | NULL | Casting time, for example `1 action`. |
+| `spell_range` | varchar(150) | | Yes | NULL | Range, for example `60 feet` or `Touch`. |
+| `duration` | varchar(150) | | Yes | NULL | Duration, for example `Concentration, up to 1 minute`. |
+| `material` | varchar(400) | | Yes | NULL | Material component, for example `a pinch of sulfur`. NULL: no material. |
+| `description` | text | | No | | Rules text of the spell. Paragraphs are separated by a line break. |
+| `higher_levels` | text | | Yes | NULL | Text "At Higher Levels". NULL: the spell has no such text. |
+
+### `spell_classes`
+
+This table stores the spell lists. Each row is one spell on one spell list. A spell can be on many lists.
+
+| Field | Data type | Key | Null | Default | Description |
+|---|---|---|---|---|---|
+| `spell_code` | varchar(60) | PK | No | | Code of the spell (`spells.code`). |
+| `list_code` | varchar(40) | PK, IDX | No | | Code of the spell list. The class uses the list in `Classes.Spell_List`, for example `cleric`. |
+
+**Rules of the spells card:**
+
+- The card uses the row of `Classes` for the class, the subclass and the level. If the subclass has no rows, it uses the base class.
+- The character can add only spells of the spell list (`Classes.Spell_List`) up to the highest level with spell slots. Cantrips only if `Known_Cantrips` > 0.
+- Cantrips: up to `Known_Cantrips`. Method `known`: spells up to `Known_Spells`, all are prepared.
+- Methods `prepared` and `spellbook`: any number of spells. The character can prepare not more than `spell.prepared_max`.
+- Spell slots: the total comes from `Spells_Level_1` … `Spells_Level_9`. The used slots are 0 to the total.
+
 ## Calculations
 
 These tables store the rules that calculate the values of a character (for example armor class or a skill).
@@ -333,6 +399,7 @@ The JavaScript engine of the character sheet does the calculation. The database 
 | `hp.` | `hp.max` | Fixed list |
 | `passive.` | `passive.perception` | `Skills.code` |
 | `weapon.` | `weapon.attack`, `weapon.damage_bonus`, `weapon.ability` | Fixed list. The engine calculates these values one time for each equipped weapon (weapons card). |
+| `spell.` | `spell.mod`, `spell.save_dc`, `spell.attack`, `spell.prepared_max`, `spell.prepared_base` | Fixed list (spells card). |
 
 **Operators (`operator`):**
 
@@ -359,6 +426,7 @@ The JavaScript engine of the character sheet does the calculation. The database 
 | `HAS_DEFENSE` | `{"HAS_DEFENSE": ["resistant", "fire"]}` | True if the character has this defense. The first entry is a code of `Damage_influence` or `condition`. The second entry is a code of `Damagetypes` or `Conditions`. |
 | `PROFICIENT` | `{"PROFICIENT": "skill.stealth"}` | True if the character is proficient in this saving throw or skill (the box on the sheet is ticked). |
 | `WEAPON_TAG` | `{"WEAPON_TAG": "finesse"}` | True only in the calculation of one weapon, if this weapon has this tag (`tags.code`). |
+| `SPELL_ABILITY` | `{"SPELL_ABILITY": "wisdom"}` | True if the selected class casts spells with this ability (`Classes.Spell_Modifier`, a code of `Abilities`). |
 | `WEAPON_PROFICIENT` | `{"WEAPON_PROFICIENT": true}` | True only in the calculation of one weapon, if the character is proficient with it: "Simple weapons" or "Martial weapons" is on and the weapon has the tag `simple` or `martial`, or the weapon has a chip in the card "Weapon proficiency". |
 | `all`, `any`, `not` | `{"all": [{...}, {...}]}` | Combine checks: all are true, one is true, the check is false. |
 
@@ -367,7 +435,7 @@ An object with more than one check is true only if all checks are true. An unkno
 
 **Calculation:** `Assets/calc_engine.js` calculates the values. A value that does not exist counts as 0. `div` by 0 does not change the value.
 
-**Inputs (no rules):** `ability.<code>` (ability score from the sheet, empty = 10) and `char.level` (level from the sheet, empty = 1).
+**Inputs (no rules):** `ability.<code>` (ability score from the sheet, empty = 10), `char.level` (level from the sheet, empty = 1) and `spell.prepared_base` (`Classes.Prepared_Spells` of the selected class and level, else 0).
 
 **Base rules (`source_type` `base`, `migration_base_calculations.sql`):**
 
@@ -384,6 +452,10 @@ An object with more than one check is true only if all checks are true. An unkno
 | 600–602 | `weapon.ability` | `mod.strength`. A weapon with the tag `ranged` uses `mod.dexterity`. A weapon with the tag `finesse` uses at least `mod.dexterity` (the higher modifier). `migration_weapon_rules.sql`. |
 | 610–611 | `weapon.attack` | `weapon.ability`. Plus `char.prof_bonus` if `WEAPON_PROFICIENT`. |
 | 620 | `weapon.damage_bonus` | `weapon.ability` (added to the damage dice). |
+| 700–703 | `spell.mod` | 0. The modifier of the spell ability if `SPELL_ABILITY` is `intelligence`, `wisdom` or `charisma`. `migration_20261127_spells.sql`. |
+| 710–712 | `spell.save_dc` | 8 + `char.prof_bonus` + `spell.mod` |
+| 720–721 | `spell.attack` | `char.prof_bonus` + `spell.mod` |
+| 730–732 | `spell.prepared_max` | `spell.prepared_base`. If it is more than 0: plus `spell.mod`, and at least 1. |
 
 ### `calculation_templates`
 
@@ -435,7 +507,7 @@ This table stores the names of the lookup values. Each row is the name of one va
 
 | Field | Data type | Key | Null | Default | Description |
 |---|---|---|---|---|---|
-| `type` | varchar(30) | PK | No | | Type of the value: `class`, `subclass`, `species`, `background`, `condition`, `damagetype`, `damage_influence`, `item_tag` or `item_rarity`. |
+| `type` | varchar(30) | PK | No | | Type of the value: `class`, `subclass`, `species`, `background`, `condition`, `damagetype`, `damage_influence`, `item_tag`, `item_rarity` or `spell_school`. |
 | `code` | varchar(60) | PK | No | | Code of the value, for example `bard` (see the field `code` or `class_code` / `subclass_code` of the game table). |
 | `lang` | varchar(5) | PK | No | | Language code, for example `en` or `de`. |
 | `name` | varchar(150) | | No | | Name of the value in this language, for example `Barde`. |

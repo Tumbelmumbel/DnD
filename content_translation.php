@@ -172,3 +172,103 @@ function item_list(PDO $pdo, ?string $lang = null): array {
     usort($list, fn(array $a, array $b): int => strcmp(content_sort_key($a['name']), content_sort_key($b['name'])));
     return $list;
 }
+
+/**
+ * Spell data of the classes (table Classes) for the spells card:
+ * ["<class>|<subclass>" => [level => ['method', 'ability', 'list', 'cantrips', 'known', 'prepared_base', 'slots' => [9 numbers]]]].
+ * Only the rows of classes that use a spell list (Spell_List not empty).
+ */
+function spellcasting_table(PDO $pdo): array {
+    $stmt = $pdo->prepare("SELECT class_code, subclass_code, Level, Spell_Prep_Method, Spell_Modifier, Spell_List,
+        Known_Cantrips, Known_Spells, Prepared_Spells, Spells_Level_1, Spells_Level_2, Spells_Level_3, Spells_Level_4,
+        Spells_Level_5, Spells_Level_6, Spells_Level_7, Spells_Level_8, Spells_Level_9
+        FROM Classes WHERE Spell_List <> '' ORDER BY class_code, subclass_code, Level");
+    $stmt->execute();
+    $table = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $slots = [];
+        for ($i = 1; $i <= 9; $i++) {
+            $slots[] = (int)$row['Spells_Level_' . $i];
+        }
+        $table[$row['class_code'] . '|' . $row['subclass_code']][(int)$row['Level']] = [
+            'method'        => (string)$row['Spell_Prep_Method'],
+            'ability'       => (string)$row['Spell_Modifier'],
+            'list'          => (string)$row['Spell_List'],
+            'cantrips'      => (int)$row['Known_Cantrips'],
+            'known'         => (int)$row['Known_Spells'],
+            'prepared_base' => (int)$row['Prepared_Spells'],
+            'slots'         => $slots,
+        ];
+    }
+    return $table;
+}
+
+/**
+ * All spells in $lang, without the long texts, sorted by level and name:
+ * [['code', 'name', 'level', 'school', 'v', 's', 'm', 'ritual', 'concentration',
+ *   'casting_time', 'range', 'duration', 'lists' => [list codes]], ...]
+ * A missing text falls back to English.
+ */
+function spell_list(PDO $pdo, ?string $lang = null): array {
+    $lists = [];
+    $stmt = $pdo->prepare('SELECT spell_code, list_code FROM spell_classes ORDER BY list_code');
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $lists[(string)$row['spell_code']][] = (string)$row['list_code'];
+    }
+
+    $stmt = $pdo->prepare('SELECT s.code, s.level, s.school_code, s.comp_v, s.comp_s, s.comp_m, s.ritual, s.concentration,
+            COALESCE(t.name, e.name, s.code) AS name,
+            COALESCE(t.casting_time, e.casting_time) AS casting_time,
+            COALESCE(t.spell_range, e.spell_range) AS spell_range,
+            COALESCE(t.duration, e.duration) AS duration
+        FROM spells s
+        LEFT JOIN spells_translation t ON t.spell_code = s.code AND t.lang = :lang
+        LEFT JOIN spells_translation e ON e.spell_code = s.code AND e.lang = :base');
+    $stmt->execute([':lang' => $lang ?? current_lang(), ':base' => I18N_DEFAULT]);
+    $list = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $code = (string)$row['code'];
+        $list[] = [
+            'code'          => $code,
+            'name'          => (string)$row['name'],
+            'level'         => (int)$row['level'],
+            'school'        => (string)$row['school_code'],
+            'v'             => (bool)$row['comp_v'],
+            's'             => (bool)$row['comp_s'],
+            'm'             => (bool)$row['comp_m'],
+            'ritual'        => (bool)$row['ritual'],
+            'concentration' => (bool)$row['concentration'],
+            'casting_time'  => (string)($row['casting_time'] ?? ''),
+            'range'         => (string)($row['spell_range'] ?? ''),
+            'duration'      => (string)($row['duration'] ?? ''),
+            'lists'         => $lists[$code] ?? [],
+        ];
+    }
+    usort($list, fn(array $a, array $b): int =>
+        ($a['level'] <=> $b['level']) ?: strcmp(content_sort_key($a['name']), content_sort_key($b['name'])));
+    return $list;
+}
+
+/** The long texts of one spell in $lang (field by field: language, then English), or null */
+function spell_details(PDO $pdo, string $code, ?string $lang = null): ?array {
+    $stmt = $pdo->prepare('SELECT s.code,
+            COALESCE(t.material, e.material) AS material,
+            COALESCE(t.description, e.description) AS description,
+            COALESCE(t.higher_levels, e.higher_levels) AS higher_levels
+        FROM spells s
+        LEFT JOIN spells_translation t ON t.spell_code = s.code AND t.lang = :lang
+        LEFT JOIN spells_translation e ON e.spell_code = s.code AND e.lang = :base
+        WHERE s.code = :code');
+    $stmt->execute([':code' => $code, ':lang' => $lang ?? current_lang(), ':base' => I18N_DEFAULT]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return null;
+    }
+    return [
+        'code'          => (string)$row['code'],
+        'material'      => (string)($row['material'] ?? ''),
+        'description'   => (string)($row['description'] ?? ''),
+        'higher_levels' => (string)($row['higher_levels'] ?? ''),
+    ];
+}
