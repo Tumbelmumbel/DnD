@@ -1,23 +1,31 @@
 # Claude Test Agent on GitHub.
 #
-# Start: a comment on a pull request that begins with "/test-agent".
-# Only comments from the owner's account start it (the repository is public).
+# Start (only pull requests with the label "category: code"):
+# - automatic: the pull request changes from "Draft" to "Ready for review" (pull_request_target).
+#   Only pull requests of the owner from a branch of this repository, only if "gate" is green,
+#   and not more than 3 automatic runs for each pull request.
+# - by hand: a comment of the owner that begins with "/test-agent" (no limit).
 #
-# The Test Agent writes browser tests from the REQUIREMENT, not from the code:
-# - It reads only the PR section "Requirement and behavior", CLAUDE.md,
-#   database_description.md, the folder tests/ and the running page.
-# - It never sees the code diff. The code runs in /tmp/app as the separate user "appsrv"
-#   for the PHP server only; the agent cannot read /tmp/app.
-#   Its working folder contains only tests/, CLAUDE.md and database_description.md.
-# - It writes only in tests/browser/.
+# The Test Agent works from the REQUIREMENT, not from the code:
+# - It reads the PR section "Requirement and behavior", CLAUDE.md, database_description.md and all of tests/.
+# - It decides for each part of the requirement: the existing tests are sufficient, a test must change,
+#   or a new test is necessary. Then it changes or adds tests and runs all tests.
+# - It never sees the code diff. The code runs in /tmp/app as the separate user "appsrv";
+#   the agent cannot read /tmp/app. The engine tests run as appsrv (run-engine-tests), so a test
+#   could read Assets/calc_engine.js: the owner accepted this (2026-11-28).
+# - It writes only in tests/browser/ and tests/engine/. It deletes a file only if it lists the file
+#   in tests/AGENT_DELETE.txt (the requirement removes the feature).
 # - Each run is a new session on a new machine. It has no memory of earlier runs.
 #
 # Two jobs:
 # 1. agent:  runs the code of the pull request and the agent. READ permissions only.
-#            It gives only tests/browser/ and the report to job 2 (artifact).
+#            It gives only tests/browser/, tests/engine/ and the report to job 2 (artifact).
 # 2. commit: has the write permissions, but runs no code of the pull request.
 #            It reads the artifact as data, creates the commit through the GitHub API
 #            (GitHub signs it), starts the workflow "Tests" and writes the report.
+#
+# pull_request_target: this file always comes from main. The code of the pull request runs
+# only in job 1 (read permissions, separate user), never in job 2.
 #
 # Authentication: Claude subscription token (secret CLAUDE_CODE_OAUTH_TOKEN).
 
@@ -26,22 +34,31 @@ name: Claude test agent
 on:
   issue_comment:
     types: [created]
+  pull_request_target:
+    types: [ready_for_review]
 
 concurrency:
-  group: test-agent-${{ github.event.issue.number }}
+  group: test-agent-${{ github.event.issue.number || github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
   agent:
     if: >-
-      github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/test-agent') &&
-      github.event.comment.author_association == 'OWNER'
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '/test-agent') &&
+       github.event.comment.author_association == 'OWNER') ||
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login == github.repository_owner &&
+       contains(github.event.pull_request.labels.*.name, 'category: code'))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
       contents: read
       pull-requests: read
+      issues: read
+      checks: read
     outputs:
       ref: ${{ steps.pr.outputs.ref }}
       sha: ${{ steps.pr.outputs.sha }}
@@ -58,7 +75,7 @@ jobs:
           --health-cmd="mysqladmin ping -h 127.0.0.1 -proot_password"
           --health-interval=5s --health-timeout=5s --health-retries=20
     env:
-      PR: ${{ github.event.issue.number }}
+      PR: ${{ github.event.issue.number || github.event.pull_request.number }}
       DB_HOST: 127.0.0.1
       DB_PORT: "3306"
       DB_NAME: dnd_test
@@ -71,17 +88,33 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # A reason for a stop goes to the report of job 2
+          mkdir -p /tmp/handover
+          stop() { echo "$1" | tee /tmp/handover/STOP.txt; exit 1; }
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" > /tmp/pr.json
-          [ "$(jq -r .state /tmp/pr.json)" = "open" ] || { echo "The pull request is not open."; exit 1; }
-          [ "$(jq -r .head.repo.full_name /tmp/pr.json)" = "$GITHUB_REPOSITORY" ] || { echo "Pull requests from forks are not supported."; exit 1; }
-          [ "$(jq -r .base.ref /tmp/pr.json)" = "main" ] || { echo "Only pull requests into main are supported."; exit 1; }
-          [ "$(jq -r .head.ref /tmp/pr.json)" != "main" ] || { echo "The branch of the pull request must not be main."; exit 1; }
+          [ "$(jq -r .state /tmp/pr.json)" = "open" ] || stop "The pull request is not open."
+          [ "$(jq -r .head.repo.full_name /tmp/pr.json)" = "$GITHUB_REPOSITORY" ] || stop "Pull requests from forks are not supported."
+          [ "$(jq -r .base.ref /tmp/pr.json)" = "main" ] || stop "Only pull requests into main are supported."
+          [ "$(jq -r .head.ref /tmp/pr.json)" != "main" ] || stop "The branch of the pull request must not be main."
+          jq -e '[.labels[].name] | index("category: code")' /tmp/pr.json > /dev/null \
+            || stop "The Test Agent runs only for pull requests with the label 'category: code'."
+          sha=$(jq -r .head.sha /tmp/pr.json)
+          if [ "$GITHUB_EVENT_NAME" = "pull_request_target" ]; then
+            # Automatic start: gate must be green, and not more than 3 automatic runs for each pull request
+            gate=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?check_name=gate" \
+                   -q '[.check_runs[] | select(.status == "completed")] | sort_by(.completed_at) | last | .conclusion // "none"')
+            [ "$gate" = "success" ] || stop "Automatic start stopped: the check 'gate' is not green ($gate)."
+            runs=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+                   -q '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- test-agent-auto -->")))] | length' \
+                   | awk '{s+=$1} END {print s+0}')
+            [ "$runs" -lt 3 ] || stop "Automatic start stopped: 3 automatic runs are done. The owner can start the Test Agent with /test-agent."
+          fi
           echo "ref=$(jq -r .head.ref /tmp/pr.json)" >> "$GITHUB_OUTPUT"
-          echo "sha=$(jq -r .head.sha /tmp/pr.json)" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
           # The requirement: the PR section "Requirement and behavior" (up to the next "## " heading)
           jq -r .body /tmp/pr.json \
             | awk '/^## Requirement and behavior/{on=1; print; next} on && /^## /{exit} on{print}' > /tmp/requirement.md
-          [ -s /tmp/requirement.md ] || { echo "The PR has no section 'Requirement and behavior'."; exit 1; }
+          [ -s /tmp/requirement.md ] || stop "The PR has no section 'Requirement and behavior'."
 
       - name: Check out the commit (the token is not stored in .git/config)
         uses: actions/checkout@v6
@@ -98,6 +131,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
 
       - name: Start the application in /tmp/app as the separate user "appsrv"
         # The code of the pull request runs as its own system user. It cannot write the
@@ -120,6 +157,30 @@ jobs:
           ls /tmp/app > /dev/null 2>&1 && { echo "The runner can read /tmp/app."; exit 1; } || echo "The runner cannot read /tmp/app (OK)."
           sudo -u appsrv test -w "$GITHUB_WORKSPACE/tests/browser" && { echo "appsrv can write the working folder."; exit 1; } || echo "appsrv cannot write the working folder (OK)."
 
+      - name: Install the command run-engine-tests
+        # The engine tests need Assets/calc_engine.js. The command copies tests/engine/, tests/baseline/
+        # and the engine into a new folder of appsrv and runs the Node test runner there as appsrv.
+        run: |
+          sudo tee /usr/local/bin/run-engine-tests > /dev/null <<'SH'
+          #!/bin/bash
+          d=$(sudo mktemp -d /tmp/engine.XXXXXX)
+          sudo mkdir -p "$d/tests" "$d/Assets"
+          sudo cp -r "__WORKSPACE__/tests/engine" "__WORKSPACE__/tests/baseline" "$d/tests/"
+          sudo cp /tmp/app/Assets/calc_engine.js "$d/Assets/"
+          sudo chown -R appsrv:appsrv "$d"
+          sudo chmod 700 "$d"
+          # The folder belongs to appsrv: appsrv also expands the file names
+          sudo -u appsrv bash -c 'cd "$1" && "$2" --test tests/engine/*.test.js' _ "$d" "$(command -v node)"
+          rc=$?
+          sudo rm -rf "$d"
+          exit $rc
+          SH
+          sudo sed -i "s|__WORKSPACE__|$GITHUB_WORKSPACE|g" /usr/local/bin/run-engine-tests
+          sudo chmod 755 /usr/local/bin/run-engine-tests
+          # Check of the command. A red engine test does not stop the job: the agent handles it.
+          run-engine-tests > /tmp/engine_check.log 2>&1 && echo "Engine tests: green" || echo "Engine tests: red before the agent run"
+          tail -n 12 /tmp/engine_check.log
+
 
       - name: Install Playwright
         run: |
@@ -140,41 +201,69 @@ jobs:
           settings: |
             {"permissions": {"deny": ["Read(//tmp/app/**)", "Read(.git/**)", "Read(//tmp/pr.json)"]}}
           claude_args: |
-            --max-turns 60
-            --allowedTools "Read,Glob,Grep,Write(tests/browser/**),Edit(tests/browser/**),Bash(python -m pytest:*),Bash(pytest:*)"
+            --max-turns 100
+            --allowedTools "Read,Glob,Grep,Write(tests/browser/**),Edit(tests/browser/**),Write(tests/engine/**),Edit(tests/engine/**),Write(tests/AGENT_REPORT.md),Edit(tests/AGENT_REPORT.md),Write(tests/AGENT_DELETE.txt),Edit(tests/AGENT_DELETE.txt),Bash(python -m pytest:*),Bash(pytest:*),Bash(run-engine-tests)"
             --disallowedTools "WebFetch,WebSearch,NotebookEdit,Bash(git:*),Bash(gh:*),Bash(curl:*)"
           prompt: |
             You are the TEST AGENT of this repository. Write in English ASD-STE100.
 
-            Your task: write browser tests (Python, Playwright, pytest) for the requirement in /tmp/requirement.md.
-            Read: /tmp/requirement.md, CLAUDE.md, database_description.md and the files in tests/.
+            Your task: make sure that the tests cover the requirement in /tmp/requirement.md, then run all tests.
+            Read: /tmp/requirement.md, CLAUDE.md, database_description.md and all files in tests/ (see tests/README.md).
             The application runs at http://127.0.0.1:8000 with a test database. Look at the pages only with tests.
-            Use the fixtures in tests/browser/conftest.py (page, browser, base_url, test_user, sign_in, set_language).
+
+            Procedure:
+            1. Write a first version of your report to tests/AGENT_REPORT.md now. Update it at each step.
+            2. Read the requirement and all existing tests.
+            3. For each part of the requirement, decide one of:
+               - covered: the existing tests are sufficient (name the test),
+               - change: an existing test must change (for example the requirement changes a value),
+               - new: a new test is necessary.
+            4. Change and add tests where necessary:
+               - browser tests: tests/browser/, Python, Playwright, pytest. Use the fixtures in
+                 tests/browser/conftest.py (page, browser, base_url, test_user, sign_in, set_language).
+                 Name new files test_<topic>.py.
+               - engine tests: tests/engine/, Node.js built-in test runner, no npm packages.
+                 Name new files <topic>.test.js. See tests/README.md for how to call the engine.
+            5. Run all tests:
+               python -m pytest tests/browser -v
+               run-engine-tests
+            6. Write the final report.
 
             Rules:
             1. Test what the requirement says, including its edge cases. Do not test what the code happens to do.
-            2. Also check, where the requirement touches a page: the second language (German),
+            2. Where the requirement touches a page, also check: the second language (German),
                the phone width (390 px, no sideways scrolling) and no JavaScript errors.
-            3. Write files only in tests/browser/. Name new files test_<topic>.py.
-            4. Never weaken, skip or delete an existing test to make it pass.
-               You may change a test only if you misread the requirement. Then write the reason in your report.
-            5. You do not have the code of the application. Do not try to read it.
-            6. Run your tests with: python -m pytest tests/browser -v
-               A failed test can be a real error in the application. Keep the test and report the failure.
-               Only correct a test if the test itself is wrong (for example a wrong selector).
+            3. You may change any test in tests/browser/ and tests/engine/. Write the reason for each change in the report.
+            4. Never change a test only because the application gives a different result than the requirement says.
+               That is an error in the application: keep the test and report the failure.
+               Correct a test only if the test itself is wrong (for example a wrong selector or an old value
+               that the requirement changes).
+            5. Delete a test file only if the requirement removes the feature that it tests.
+               Write its path in tests/AGENT_DELETE.txt (one path for each line) and the reason in the report.
+               Remove a single test from a file only for the same reason.
+            6. You do not have the code of the application. Do not try to read it.
+            7. Do not change tests/baseline/, tests/migrations/ or tests/README.md.
 
-            At the end, write your report to tests/browser/.agent_report.md (it is not committed):
-            - for each test: the requirement it checks,
-            - the result of the last pytest run (passed / failed, with the reason),
-            - the parts of the requirement that you could not test, and why.
+            The report (tests/AGENT_REPORT.md, it is not committed) has these sections:
+            - Decision: for each part of the requirement: covered / change / new, with the test names.
+            - Changed tests: each changed test with the reason.
+            - New tests: each new test with the part of the requirement that it checks.
+            - Deleted tests: each deleted test with the reason (or "None").
+            - Result: the result of the last run of all tests (passed / failed, with the reason of each failure).
+            - Not tested: the parts of the requirement that you could not test, and why.
 
-      - name: Hand over tests/browser/ (data only)
+      - name: Hand over tests/browser/, tests/engine/ and the report (data only)
         if: always()
         run: |
           sudo pkill -u appsrv || true
           mkdir -p /tmp/handover
-          cp -r tests/browser /tmp/handover/browser
+          [ -d tests/browser ] && cp -r tests/browser /tmp/handover/browser
+          [ -d tests/engine ] && cp -r tests/engine /tmp/handover/engine
+          for f in AGENT_REPORT.md AGENT_DELETE.txt; do
+            [ -f "tests/$f" ] && [ ! -L "tests/$f" ] && cp "tests/$f" "/tmp/handover/$f"
+          done
           rm -rf /tmp/handover/browser/__pycache__ /tmp/handover/browser/screenshots /tmp/handover/browser/.pytest_cache
+          true
 
       - uses: actions/upload-artifact@v5
         if: always()
@@ -195,7 +284,7 @@ jobs:
       issues: write
       actions: write
     env:
-      PR: ${{ github.event.issue.number }}
+      PR: ${{ github.event.issue.number || github.event.pull_request.number }}
       GH_TOKEN: ${{ github.token }}
       BRANCH: ${{ needs.agent.outputs.ref }}
       SHA: ${{ needs.agent.outputs.sha }}
@@ -208,7 +297,7 @@ jobs:
           name: test-agent-output
           path: /tmp/handover
 
-      - name: Create the commit through the GitHub API (only tests/browser/, files as data)
+      - name: Create the commit through the GitHub API (only tests/browser/ and tests/engine/, files as data)
         # GitHub signs a commit that the API creates ("Verified"). The job test-scope
         # accepts only such commits as commits of the Test Agent.
         id: commit
@@ -217,7 +306,8 @@ jobs:
           import base64, hashlib, json, os, subprocess
 
           repo, branch, sha = os.environ["GITHUB_REPOSITORY"], os.environ["BRANCH"], os.environ["SHA"]
-          root = "/tmp/handover/browser"
+          handover = "/tmp/handover"
+          folders = {"browser": "tests/browser/", "engine": "tests/engine/"}
           out = open(os.environ["GITHUB_OUTPUT"], "a")
 
           def api(*args, data=None):
@@ -227,60 +317,82 @@ jobs:
               return json.loads(res) if res.strip() else {}
 
           report = "The Test Agent wrote no report."
-          rp = os.path.join(root, ".agent_report.md")
+          rp = os.path.join(handover, "AGENT_REPORT.md")
           if os.path.isfile(rp) and not os.path.islink(rp):
               report = open(rp, encoding="utf-8", errors="replace").read()[:60000]
+          sp = os.path.join(handover, "STOP.txt")
+          if os.path.isfile(sp) and not os.path.islink(sp):
+              report = "Stopped: " + open(sp, encoding="utf-8", errors="replace").read()[:2000]
           # The report is data: no verdict lines, no mentions
           lines = [l for l in report.splitlines() if "verdict" not in l.lower()]
           report = "\n".join(lines).replace("@", "@\u200b")
           open("/tmp/agent_report.md", "w").write(report)
 
-          if os.environ["AGENT_RESULT"] != "success" or not branch or not os.path.isdir(root):
+          if os.environ["AGENT_RESULT"] != "success" or not branch:
               out.write("changed=false\n")
               raise SystemExit(0)
 
-          # New state of tests/browser/ from the artifact: regular files only, no links
-          new = {}
-          for dirpath, dirnames, filenames in os.walk(root):
-              for d in dirnames:
-                  if os.path.islink(os.path.join(dirpath, d)):
-                      raise SystemExit("A link in the artifact is not allowed: " + d)
-              for f in filenames:
-                  full = os.path.join(dirpath, f)
-                  rel = "tests/browser/" + os.path.relpath(full, root).replace(os.sep, "/")
-                  if os.path.islink(full) or not os.path.isfile(full):
-                      raise SystemExit("Only regular files are allowed: " + rel)
-                  if rel == "tests/browser/.agent_report.md" or "/__pycache__/" in rel or ".." in rel.split("/"):
-                      continue
-                  new[rel] = open(full, "rb").read()
+          # New state of tests/browser/ and tests/engine/ from the artifact: regular files only, no links
+          new, present = {}, set()
+          for name, prefix in folders.items():
+              root = os.path.join(handover, name)
+              if not os.path.isdir(root) or os.path.islink(root):
+                  continue
+              present.add(prefix)
+              for dirpath, dirnames, filenames in os.walk(root):
+                  for d in dirnames:
+                      if os.path.islink(os.path.join(dirpath, d)):
+                          raise SystemExit("A link in the artifact is not allowed: " + d)
+                  for f in filenames:
+                      full = os.path.join(dirpath, f)
+                      rel = prefix + os.path.relpath(full, root).replace(os.sep, "/")
+                      if os.path.islink(full) or not os.path.isfile(full):
+                          raise SystemExit("Only regular files are allowed: " + rel)
+                      if "/__pycache__/" in rel or "/.pytest_cache/" in rel or ".." in rel.split("/"):
+                          continue
+                      new[rel] = open(full, "rb").read()
 
-          # Old state of tests/browser/ on the commit that the agent used
+          # Old state of the two folders on the commit that the agent used
           if api(f"repos/{repo}/git/ref/heads/{branch}")["object"]["sha"] != sha:
               raise SystemExit("The branch changed during the run. No commit.")
           base = api(f"repos/{repo}/git/commits/{sha}")
           old_tree = api(f"repos/{repo}/git/trees/{base['tree']['sha']}?recursive=1")
           old = {e["path"]: e["sha"] for e in old_tree["tree"]
-                 if e["type"] == "blob" and e["path"].startswith("tests/browser/")}
+                 if e["type"] == "blob" and any(e["path"].startswith(p) for p in present)}
+
+          # Files that the agent deletes: only paths listed in AGENT_DELETE.txt, only in the two folders
+          delete = set()
+          dp = os.path.join(handover, "AGENT_DELETE.txt")
+          if os.path.isfile(dp) and not os.path.islink(dp):
+              for line in open(dp, encoding="utf-8", errors="replace").read().splitlines():
+                  p = line.strip()
+                  if p and p in old and p not in new and any(p.startswith(x) for x in folders.values()) and ".." not in p.split("/"):
+                      delete.add(p)
 
           def git_blob_sha(data):
               return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
 
-          tree, changed_existing = [], []
+          tree, changed_existing, added = [], [], []
           for path, data in sorted(new.items()):
               if old.get(path) == git_blob_sha(data):
                   continue
-              if path in old:
-                  changed_existing.append(path)
+              (changed_existing if path in old else added).append(path)
               blob = api(f"repos/{repo}/git/blobs",
                          data={"content": base64.b64encode(data).decode(), "encoding": "base64"})["sha"]
               tree.append({"path": path, "mode": "100644", "type": "blob", "sha": blob})
-          # The Test Agent never deletes a test: a missing file is not deleted, only reported
-          missing = sorted(set(old) - set(new))
+          for path in sorted(delete):
+              tree.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
+          # A missing file that is not in AGENT_DELETE.txt is not deleted, only reported
+          missing = sorted(set(old) - set(new) - delete)
           notes = []
+          if added:
+              notes.append("New test files: " + ", ".join(added))
           if changed_existing:
               notes.append("Changed existing test files (check the reason in the report): " + ", ".join(changed_existing))
+          if delete:
+              notes.append("Deleted test files (check the reason in the report): " + ", ".join(sorted(delete)))
           if missing:
-              notes.append("Files missing after the run (NOT deleted): " + ", ".join(missing))
+              notes.append("Files missing after the run (NOT deleted, not in AGENT_DELETE.txt): " + ", ".join(missing))
           open("/tmp/agent_notes.md", "w").write("\n".join("- " + n for n in notes))
 
           if not tree:
@@ -288,7 +400,7 @@ jobs:
               raise SystemExit(0)
           new_tree = api(f"repos/{repo}/git/trees", data={"base_tree": base["tree"]["sha"], "tree": tree})["sha"]
           new_commit = api(f"repos/{repo}/git/commits", data={
-              "message": "Test Agent: add browser tests for the requirement\n\n"
+              "message": "Test Agent: update the tests for the requirement\n\n"
                          "Written by the Claude Test Agent (workflow claude-test.yml).",
               "tree": new_tree, "parents": [sha]})["sha"]
           api("-X", "PATCH", f"repos/{repo}/git/refs/heads/{branch}", data={"sha": new_commit})
@@ -307,8 +419,10 @@ jobs:
         run: |
           {
             echo "### Test Agent report"
+            # Marker for the limit of 3 automatic runs
+            [ "$GITHUB_EVENT_NAME" = "pull_request_target" ] && { echo "<!-- test-agent-auto -->"; echo "Start: automatic (Ready for review)."; } || echo "Start: /test-agent by the owner."
             echo
-            if [ "$CHANGED" = "true" ]; then echo "New tests are committed. The workflow \"Tests\" runs again."; else echo "No new test files were committed."; fi
+            if [ "$CHANGED" = "true" ]; then echo "Changed tests are committed. The workflow \"Tests\" runs again."; else echo "No test files were changed."; fi
             [ "$AGENT_RESULT" = "success" ] || echo "The agent job ended with: $AGENT_RESULT. See the log of the workflow run."
             [ -s /tmp/agent_notes.md ] && { echo; cat /tmp/agent_notes.md; }
             echo

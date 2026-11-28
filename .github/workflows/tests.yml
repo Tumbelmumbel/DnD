@@ -5,7 +5,7 @@
 #    The owner can only raise it with the label "full-check".
 # 2. php-lint, engine, database, browser: the tests. They run only for the
 #    categories code, infra and tests.
-#    test-scope: the Dev Agent does not change tests/, the Test Agent changes only tests/browser/.
+#    test-scope: the Dev Agent does not change tests/, the Test Agent changes only tests/browser/ and tests/engine/.
 # 3. gate: always runs. It is green only if all tests of the category passed.
 #    Branch protection requires this one job.
 #
@@ -105,7 +105,7 @@ jobs:
   test-scope:
     # Runs for every category.
     # - A Test Agent commit (author github-actions[bot], signed by GitHub, subject "Test Agent:")
-    #   may change only tests/browser/.
+    #   may change only tests/browser/ and tests/engine/.
     # - A baseline commit (author github-actions[bot], signed by GitHub, subject "Baseline refresh:")
     #   may change only tests/baseline/baseline.sql.
     # - Any other commit may not change tests/ (only tests/README.md). Old and new names of
@@ -164,8 +164,8 @@ jobs:
             verified=$(gh api "repos/$R/commits/$sha" -q '.commit.verification.verified')
             subject=$(git log -1 --format=%s "$sha")
             if [ "$login" = "github-actions[bot]" ] && [ "$verified" = "true" ] && [[ "$subject" == "Test Agent:"* ]]; then
-              bad=$(echo "$files" | grep -v '^tests/browser/' || true)
-              [ -n "$bad" ] && { echo "Test Agent commit $sha changes files outside tests/browser/:"; echo "$bad"; fail=1; }
+              bad=$(echo "$files" | grep -v -E '^tests/(browser|engine)/' || true)
+              [ -n "$bad" ] && { echo "Test Agent commit $sha changes files outside tests/browser/ and tests/engine/:"; echo "$bad"; fail=1; }
             elif [ "$login" = "github-actions[bot]" ] && [ "$verified" = "true" ] && [[ "$subject" == "Baseline refresh:"* ]]; then
               bad=$(echo "$files" | grep -v '^tests/baseline/baseline\.sql$' || true)
               [ -n "$bad" ] && { echo "Baseline commit $sha changes other files:"; echo "$bad"; fail=1; }
