@@ -80,6 +80,10 @@ The workflow `tests.yml` sets the category from the changed files (label `catego
 
 - A mixed pull request gets the strictest category.
 - Only the owner can raise the category, with the label `full-check`.
+- Who merges:
+  - `code`, `infra`, `tests`: Claude, after `VERDICT: APPROVE` and a green `gate` (see "Review and merge").
+  - `claude-md`: the owner (or the owner tells Claude to merge).
+  - `docs`: Claude, after a green `gate`. There is no review.
 
 ### Description of changes: ASD-STE100
 
@@ -175,6 +179,9 @@ The repository is public. Everything in GitHub (issues, pull requests, commits, 
   `baseline-refresh` (signed commit of `github-actions[bot]`).
   - The workflow cannot open the pull request itself (setting "Allow GitHub Actions to create and approve
     pull requests" is off). Claude opens it by hand, with the title "Baseline refresh from the live database".
+  - This pull request has the category `tests`: automatic tests and Review Agent, but no Test Agent.
+    Its section "Test" has the text "No test steps: test data only." There is no online test.
+    Claude merges it after `VERDICT: APPROVE` and a green `gate`.
   - **Never add a table with user data to `GAME_TABLES`.** A new game table needs a pull request that adds it there.
 - The upload never deletes files on the server.
 - Not uploaded: `.git/`, `.github/`, `tests/`, `.env*`, `*.log`, `*.sql` (except the migration files), `*.md`.
@@ -336,6 +343,10 @@ Then Claude makes a correction with the normal procedure (plan, branch, pull req
 **Passwords and accounts:**
 
 - Claude does not type passwords on `rudolph.cologne` and does not make accounts there.
+- The test account (secrets `TEST_USER`, `TEST_PASSWORD`) is only for the job `online-test` in GitHub Actions.
+  Claude cannot read GitHub secrets. Claude does not use the test account in the browser pane.
+- The browser pane keeps its sign-in. After the owner signs in one time, the next online tests can use it
+  until the session ends.
 - If a test step needs a sign-in, a registration or a new password, Claude asks the owner.
   The owner does this step in the browser pane (own account or the test account). Then Claude continues.
 - Claude does not sign out of the account of the owner and does not change its data,
